@@ -44,7 +44,6 @@ typedef struct
   SDL_Color background_color;
   Entity camera;
   TTF_Font **fonts;
-  int fonts_length;
   float fps;
 } RenderContext;
 
