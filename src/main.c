@@ -186,6 +186,8 @@ void render_debug_info(RenderContext *render_context)
   };
 
   SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
+  SDL_FreeSurface(text_surface);
+  SDL_DestroyTexture(text_texture);
 }
 
 void render(RenderContext *render_context, Entity *entities, int entities_count, int *entities_render_order, int entities_render_order_count)
