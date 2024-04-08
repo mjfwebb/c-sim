@@ -163,27 +163,29 @@ void render_debug_info(RenderContext *render_context)
 {
   SDL_Color White = {255, 255, 255};
   TTF_Font *font = render_context->fonts[0];
-  char *fpsText;
-  sprintf(fpsText, "fps: %d", render_context->animated_time);
+  char fps_text[32];
+  sprintf(fps_text, "fps: %.2f", render_context->fps);
 
-  SDL_Surface *surface = TTF_RenderText_Solid(font, "fps: ", White);
-  if (!surface)
+  SDL_Surface *text_surface = TTF_RenderText_Solid(font, fps_text, White);
+  if (!text_surface)
   {
     fprintf(stderr, "could not create surface: %s\n", SDL_GetError());
   }
 
-  int window_w;
-  int window_h;
-  SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
+  SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
+  if (!text_texture)
+  {
+    fprintf(stderr, "could not create surface: %s\n", SDL_GetError());
+  }
 
-  SDL_FRect debug_text_rect = {
-      .w = window_w,
-      .h = window_h,
-      .x = 0,
-      .y = 0,
+  SDL_FRect text_rect = {
+      .w = (float)text_surface->w,
+      .h = (float)text_surface->h,
+      .x = 10,
+      .y = 10,
   };
 
-  SDL_RenderDrawRectF(render_context->renderer, &debug_text_rect);
+  SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
 }
 
 void render(RenderContext *render_context, Entity *entities, int entities_count, int *entities_render_order, int entities_render_order_count)
@@ -223,13 +225,8 @@ void render(RenderContext *render_context, Entity *entities, int entities_count,
     }
   }
 
-  // render_context->camera.x += render_context->camera.directionX * (render_context->delta_time * render_context->camera.speed);
-  // render_context->camera.y += render_context->camera.directionY * (render_context->delta_time * render_context->camera.speed);
-  // if (render_context->camera.speed > 0)
-  // {
-  //   render_context->camera.speed = SDL_max(render_context->camera.speed - 0.1f, 0.0f);
-  // }
   render_camera(render_context);
+  render_debug_info(render_context);
 
   SDL_RenderPresent(render_context->renderer);
 }
@@ -242,9 +239,9 @@ void render_entity(RenderContext *render_context, Entity *entity)
   draw_texture(render_context, entity);
 }
 
-TTF_Font *load_font(const char *font_file_path)
+TTF_Font *load_font(const char *font_file_path, int font_size)
 {
-  TTF_Font *font = TTF_OpenFont(font_file_path, 32);
+  TTF_Font *font = TTF_OpenFont(font_file_path, font_size);
   assert(font);
 
   return font;
@@ -286,22 +283,22 @@ int main(int argc, char *args[])
   }
 
   Entity entities[] = {
-      make_entity("lamb2.bmp", renderer),
-      make_entity("stone.bmp", renderer),
-      make_entity("lamb2.bmp", renderer),
-      make_entity("stone.bmp", renderer),
-      make_entity("lamb2.bmp", renderer),
-      make_entity("stone.bmp", renderer),
-      make_entity("lamb2.bmp", renderer),
-      make_entity("fish.bmp", renderer),
-      make_entity("fish.bmp", renderer),
-      make_entity("fish.bmp", renderer),
-      make_entity("fish.bmp", renderer),
-      make_entity("stone.bmp", renderer),
+      make_entity("assets/lamb2.bmp", renderer),
+      make_entity("assets/stone.bmp", renderer),
+      make_entity("assets/lamb2.bmp", renderer),
+      make_entity("assets/stone.bmp", renderer),
+      make_entity("assets/lamb2.bmp", renderer),
+      make_entity("assets/stone.bmp", renderer),
+      make_entity("assets/lamb2.bmp", renderer),
+      make_entity("assets/fish.bmp", renderer),
+      make_entity("assets/fish.bmp", renderer),
+      make_entity("assets/fish.bmp", renderer),
+      make_entity("assets/fish.bmp", renderer),
+      make_entity("assets/stone.bmp", renderer),
   };
 
   TTF_Font *fonts[] = {
-      load_font("OpenSans-Regular.ttf"),
+      load_font("assets/OpenSans-Regular.ttf", 18),
   };
 
   int entities_render_order[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
@@ -333,7 +330,7 @@ int main(int argc, char *args[])
     frame_count++;
     if (SDL_GetTicks() - start_ticks >= 1000)
     {
-      render_context.fps = frame_count;
+      render_context.fps = (float)frame_count;
       frame_count = 0;
       start_ticks = SDL_GetTicks();
     }
