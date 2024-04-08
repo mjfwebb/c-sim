@@ -1,0 +1,4 @@
+assets/*
+.vs
+*.exe
+*.pdb
