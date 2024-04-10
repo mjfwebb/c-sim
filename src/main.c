@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define VA_ARGS(...) , ##__VA_ARGS__
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
@@ -17,6 +18,9 @@
 #define point_fields \
   float x;           \
   float y
+#define print(format, ...)            \
+  printf(format "\n", ##__VA_ARGS__); \
+  fflush(stdout)
 
 typedef struct
 {
@@ -49,9 +53,12 @@ typedef struct
 
 typedef struct
 {
+  int prev_state;
   int state;
   int button;
   point_fields;
+  float prev_x;
+  float prev_y;
   int clicks;
 } MouseState;
 
@@ -135,17 +142,18 @@ void detect_window_edge_collision(Entity *entity, Rect window)
 
 void render_camera(RenderContext *render_context)
 {
-  SDL_FRect camera_rect = {
-      .h = render_context->camera.h,
-      .w = render_context->camera.w,
-      .x = render_context->camera.x,
-      .y = render_context->camera.y,
+  SDL_Rect camera_rect = {
+      .h = (int)render_context->camera.h,
+      .w = (int)render_context->camera.w,
+      .x = (int)render_context->camera.x,
+      .y = (int)render_context->camera.y,
   };
 
   SDL_SetRenderDrawColor(render_context->renderer, 255, 255, 255, 100);
   SDL_SetRenderDrawBlendMode(render_context->renderer, SDL_BLENDMODE_BLEND);
-  SDL_RenderDrawRectF(render_context->renderer, &camera_rect);
-  SDL_RenderFillRectF(render_context->renderer, &camera_rect);
+  SDL_RenderDrawRect(render_context->renderer, &camera_rect);
+  SDL_RenderFillRect(render_context->renderer, &camera_rect);
+  SDL_RenderSetClipRect(render_context->renderer, &camera_rect);
 }
 
 bool detect_entity_collision(Entity *entityA, Entity *entityB)
@@ -158,30 +166,27 @@ bool detect_entity_collision(Entity *entityA, Entity *entityB)
   return false;
 }
 
-void render_debug_info(RenderContext *render_context)
+void draw_text(RenderContext *render_context, char *text, float x, float y)
 {
-  SDL_Color White = {255, 255, 255};
   TTF_Font *font = render_context->fonts[0];
-  char fps_text[32];
-  sprintf(fps_text, "fps: %.2f", render_context->fps);
-
-  SDL_Surface *text_surface = TTF_RenderText_Solid(font, fps_text, White);
+  SDL_Color White = {255, 255, 255};
+  SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, White);
   if (!text_surface)
   {
-    fprintf(stderr, "could not create surface: %s\n", SDL_GetError());
+    fprintf(stderr, "could not create text surface: %s\n", SDL_GetError());
   }
 
   SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
   if (!text_texture)
   {
-    fprintf(stderr, "could not create surface: %s\n", SDL_GetError());
+    fprintf(stderr, "could not create text texture: %s\n", SDL_GetError());
   }
 
   SDL_FRect text_rect = {
       .w = (float)text_surface->w,
       .h = (float)text_surface->h,
-      .x = 10,
-      .y = 10,
+      .x = x,
+      .y = y,
   };
 
   SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
@@ -189,17 +194,28 @@ void render_debug_info(RenderContext *render_context)
   SDL_DestroyTexture(text_texture);
 }
 
+void render_debug_info(RenderContext *render_context, MouseState *mouse_state)
+{
+  char fps_text[32];
+  sprintf(fps_text, "fps: %.2f", render_context->fps);
+  draw_text(render_context, fps_text, 10.0f, 10.0f);
+
+  char mouse_text[128];
+  sprintf(mouse_text, "mouse state: %d, button: %d, clicks: %d", mouse_state->state, mouse_state->button, mouse_state->clicks);
+  draw_text(render_context, mouse_text, 10.0f, 40.0f);
+
+  char prev_mouse_text[128];
+  sprintf(prev_mouse_text, "prev mouse state: %d", mouse_state->prev_state);
+  draw_text(render_context, prev_mouse_text, 10.0f, 70.0f);
+}
+
 void render(RenderContext *render_context, Entity *entities, int entities_count, int *entities_render_order, int entities_render_order_count)
 {
-  SDL_SetRenderDrawColor(render_context->renderer,
-                         render_context->background_color.r, render_context->background_color.g, render_context->background_color.b, 255);
-
-  int result = SDL_RenderFillRect(render_context->renderer, NULL);
-  assert(result == 0);
-
   int window_w;
   int window_h;
   SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
+
+  render_camera(render_context);
 
   for (int i = 0; i < entities_count; i++)
   {
@@ -225,9 +241,6 @@ void render(RenderContext *render_context, Entity *entities, int entities_count,
       render_entity(render_context, &entities[entities_render_order[i]]);
     }
   }
-
-  render_camera(render_context);
-  render_debug_info(render_context);
 
   SDL_RenderPresent(render_context->renderer);
 }
@@ -286,9 +299,9 @@ int main(int argc, char *args[])
   Entity entities[] = {
       make_entity("assets/lamb2.bmp", renderer),
       make_entity("assets/stone.bmp", renderer),
-      make_entity("assets/lamb2.bmp", renderer),
+      make_entity("assets/lamb.bmp", renderer),
       make_entity("assets/stone.bmp", renderer),
-      make_entity("assets/lamb2.bmp", renderer),
+      make_entity("assets/lamb.bmp", renderer),
       make_entity("assets/stone.bmp", renderer),
       make_entity("assets/lamb2.bmp", renderer),
       make_entity("assets/fish.bmp", renderer),
@@ -299,7 +312,7 @@ int main(int argc, char *args[])
   };
 
   TTF_Font *fonts[] = {
-      load_font("assets/OpenSans-Regular.ttf", 18),
+      load_font("assets/OpenSans-Regular.ttf", 32),
   };
 
   int entities_render_order[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
@@ -326,6 +339,17 @@ int main(int argc, char *args[])
   unsigned int start_ticks = SDL_GetTicks();
   int frame_count = 0;
 
+  MouseState mouse_state = {
+      .prev_state = 0,
+      .state = 0,
+      .button = 0,
+      .clicks = 0,
+      .prev_x = 0,
+      .prev_y = 0,
+      .x = 0,
+      .y = 0,
+  };
+
   while (game_is_still_running)
   {
     frame_count++;
@@ -339,24 +363,23 @@ int main(int argc, char *args[])
     render_context.delta_time = (float)(render_context.current_time - render_context.last_update_time) / 1000;
     render_context.last_update_time = render_context.current_time;
 
-    MouseState mouse_state = {
-        .state = -1,
-        .button = 0,
-        .clicks = 0,
-        .x = 0,
-        .y = 0,
-    };
-
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
       {
+        mouse_state.prev_state = mouse_state.state;
         mouse_state.state = event.button.state;
         mouse_state.button = event.button.button;
         mouse_state.clicks = event.button.clicks;
-        mouse_state.x = (float)event.button.x;
-        mouse_state.y = (float)event.button.y;
+      }
+      if (event.type == SDL_MOUSEMOTION)
+      {
+        mouse_state.prev_state = mouse_state.state;
+        mouse_state.prev_x = mouse_state.x;
+        mouse_state.prev_y = mouse_state.y;
+        mouse_state.x = (float)event.motion.x;
+        mouse_state.y = (float)event.motion.y;
       }
       if (event.type == SDL_KEYDOWN)
       {
@@ -375,19 +398,19 @@ int main(int argc, char *args[])
           break;
 
         case SDLK_w:
-          render_context.camera.y -= 1000.0f * render_context.delta_time;
+          render_context.camera.y -= 200.0f;
           break;
 
         case SDLK_s:
-          render_context.camera.y += 1000.0f * render_context.delta_time;
+          render_context.camera.y += 200.0f;
           break;
 
         case SDLK_a:
-          render_context.camera.x -= 1000.0f * render_context.delta_time;
+          render_context.camera.x -= 200.0f;
           break;
 
         case SDLK_d:
-          render_context.camera.x += 1000.0f * render_context.delta_time;
+          render_context.camera.x += 200.0f;
           break;
 
         default:
@@ -398,38 +421,66 @@ int main(int argc, char *args[])
       {
         game_is_still_running = 0;
       }
+
+      if (mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED)
+      {
+        for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--)
+        {
+          if (entities[entities_render_order[entity_i]].dead)
+          {
+            continue;
+          }
+
+          SDL_FRect rect = {
+              .x = entities[entities_render_order[entity_i]].x,
+              .y = entities[entities_render_order[entity_i]].y,
+              .w = entities[entities_render_order[entity_i]].w,
+              .h = entities[entities_render_order[entity_i]].h,
+          };
+
+          SDL_FPoint point = {
+              .x = mouse_state.x,
+              .y = mouse_state.y,
+          };
+
+          if (SDL_PointInFRect(&point, &rect))
+          {
+            entities[entities_render_order[entity_i]].dead = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (mouse_state.state == SDL_PRESSED)
+    {
+      if (mouse_state.button == SDL_BUTTON_RIGHT)
+      {
+        if (mouse_state.prev_x != mouse_state.x || mouse_state.prev_y != mouse_state.y)
+        {
+          float distanceX = mouse_state.x - mouse_state.prev_x;
+          float distanceY = mouse_state.y - mouse_state.prev_y;
+
+          print("mouse moved X: %f, Y: %f", distanceX, distanceY);
+
+          render_context.camera.x += distanceX;
+          render_context.camera.y += distanceY;
+
+          // print("mouse moved prevX: %f, prevY: %f, x: %f, y: %f", mouse_state.prevX, mouse_state.prevY, mouse_state.x, mouse_state.y);
+        }
+      }
     }
 
     render_context.animated_time = fmodf(render_context.animated_time + render_context.delta_time * 0.5f, 1);
 
-    if (mouse_state.state == SDL_PRESSED)
-    {
-      for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--)
-      {
-        if (entities[entities_render_order[entity_i]].dead)
-        {
-          continue;
-        }
+    SDL_SetRenderDrawColor(render_context.renderer,
+                           render_context.background_color.r, render_context.background_color.g, render_context.background_color.b, 255);
 
-        SDL_FRect rect = {
-            .x = entities[entities_render_order[entity_i]].x,
-            .y = entities[entities_render_order[entity_i]].y,
-            .w = entities[entities_render_order[entity_i]].w,
-            .h = entities[entities_render_order[entity_i]].h,
-        };
+    SDL_RenderSetClipRect(render_context.renderer, NULL);
+    int result = SDL_RenderFillRect(render_context.renderer, NULL);
+    assert(result == 0);
 
-        SDL_FPoint point = {
-            .x = mouse_state.x,
-            .y = mouse_state.y,
-        };
-
-        if (SDL_PointInFRect(&point, &rect))
-        {
-          entities[entities_render_order[entity_i]].dead = true;
-          break;
-        }
-      }
-    }
+    render_debug_info(&render_context, &mouse_state);
 
     render(&render_context, entities, array_count(entities), entities_render_order, array_count(entities));
   }
