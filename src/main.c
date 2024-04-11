@@ -18,21 +18,53 @@
 #define point_fields \
   float x;           \
   float y
+#define velocity_fields \
+  float velocity_x;     \
+  float velocity_y
+#define direction_fields \
+  float direction_x;     \
+  float direction_y
+#define prev_point_fields \
+  float prev_x;           \
+  float prev_y
 #define print(format, ...)            \
   printf(format "\n", ##__VA_ARGS__); \
   fflush(stdout)
+
+typedef struct Spring
+{
+  float target;
+  float current;
+  float velocity;
+  float acceleration;
+  float friction;
+} Spring;
 
 typedef struct
 {
   SDL_Texture *texture;
   rect_fields;
   point_fields;
-  float directionX;
-  float directionY;
+  prev_point_fields;
+  velocity_fields;
+  direction_fields;
   float speed;
   int layer;
   bool dead;
 } Entity;
+
+typedef struct
+{
+  SDL_Texture *texture;
+  rect_fields;
+  point_fields;
+  prev_point_fields;
+  velocity_fields;
+  float zoom;
+  Spring zoom_spring;
+  Spring pan_spring_x;
+  Spring pan_spring_y;
+} Camera;
 
 typedef struct
 {
@@ -46,9 +78,12 @@ typedef struct
   SDL_Surface *text_surface;
   SDL_Window *window;
   SDL_Color background_color;
-  Entity camera;
+  Camera camera;
   TTF_Font **fonts;
   float fps;
+  float render_zoom;
+  float render_camera_x;
+  float render_camera_y;
 } RenderContext;
 
 typedef struct
@@ -57,8 +92,7 @@ typedef struct
   int state;
   int button;
   point_fields;
-  float prev_x;
-  float prev_y;
+  prev_point_fields;
   int clicks;
 } MouseState;
 
@@ -83,8 +117,8 @@ Entity make_entity(char *image_path, SDL_Renderer *renderer)
   float height = (float)(image->h * scale);
 
   Entity entity = {
-      .directionX = 0.4f,
-      .directionY = 0.5f,
+      .direction_x = ((float)(rand() % 10)) / 10,
+      .direction_y = ((float)(rand() % 10)) / 10,
       .x = (float)(rand() % 1000),
       .y = (float)(rand() % 1000),
       .texture = texture,
@@ -101,69 +135,23 @@ Entity make_entity(char *image_path, SDL_Renderer *renderer)
 
 void draw_texture(RenderContext *render_context, Entity *entity)
 {
-  SDL_FRect message_rect = {
-      .w = entity->w,
-      .h = entity->h,
-      .x = entity->x,
-      .y = entity->y,
+  int window_w;
+  int window_h;
+  SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
+
+  SDL_FRect texture_rect = {
+      .x = (entity->x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2,
+      .y = (entity->y - render_context->render_camera_y) * render_context->render_zoom + window_h / 2,
+      .w = entity->w * render_context->render_zoom,
+      .h = entity->h * render_context->render_zoom,
   };
 
-  int copy_result = SDL_RenderCopyF(render_context->renderer, entity->texture, NULL, &message_rect);
+  int copy_result = SDL_RenderCopyF(render_context->renderer, entity->texture, NULL, &texture_rect);
   if (copy_result != 0)
   {
     printf("Failed to render copy: %s\n", SDL_GetError());
     return;
   }
-}
-
-void detect_window_edge_collision(Entity *entity, Rect window)
-{
-  if (entity->x <= 0)
-  {
-    entity->x = 0.1f;
-    entity->directionX *= -1;
-  }
-  if ((entity->x + entity->w) >= window.w)
-  {
-    entity->x = (float)(window.w - entity->w);
-    entity->directionX *= -1;
-  }
-  if (entity->y <= 0)
-  {
-    entity->y = 0.1f;
-    entity->directionY *= -1;
-  }
-  if ((entity->y + entity->h) >= window.h)
-  {
-    entity->y = (float)(window.h - entity->h);
-    entity->directionY *= -1;
-  }
-}
-
-void render_camera(RenderContext *render_context)
-{
-  SDL_Rect camera_rect = {
-      .h = (int)render_context->camera.h,
-      .w = (int)render_context->camera.w,
-      .x = (int)render_context->camera.x,
-      .y = (int)render_context->camera.y,
-  };
-
-  SDL_SetRenderDrawColor(render_context->renderer, 255, 255, 255, 100);
-  SDL_SetRenderDrawBlendMode(render_context->renderer, SDL_BLENDMODE_BLEND);
-  SDL_RenderDrawRect(render_context->renderer, &camera_rect);
-  SDL_RenderFillRect(render_context->renderer, &camera_rect);
-  SDL_RenderSetClipRect(render_context->renderer, &camera_rect);
-}
-
-bool detect_entity_collision(Entity *entityA, Entity *entityB)
-{
-  if ((entityA->x <= entityB->x + entityB->w && (entityA->x + entityA->w) >= entityB->x) && (entityA->y <= entityB->y + entityB->h && (entityA->y + entityA->h) >= entityB->y))
-  {
-    return true;
-  }
-
-  return false;
 }
 
 void draw_text(RenderContext *render_context, char *text, float x, float y)
@@ -196,47 +184,56 @@ void draw_text(RenderContext *render_context, char *text, float x, float y)
 
 void render_debug_info(RenderContext *render_context, MouseState *mouse_state)
 {
-  char fps_text[32];
-  sprintf(fps_text, "fps: %.2f", render_context->fps);
-  draw_text(render_context, fps_text, 10.0f, 10.0f);
+  char text[128];
 
-  char mouse_text[128];
-  sprintf(mouse_text, "mouse state: %d, button: %d, clicks: %d", mouse_state->state, mouse_state->button, mouse_state->clicks);
-  draw_text(render_context, mouse_text, 10.0f, 40.0f);
+  sprintf(text, "fps: %.2f", render_context->fps);
+  draw_text(render_context, text, 10.0f, 10.0f);
 
-  char prev_mouse_text[128];
-  sprintf(prev_mouse_text, "prev mouse state: %d", mouse_state->prev_state);
-  draw_text(render_context, prev_mouse_text, 10.0f, 70.0f);
+  sprintf(text, "mouse state: %d, button: %d, clicks: %d", mouse_state->state, mouse_state->button, mouse_state->clicks);
+  draw_text(render_context, text, 10.0f, 40.0f);
+
+  sprintf(text, "prev mouse state: %d", mouse_state->prev_state);
+  draw_text(render_context, text, 10.0f, 70.0f);
+
+  sprintf(text, "camera zoom: %.1f", render_context->camera.zoom);
+  draw_text(render_context, text, 10.0f, 100.0f);
 }
 
+float Spring__update(Spring *spring, float target)
+{
+  spring->target = target;
+  spring->velocity += (target - spring->current) * spring->acceleration;
+  spring->velocity *= spring->friction;
+  return spring->current += spring->velocity;
+}
 void render(RenderContext *render_context, Entity *entities, int entities_count, int *entities_render_order, int entities_render_order_count)
 {
   int window_w;
   int window_h;
   SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
 
-  render_camera(render_context);
+  // render_camera(render_context);
 
   for (int i = 0; i < entities_count; i++)
   {
     if (entities[entities_render_order[i]].texture && entities[entities_render_order[i]].dead == false)
     {
-      detect_window_edge_collision(&entities[entities_render_order[i]], (Rect){.w = window_w, .h = window_h});
+      // detect_window_edge_collision(&entities[entities_render_order[i]], (Rect){.w = window_w, .h = window_h});
 
-      for (int j = 0; j < entities_count; j++)
-      {
-        if (entities[entities_render_order[j]].texture)
-        {
-          if (i != j)
-          {
-            bool collision = detect_entity_collision(&entities[entities_render_order[i]], &entities[entities_render_order[j]]);
-            if (collision)
-            {
-              // printf("entity %d collided with entity %d\n", i, j);
-            }
-          }
-        }
-      }
+      // for (int j = 0; j < entities_count; j++)
+      // {
+      //   if (entities[entities_render_order[j]].texture)
+      //   {
+      //     if (i != j)
+      //     {
+      //       bool collision = detect_entity_collision(&entities[entities_render_order[i]], &entities[entities_render_order[j]]);
+      //       if (collision)
+      //       {
+      //         // printf("entity %d collided with entity %d\n", i, j);
+      //       }
+      //     }
+      //   }
+      // }
 
       render_entity(render_context, &entities[entities_render_order[i]]);
     }
@@ -247,8 +244,8 @@ void render(RenderContext *render_context, Entity *entities, int entities_count,
 
 void render_entity(RenderContext *render_context, Entity *entity)
 {
-  entity->x += entity->directionX * (render_context->delta_time * render_context->speed);
-  entity->y += entity->directionY * (render_context->delta_time * render_context->speed);
+  entity->x += entity->direction_x * (render_context->delta_time * render_context->speed);
+  entity->y += entity->direction_y * (render_context->delta_time * render_context->speed);
 
   draw_texture(render_context, entity);
 }
@@ -327,11 +324,30 @@ int main(int argc, char *args[])
       .window = window,
       .background_color = {45, 125, 2, 255},
       .camera = {
-          .h = 500.0f,
-          .w = 500.0f,
           .x = 0,
           .y = 0,
-      },
+          .zoom = 1.0f,
+          .pan_spring_x = {
+              .target = 1.0f,
+              .current = 1.0f,
+              .velocity = 0.0f,
+              .acceleration = 0.5f,
+              .friction = 0.1f,
+          },
+          .pan_spring_y = {
+              .target = 1.0f,
+              .current = 1.0f,
+              .velocity = 0.0f,
+              .acceleration = 0.5f,
+              .friction = 0.1f,
+          },
+          .zoom_spring = {
+              .target = 1.0f,
+              .current = 1.0f,
+              .velocity = 0.0f,
+              .acceleration = 0.4f,
+              .friction = 0.1f,
+          }},
       .fonts = fonts,
   };
 
@@ -362,6 +378,8 @@ int main(int argc, char *args[])
     render_context.current_time = SDL_GetTicks();
     render_context.delta_time = (float)(render_context.current_time - render_context.last_update_time) / 1000;
     render_context.last_update_time = render_context.current_time;
+    render_context.animated_time = fmodf(render_context.animated_time + render_context.delta_time * 0.5f, 1);
+    render_context.render_zoom = Spring__update(&render_context.camera.zoom_spring, render_context.camera.zoom);
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -381,6 +399,19 @@ int main(int argc, char *args[])
         mouse_state.x = (float)event.motion.x;
         mouse_state.y = (float)event.motion.y;
       }
+      if (event.type == SDL_MOUSEWHEEL)
+      {
+        if (event.wheel.y > 0)
+        {
+          // zoom in
+          render_context.camera.zoom = SDL_min(render_context.camera.zoom + 0.1f, 1.5f);
+        }
+        else if (event.wheel.y < 0)
+        {
+          // zoom out
+          render_context.camera.zoom = SDL_max(render_context.camera.zoom - 0.1f, 0.5f);
+        }
+      }
       if (event.type == SDL_KEYDOWN)
       {
         switch (event.key.keysym.sym)
@@ -397,21 +428,21 @@ int main(int argc, char *args[])
           render_context.speed = SDL_max(render_context.speed - 100.0f, 0);
           break;
 
-        case SDLK_w:
-          render_context.camera.y -= 200.0f;
-          break;
+          // case SDLK_w:
+          //   render_context.camera.y -= 50.0f / render_context.render_zoom;
+          //   break;
 
-        case SDLK_s:
-          render_context.camera.y += 200.0f;
-          break;
+          // case SDLK_s:
+          //   render_context.camera.y += 50.0f / render_context.render_zoom;
+          //   break;
 
-        case SDLK_a:
-          render_context.camera.x -= 200.0f;
-          break;
+          // case SDLK_a:
+          //   render_context.camera.x -= 50.0f / render_context.render_zoom;
+          //   break;
 
-        case SDLK_d:
-          render_context.camera.x += 200.0f;
-          break;
+          // case SDLK_d:
+          //   render_context.camera.x += 50.0f / render_context.render_zoom;
+          //   break;
 
         default:
           break;
@@ -458,27 +489,46 @@ int main(int argc, char *args[])
       {
         if (mouse_state.prev_x != mouse_state.x || mouse_state.prev_y != mouse_state.y)
         {
-          float distanceX = mouse_state.x - mouse_state.prev_x;
-          float distanceY = mouse_state.y - mouse_state.prev_y;
+          float delta_x = mouse_state.x - mouse_state.prev_x;
+          float delta_y = mouse_state.y - mouse_state.prev_y;
+          mouse_state.prev_x = mouse_state.x;
+          mouse_state.prev_y = mouse_state.y;
 
-          print("mouse moved X: %f, Y: %f", distanceX, distanceY);
-
-          render_context.camera.x += distanceX;
-          render_context.camera.y += distanceY;
-
-          // print("mouse moved prevX: %f, prevY: %f, x: %f, y: %f", mouse_state.prevX, mouse_state.prevY, mouse_state.x, mouse_state.y);
+          render_context.camera.x -= delta_x / render_context.render_zoom;
+          render_context.camera.y -= delta_y / render_context.render_zoom;
         }
       }
     }
 
-    render_context.animated_time = fmodf(render_context.animated_time + render_context.delta_time * 0.5f, 1);
+    float camera_movement_speed = 5.0f;
+    const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
+    if (keyboard[SDL_GetScancodeFromKey(SDLK_w)])
+    {
+      render_context.camera.y -= camera_movement_speed / render_context.render_zoom;
+    }
+    if (keyboard[SDL_GetScancodeFromKey(SDLK_s)])
+    {
+      render_context.camera.y += camera_movement_speed / render_context.render_zoom;
+    }
+    if (keyboard[SDL_GetScancodeFromKey(SDLK_a)])
+    {
+      render_context.camera.x -= camera_movement_speed / render_context.render_zoom;
+    }
+    if (keyboard[SDL_GetScancodeFromKey(SDLK_d)])
+    {
+      render_context.camera.x += camera_movement_speed / render_context.render_zoom;
+    }
+
+    render_context.render_camera_x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.x);
+    render_context.render_camera_y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.y);
 
     SDL_SetRenderDrawColor(render_context.renderer,
                            render_context.background_color.r, render_context.background_color.g, render_context.background_color.b, 255);
 
-    SDL_RenderSetClipRect(render_context.renderer, NULL);
+    // SDL_RenderSetClipRect(render_context.renderer, NULL);
     int result = SDL_RenderFillRect(render_context.renderer, NULL);
     assert(result == 0);
+    // update(entities, array_count(entities));
 
     render_debug_info(&render_context, &mouse_state);
 
