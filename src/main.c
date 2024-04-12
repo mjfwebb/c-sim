@@ -106,7 +106,23 @@ typedef struct
 
 void render_entity(RenderContext *render_context, Entity *entity);
 
-Entity make_entity(char *image_path, SDL_Renderer *renderer, char *name)
+SDL_FRect render_rect(RenderContext *render_context, SDL_FRect *source_rect)
+{
+  int window_w;
+  int window_h;
+  SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
+
+  SDL_FRect rect = {
+      .w = source_rect->w * render_context->render_zoom,
+      .h = source_rect->h * render_context->render_zoom,
+      .x = ((source_rect->x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2),
+      .y = ((source_rect->y - render_context->render_camera_y) * render_context->render_zoom + window_h / 2),
+  };
+
+  return rect;
+};
+
+Entity Entity__create(char *image_path, SDL_Renderer *renderer, char *name)
 {
   SDL_Surface *image = SDL_LoadBMP(image_path);
   assert(image);
@@ -138,16 +154,13 @@ Entity make_entity(char *image_path, SDL_Renderer *renderer, char *name)
 
 void draw_texture(RenderContext *render_context, Entity *entity)
 {
-  int window_w;
-  int window_h;
-  SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
-
-  SDL_FRect texture_rect = {
-      .x = (entity->x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2,
-      .y = (entity->y - render_context->render_camera_y) * render_context->render_zoom + window_h / 2,
-      .w = entity->w * render_context->render_zoom,
-      .h = entity->h * render_context->render_zoom,
+  SDL_FRect source_rect = {
+      .x = entity->x,
+      .y = entity->y,
+      .w = entity->w,
+      .h = entity->h,
   };
+  SDL_FRect texture_rect = render_rect(render_context, &source_rect);
 
   int copy_result = SDL_RenderCopyF(render_context->renderer, entity->texture, NULL, &texture_rect);
   if (copy_result != 0)
@@ -232,22 +245,6 @@ void render(RenderContext *render_context, Entity *entities, int entities_count)
   SDL_RenderPresent(render_context->renderer);
 }
 
-SDL_FRect render_rect(RenderContext *render_context, float w, float h, float x, float y)
-{
-  int window_w;
-  int window_h;
-  SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
-
-  SDL_FRect rect = {
-      .w = w * render_context->render_zoom,
-      .h = h * render_context->render_zoom,
-      .x = ((x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2),
-      .y = ((y - render_context->render_camera_y) * render_context->render_zoom + window_h / 2),
-  };
-
-  return rect;
-};
-
 void render_entity(RenderContext *render_context, Entity *entity)
 {
   entity->x += entity->direction_x * (render_context->delta_time * render_context->speed);
@@ -257,16 +254,13 @@ void render_entity(RenderContext *render_context, Entity *entity)
 
   if (entity->selected)
   {
-    int window_w;
-    int window_h;
-    SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
-
-    SDL_FRect rect = {
-        .w = (entity->w + 10.0f) * render_context->render_zoom,
-        .h = (entity->h + 10.0f) * render_context->render_zoom,
-        .x = ((entity->x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2) - 10.0f * 0.5f,
-        .y = ((entity->y - render_context->render_camera_y) * render_context->render_zoom + window_h / 2) - 10.0f * 0.5f,
+    SDL_FRect source_rect = {
+        .w = entity->w + 20.0f,
+        .h = entity->h + 20.0f,
+        .x = entity->x - 10.0f,
+        .y = entity->y - 10.0f,
     };
+    SDL_FRect rect = render_rect(render_context, &source_rect);
 
     SDL_SetRenderDrawColor(render_context->renderer,
                            255, 255, 255, 255);
@@ -326,29 +320,29 @@ int main(int argc, char *args[])
   }
 
   Entity entities[] = {
-      make_entity("assets/lamb2.bmp", renderer, "pushqrdx"),
-      make_entity("assets/stone.bmp", renderer, "Athano"),
-      make_entity("assets/lamb.bmp", renderer, "AshenHobs"),
-      make_entity("assets/stone.bmp", renderer, "adrian_learns"),
-      make_entity("assets/lamb.bmp", renderer, "RVerite"),
-      make_entity("assets/stone.bmp", renderer, "Orshy"),
-      make_entity("assets/lamb2.bmp", renderer, "ruggs888"),
-      make_entity("assets/fish.bmp", renderer, "Xent12"),
-      make_entity("assets/fish.bmp", renderer, "nuke_bird"),
-      make_entity("assets/stone.bmp", renderer, "Kasper_573"),
-      make_entity("assets/fish.bmp", renderer, "SturdyPose"),
-      make_entity("assets/stone.bmp", renderer, "coffee_lava"),
-      make_entity("assets/stone.bmp", renderer, "goudacheeseburgers"),
-      make_entity("assets/stone.bmp", renderer, "ikiwixz"),
-      make_entity("assets/lamb2.bmp", renderer, "NixAurvandil"),
-      make_entity("assets/lamb2.bmp", renderer, "smilingbig"),
-      make_entity("assets/lamb.bmp", renderer, "tk_dev"),
-      make_entity("assets/lamb2.bmp", renderer, "realSuperku"),
-      make_entity("assets/stone.bmp", renderer, "Hoby2000"),
-      make_entity("assets/stone.bmp", renderer, "CuteMath"),
-      make_entity("assets/stone.bmp", renderer, "forodor"),
-      make_entity("assets/stone.bmp", renderer, "Azenris"),
-      make_entity("assets/stone.bmp", renderer, "collector_of_stuff"),
+      Entity__create("assets/lamb2.bmp", renderer, "pushqrdx"),
+      Entity__create("assets/stone.bmp", renderer, "Athano"),
+      Entity__create("assets/lamb.bmp", renderer, "AshenHobs"),
+      Entity__create("assets/stone.bmp", renderer, "adrian_learns"),
+      Entity__create("assets/lamb.bmp", renderer, "RVerite"),
+      Entity__create("assets/stone.bmp", renderer, "Orshy"),
+      Entity__create("assets/lamb2.bmp", renderer, "ruggs888"),
+      Entity__create("assets/fish.bmp", renderer, "Xent12"),
+      Entity__create("assets/fish.bmp", renderer, "nuke_bird"),
+      Entity__create("assets/stone.bmp", renderer, "Kasper_573"),
+      Entity__create("assets/fish.bmp", renderer, "SturdyPose"),
+      Entity__create("assets/stone.bmp", renderer, "coffee_lava"),
+      Entity__create("assets/stone.bmp", renderer, "goudacheeseburgers"),
+      Entity__create("assets/stone.bmp", renderer, "ikiwixz"),
+      Entity__create("assets/lamb2.bmp", renderer, "NixAurvandil"),
+      Entity__create("assets/lamb2.bmp", renderer, "smilingbig"),
+      Entity__create("assets/lamb.bmp", renderer, "tk_dev"),
+      Entity__create("assets/lamb2.bmp", renderer, "realSuperku"),
+      Entity__create("assets/stone.bmp", renderer, "Hoby2000"),
+      Entity__create("assets/stone.bmp", renderer, "CuteMath"),
+      Entity__create("assets/stone.bmp", renderer, "forodor"),
+      Entity__create("assets/stone.bmp", renderer, "Azenris"),
+      Entity__create("assets/stone.bmp", renderer, "collector_of_stuff"),
   };
 
   TTF_Font *fonts[] = {
@@ -495,8 +489,13 @@ int main(int argc, char *args[])
       {
         for (int entity_i = 0; entity_i < array_count(entities); entity_i++)
         {
-          SDL_FRect rect = render_rect(&render_context, entities[entity_i].w, entities[entity_i].h, entities[entity_i].x, entities[entity_i].y);
-
+          SDL_FRect source_rect = {
+              .w = entities[entity_i].w,
+              .h = entities[entity_i].h,
+              .x = entities[entity_i].x,
+              .y = entities[entity_i].y,
+          };
+          SDL_FRect rect = render_rect(&render_context, &source_rect);
           SDL_FPoint point = {
               .x = mouse_state.x,
               .y = mouse_state.y,
