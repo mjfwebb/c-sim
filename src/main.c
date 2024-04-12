@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
+#include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__
 #define SCREEN_WIDTH 1920
@@ -284,7 +285,7 @@ TTF_Font *load_font(const char *font_file_path, int font_size)
 
 int main(int argc, char *args[])
 {
-  srand((int)time(NULL));
+  srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
   SDL_Window *window = NULL;
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0)

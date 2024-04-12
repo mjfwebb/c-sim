@@ -38,7 +38,7 @@ setlocal ENABLEDELAYEDEXPANSION
     pushd build
 
         @rem Compilation
-        cl %compilerFlags% %ignoreWarnings% -I %includeDirs% ..\src\*.c -Fe..\%exeName% -link %linkerFlags% ..\lib\*.lib
+        cl %compilerFlags% %ignoreWarnings% -I %includeDirs% ..\src\main.c -Fe..\%exeName% -link %linkerFlags% ..\lib\*.lib
 
         if %ERRORLEVEL%==0 (
         set "__outputMessage=Build successful"
