@@ -136,10 +136,10 @@ Entity Entity__create(char *image_path, SDL_Renderer *renderer, char *name)
   float height = (float)(image->h * scale);
 
   Entity entity = {
-      .direction_x = ((float)(rand() % 10)) / 10,
-      .direction_y = ((float)(rand() % 10)) / 10,
-      .x = (float)(rand() % 1000),
-      .y = (float)(rand() % 1000),
+      .direction_x = ((float)(rand() % 200) - 100) / 100,
+      .direction_y = ((float)(rand() % 200) - 100) / 100,
+      .x = (float)(rand() % 2000) - 1000,
+      .y = (float)(rand() % 2000) - 1000,
       .texture = texture,
       .h = height,
       .w = width,
@@ -171,15 +171,15 @@ void draw_texture(RenderContext *render_context, Entity *entity)
   }
 }
 
-void draw_text(RenderContext *render_context, char *text, int font_index, float x, float y, bool relative_to_camera)
+void draw_entity_name(RenderContext *render_context, Entity *entity)
 {
   int window_w;
   int window_h;
   SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
 
-  TTF_Font *font = render_context->fonts[font_index];
+  TTF_Font *font = render_context->fonts[1];
   SDL_Color White = {255, 255, 255};
-  SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, White);
+  SDL_Surface *text_surface = TTF_RenderText_Blended(font, entity->name, White);
   if (!text_surface)
   {
     fprintf(stderr, "could not create text surface: %s\n", SDL_GetError());
@@ -191,14 +191,56 @@ void draw_text(RenderContext *render_context, char *text, int font_index, float 
     fprintf(stderr, "could not create text texture: %s\n", SDL_GetError());
   }
 
-  float zoom = relative_to_camera ? render_context->render_zoom : 1.0f;
+  // ((source_rect->x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2)
+  float diff = ((entity->w * render_context->render_zoom) - text_surface->w) / 2;
+  float x = (((entity->x - render_context->render_camera_x) * render_context->render_zoom) + diff) + window_w / 2;
+  // float y = entity->y + text_surface->h - entity->h;
 
   SDL_FRect text_rect = {
-      .w = (float)text_surface->w * zoom,
-      .h = (float)text_surface->h * zoom,
-      .x = relative_to_camera ? (x - render_context->render_camera_x) * render_context->render_zoom + window_w / 2 : x,
-      .y = relative_to_camera ? (y - render_context->render_camera_y - (30.0f)) * render_context->render_zoom + window_h / 2 : y,
+      .w = (float)text_surface->w,
+      .h = (float)text_surface->h,
+      .x = x,
+      .y = (entity->y - render_context->render_camera_y - (45.0f / render_context->render_zoom)) * render_context->render_zoom + window_h / 2,
   };
+
+  SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
+  SDL_FreeSurface(text_surface);
+  SDL_DestroyTexture(text_texture);
+}
+
+void draw_debug_text(RenderContext *render_context, int index, char *str, ...)
+{
+  char text_buffer[128];
+  va_list args;
+  va_start(args, str);
+  int chars_written = vsnprintf(text_buffer, sizeof(text_buffer), str, args);
+  assert(chars_written > 0);
+  va_end(args);
+
+  int window_w;
+  int window_h;
+  SDL_GetWindowSizeInPixels(render_context->window, &window_w, &window_h);
+
+  TTF_Font *font = render_context->fonts[0];
+  SDL_Color White = {255, 255, 255};
+  SDL_Surface *text_surface = TTF_RenderText_Blended(font, text_buffer, White);
+  if (!text_surface)
+  {
+    fprintf(stderr, "could not create text surface: %s\n", SDL_GetError());
+  }
+
+  SDL_FRect text_rect = {
+      .w = (float)text_surface->w,
+      .h = (float)text_surface->h,
+      .x = 10.0f,
+      .y = 10.0f + (32.0f * index),
+  };
+
+  SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
+  if (!text_texture)
+  {
+    fprintf(stderr, "could not create text texture: %s\n", SDL_GetError());
+  }
 
   SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
   SDL_FreeSurface(text_surface);
@@ -207,19 +249,12 @@ void draw_text(RenderContext *render_context, char *text, int font_index, float 
 
 void render_debug_info(RenderContext *render_context, MouseState *mouse_state)
 {
-  char text[128];
-
-  sprintf(text, "fps: %.2f", render_context->fps);
-  draw_text(render_context, text, 0, 10.0f, 10.0f, false);
-
-  sprintf(text, "mouse state: %d, button: %d, clicks: %d", mouse_state->state, mouse_state->button, mouse_state->clicks);
-  draw_text(render_context, text, 0, 10.0f, 40.0f, false);
-
-  sprintf(text, "prev mouse state: %d", mouse_state->prev_state);
-  draw_text(render_context, text, 0, 10.0f, 70.0f, false);
-
-  sprintf(text, "camera zoom: %.1f", render_context->camera.zoom);
-  draw_text(render_context, text, 0, 10.0f, 100.0f, false);
+  int index = 0;
+  draw_debug_text(render_context, index++, "fps: %.2f", render_context->fps);
+  draw_debug_text(render_context, index++, "mouse state: %d, button: %d, clicks: %d", mouse_state->state, mouse_state->button, mouse_state->clicks);
+  draw_debug_text(render_context, index++, "prev mouse state: %d", mouse_state->prev_state);
+  draw_debug_text(render_context, index++, "camera zoom: %.1f", render_context->camera.zoom);
+  draw_debug_text(render_context, index++, "game speed: %.1f", render_context->speed);
 }
 
 float Spring__update(Spring *spring, float target)
@@ -272,7 +307,7 @@ void render_entity(RenderContext *render_context, Entity *entity)
     // assert(result == 0);
   }
 
-  draw_text(render_context, entity->name, 1, entity->x, entity->y, true);
+  draw_entity_name(render_context, entity);
 }
 
 TTF_Font *load_font(const char *font_file_path, int font_size)
@@ -286,7 +321,6 @@ TTF_Font *load_font(const char *font_file_path, int font_size)
 int main(int argc, char *args[])
 {
   srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
-  SDL_Window *window = NULL;
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0)
   {
@@ -302,7 +336,7 @@ int main(int argc, char *args[])
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
 
-  window = SDL_CreateWindow(
+  SDL_Window *window = SDL_CreateWindow(
       "Cultivation Sim",
       SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
       SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -344,10 +378,21 @@ int main(int argc, char *args[])
       Entity__create("assets/stone.bmp", renderer, "forodor"),
       Entity__create("assets/stone.bmp", renderer, "Azenris"),
       Entity__create("assets/stone.bmp", renderer, "collector_of_stuff"),
+      Entity__create("assets/stone.bmp", renderer, "EvanMMO"),
+      Entity__create("assets/stone.bmp", renderer, "thechaosbean"),
+      Entity__create("assets/stone.bmp", renderer, "Lutf1sk"),
+      Entity__create("assets/stone.bmp", renderer, "BauBas9883"),
+      Entity__create("assets/stone.bmp", renderer, "physbuzz"),
+      Entity__create("assets/stone.bmp", renderer, "rizoma0x00"),
+      Entity__create("assets/stone.bmp", renderer, "Tkap1"),
+      Entity__create("assets/stone.bmp", renderer, "GavinsAwfulStream"),
+      Entity__create("assets/stone.bmp", renderer, "Resist_0"),
+      Entity__create("assets/stone.bmp", renderer, "b1k4sh"),
   };
 
   TTF_Font *fonts[] = {
       load_font("assets/OpenSans-Regular.ttf", 32),
+      load_font("assets/OpenSans-Regular.ttf", 24),
       load_font("assets/OpenSans-Regular.ttf", 16),
   };
 
@@ -412,6 +457,7 @@ int main(int argc, char *args[])
       frame_count = 0;
       start_ticks = SDL_GetTicks();
     }
+
     render_context.current_time = SDL_GetTicks();
     render_context.delta_time = (float)(render_context.current_time - render_context.last_update_time) / 1000;
     render_context.last_update_time = render_context.current_time;
@@ -441,12 +487,12 @@ int main(int argc, char *args[])
         if (event.wheel.y > 0)
         {
           // zoom in
-          render_context.camera.zoom = SDL_min(render_context.camera.zoom + 0.1f, 1.5f);
+          render_context.camera.zoom = SDL_min(render_context.camera.zoom + 0.1f, 2.0f);
         }
         else if (event.wheel.y < 0)
         {
           // zoom out
-          render_context.camera.zoom = SDL_max(render_context.camera.zoom - 0.1f, 0.5f);
+          render_context.camera.zoom = SDL_max(render_context.camera.zoom - 0.1f, 0.1f);
         }
       }
       if (event.type == SDL_KEYDOWN)
@@ -528,34 +574,58 @@ int main(int argc, char *args[])
       }
     }
 
-    float camera_movement_speed = 5.0f;
-    const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
-    if (keyboard[SDL_GetScancodeFromKey(SDLK_w)])
     {
-      render_context.camera.y -= camera_movement_speed / render_context.render_zoom;
+      float camera_keyboard_movement_speed = 5.0f;
+      const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
+      if (keyboard[SDL_GetScancodeFromKey(SDLK_w)])
+      {
+        render_context.camera.y -= camera_keyboard_movement_speed / render_context.render_zoom;
+      }
+      if (keyboard[SDL_GetScancodeFromKey(SDLK_s)])
+      {
+        render_context.camera.y += camera_keyboard_movement_speed / render_context.render_zoom;
+      }
+      if (keyboard[SDL_GetScancodeFromKey(SDLK_a)])
+      {
+        render_context.camera.x -= camera_keyboard_movement_speed / render_context.render_zoom;
+      }
+      if (keyboard[SDL_GetScancodeFromKey(SDLK_d)])
+      {
+        render_context.camera.x += camera_keyboard_movement_speed / render_context.render_zoom;
+      }
     }
-    if (keyboard[SDL_GetScancodeFromKey(SDLK_s)])
-    {
-      render_context.camera.y += camera_movement_speed / render_context.render_zoom;
-    }
-    if (keyboard[SDL_GetScancodeFromKey(SDLK_a)])
-    {
-      render_context.camera.x -= camera_movement_speed / render_context.render_zoom;
-    }
-    if (keyboard[SDL_GetScancodeFromKey(SDLK_d)])
-    {
-      render_context.camera.x += camera_movement_speed / render_context.render_zoom;
-    }
-
-    render_context.render_camera_x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.x);
-    render_context.render_camera_y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.y);
 
     SDL_SetRenderDrawColor(render_context.renderer,
                            render_context.background_color.r, render_context.background_color.g, render_context.background_color.b, 255);
-
-    // SDL_RenderSetClipRect(render_context.renderer, NULL);
     int result = SDL_RenderFillRect(render_context.renderer, NULL);
     assert(result == 0);
+
+    { // Set the camera to follow an entity, if only one entity is selected
+      int selected_count = 0;
+      int selected_entity_index = 0;
+      for (int entity_i = 0; entity_i < array_count(entities); entity_i++)
+      {
+        if (entities[entity_i].selected)
+        {
+          selected_count++;
+          selected_entity_index = entity_i;
+          if (selected_count > 1)
+          {
+            break;
+          }
+        }
+      }
+      if (selected_count == 1)
+      {
+        render_context.camera.x = entities[selected_entity_index].x;
+        render_context.camera.y = entities[selected_entity_index].y;
+      }
+    }
+
+    { // Spring the camera position
+      render_context.render_camera_x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.x);
+      render_context.render_camera_y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.y);
+    }
 
     render_debug_info(&render_context, &mouse_state);
 
