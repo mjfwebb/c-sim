@@ -58,6 +58,7 @@ typedef struct
   Spring zoom_spring;
   Spring pan_spring_x;
   Spring pan_spring_y;
+  int following_entity;
 } Camera;
 
 typedef struct
@@ -71,16 +72,11 @@ typedef struct
 
 typedef struct
 {
-  int current_time;
-  int last_update_time;
   float speed;
   float prev_speed;
   float delta_time;
   float animated_time;
   SDL_Renderer *renderer;
-  SDL_Surface *screen_surface;
-  SDL_Surface *text_surface;
-  SDL_Window *window;
   int window_w;
   int window_h;
   SDL_Color background_color;
@@ -88,6 +84,7 @@ typedef struct
   TTF_Font **fonts;
   float fps;
   Selection selection;
+  const Uint8 *keyboard_state;
 } RenderContext;
 
 typedef struct
@@ -103,7 +100,7 @@ typedef struct
 
 void render_entity(RenderContext *render_context, Entity *entity);
 
-SDL_FRect render_rect(RenderContext *render_context, SDL_FRect *source_rect)
+SDL_FRect camera_relative_rect(RenderContext *render_context, SDL_FRect *source_rect)
 {
   SDL_FRect rect = {
       .w = source_rect->w * render_context->camera.zoom,
@@ -115,12 +112,12 @@ SDL_FRect render_rect(RenderContext *render_context, SDL_FRect *source_rect)
   return rect;
 };
 
-Entity Entity__create(char *image_path, SDL_Renderer *renderer, char *name)
+Entity Entity__create(RenderContext *render_context, char *image_path, char *name)
 {
   SDL_Surface *image = SDL_LoadBMP(image_path);
   assert(image);
 
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, image);
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(render_context->renderer, image);
   assert(texture);
 
   float width = 100.0f;
@@ -233,6 +230,13 @@ void render_debug_info(RenderContext *render_context, MouseState *mouse_state)
   draw_debug_text(render_context, index++, "selection: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context->selection.x, render_context->selection.y, render_context->selection.target_x, render_context->selection.target_y);
 }
 
+void render_selection_box(RenderContext *render_context)
+{
+  SDL_SetRenderDrawColor(render_context->renderer, 255, 255, 255, 255);
+  int result = SDL_RenderDrawRectF(render_context->renderer, &render_context->selection.rect);
+  assert(result == 0);
+}
+
 float Spring__update(Spring *spring, float target)
 {
   spring->target = target;
@@ -272,23 +276,25 @@ void draw_border(RenderContext *render_context, SDL_FRect around, float gap_widt
     }
 
     SDL_SetRenderDrawColor(render_context->renderer, 255, 255, 255, 255);
-    SDL_FRect rect_render = render_rect(render_context, &borders[i]);
-    SDL_RenderFillRectF(render_context->renderer, &rect_render);
+    SDL_FRect rect = camera_relative_rect(render_context, &borders[i]);
+    SDL_RenderFillRectF(render_context->renderer, &rect);
   }
+}
+
+void update_entity(RenderContext *render_context, Entity *entity)
+{
+  entity->x += entity->direction_x * (render_context->delta_time * render_context->speed);
+  entity->y += entity->direction_y * (render_context->delta_time * render_context->speed);
 }
 
 void render_entity(RenderContext *render_context, Entity *entity)
 {
-  entity->x += entity->direction_x * (render_context->delta_time * render_context->speed);
-  entity->y += entity->direction_y * (render_context->delta_time * render_context->speed);
-
-  SDL_FRect source_rect = {
-      .x = entity->x,
-      .y = entity->y,
-      .w = entity->w,
-      .h = entity->h,
-  };
-  SDL_FRect rendering_rect = render_rect(render_context, &source_rect);
+  SDL_FRect rendering_rect = camera_relative_rect(render_context, &(SDL_FRect){
+                                                                      .w = entity->w,
+                                                                      .h = entity->h,
+                                                                      .x = entity->x,
+                                                                      .y = entity->y,
+                                                                  });
 
   draw_texture(render_context, entity, &rendering_rect);
 
@@ -309,7 +315,7 @@ void render_entity(RenderContext *render_context, Entity *entity)
   draw_entity_name(render_context, entity);
 }
 
-TTF_Font *load_font(const char *font_file_path, int font_size)
+TTF_Font *Font__load(const char *font_file_path, int font_size)
 {
   TTF_Font *font = TTF_OpenFont(font_file_path, font_size);
   assert(font);
@@ -317,7 +323,121 @@ TTF_Font *load_font(const char *font_file_path, int font_size)
   return font;
 }
 
-int main(int argc, char *args[])
+void clear_screen(RenderContext *render_context)
+{
+
+  SDL_SetRenderDrawColor(render_context->renderer, render_context->background_color.r, render_context->background_color.g, render_context->background_color.b, render_context->background_color.a);
+  SDL_RenderClear(render_context->renderer);
+}
+
+void mouse_control_camera(RenderContext *render_context, MouseState *mouse_state)
+{
+  if (mouse_state->button == SDL_BUTTON_RIGHT && mouse_state->state == SDL_PRESSED)
+  {
+    if (mouse_state->prev_x != mouse_state->x || mouse_state->prev_y != mouse_state->y)
+    {
+      float delta_x = mouse_state->x - mouse_state->prev_x;
+      float delta_y = mouse_state->y - mouse_state->prev_y;
+      mouse_state->prev_x = mouse_state->x;
+      mouse_state->prev_y = mouse_state->y;
+
+      render_context->camera.target_x -= delta_x / render_context->camera.zoom;
+      render_context->camera.target_y -= delta_y / render_context->camera.zoom;
+    }
+  }
+}
+
+// Camera movement and selection rect movement
+void keyboard_control_camera(RenderContext *render_context)
+{
+  float camera_keyboard_movement_speed = 5.0f;
+  if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_w)])
+  {
+    render_context->camera.target_y -= camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target_y += camera_keyboard_movement_speed;
+  }
+  if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_s)])
+  {
+    render_context->camera.target_y += camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target_y -= camera_keyboard_movement_speed;
+  }
+  if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_a)])
+  {
+    render_context->camera.target_x -= camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target_x += camera_keyboard_movement_speed;
+  }
+  if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_d)])
+  {
+    render_context->camera.target_x += camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target_x -= camera_keyboard_movement_speed;
+  }
+}
+
+// Set the camera to follow an entity, if only one entity is selected
+void camera_follow_entity(RenderContext *render_context, Entity *entities)
+{
+  if (render_context->camera.following_entity > -1)
+  {
+    // TODO: Make it center on the entity
+    render_context->camera.target_x = entities[render_context->camera.following_entity].x;
+    render_context->camera.target_y = entities[render_context->camera.following_entity].y;
+  }
+}
+
+// Set selected on any entity within the selection_rect
+void select_entities_within_selection_rect(RenderContext *render_context, Entity *entities, int entities_count)
+{
+  for (int entity_i = 0; entity_i < entities_count; entity_i++)
+  {
+    SDL_FRect rect = camera_relative_rect(render_context, &(SDL_FRect){
+                                                              .w = entities[entity_i].w,
+                                                              .h = entities[entity_i].h,
+                                                              .x = entities[entity_i].x,
+                                                              .y = entities[entity_i].y,
+                                                          });
+    SDL_FPoint point_top_left = {
+        .x = rect.x,
+        .y = rect.y,
+    };
+    SDL_FPoint point_bottom_right = {
+        .x = rect.x + rect.w,
+        .y = rect.y + rect.h,
+    };
+    if (render_context->selection.rect.w > 3.0f)
+    {
+      if (SDL_PointInFRect(&point_top_left, &render_context->selection.rect) && SDL_PointInFRect(&point_bottom_right, &render_context->selection.rect))
+      {
+        entities[entity_i].selected = true;
+      }
+      else
+      {
+        if (!render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_LSHIFT)])
+        {
+          entities[entity_i].selected = false;
+        }
+      }
+    }
+  }
+}
+
+bool entity_under_mouse(RenderContext *render_context, Entity *entity, MouseState *mouse_state)
+{
+  SDL_FRect source_rect = {
+      .w = entity->w,
+      .h = entity->h,
+      .x = entity->x,
+      .y = entity->y,
+  };
+  SDL_FRect rect = camera_relative_rect(render_context, &source_rect);
+  SDL_FPoint point = {
+      .x = mouse_state->x,
+      .y = mouse_state->y,
+  };
+
+  return SDL_PointInFRect(&point, &rect);
+}
+
+int init()
 {
   srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
 
@@ -330,6 +450,16 @@ int main(int argc, char *args[])
   if (TTF_Init() == -1)
   {
     fprintf(stderr, "could not initialize ttf: %s\n", TTF_GetError());
+    return 1;
+  }
+
+  return 0;
+}
+
+int main(int argc, char *args[])
+{
+  if (init() > 0)
+  {
     return 1;
   }
 
@@ -346,68 +476,11 @@ int main(int argc, char *args[])
     return 1;
   }
 
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-  if (!renderer)
-  {
-    fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
-    return 1;
-  }
-
-  Entity entities[] = {
-      Entity__create("assets/lamb2.bmp", renderer, "pushqrdx"),
-      Entity__create("assets/stone.bmp", renderer, "Athano"),
-      Entity__create("assets/lamb.bmp", renderer, "AshenHobs"),
-      Entity__create("assets/stone.bmp", renderer, "adrian_learns"),
-      Entity__create("assets/lamb.bmp", renderer, "RVerite"),
-      Entity__create("assets/stone.bmp", renderer, "Orshy"),
-      Entity__create("assets/lamb2.bmp", renderer, "ruggs888"),
-      Entity__create("assets/fish.bmp", renderer, "Xent12"),
-      Entity__create("assets/fish.bmp", renderer, "nuke_bird"),
-      Entity__create("assets/stone.bmp", renderer, "Kasper_573"),
-      Entity__create("assets/fish.bmp", renderer, "SturdyPose"),
-      Entity__create("assets/stone.bmp", renderer, "coffee_lava"),
-      Entity__create("assets/stone.bmp", renderer, "goudacheeseburgers"),
-      Entity__create("assets/stone.bmp", renderer, "ikiwixz"),
-      Entity__create("assets/lamb2.bmp", renderer, "NixAurvandil"),
-      Entity__create("assets/lamb2.bmp", renderer, "smilingbig"),
-      Entity__create("assets/lamb.bmp", renderer, "tk_dev"),
-      Entity__create("assets/lamb2.bmp", renderer, "realSuperku"),
-      Entity__create("assets/stone.bmp", renderer, "Hoby2000"),
-      Entity__create("assets/stone.bmp", renderer, "CuteMath"),
-      Entity__create("assets/stone.bmp", renderer, "forodor"),
-      Entity__create("assets/stone.bmp", renderer, "Azenris"),
-      Entity__create("assets/stone.bmp", renderer, "collector_of_stuff"),
-      Entity__create("assets/lamb2.bmp", renderer, "EvanMMO"),
-      Entity__create("assets/stone.bmp", renderer, "thechaosbean"),
-      Entity__create("assets/stone.bmp", renderer, "Lutf1sk"),
-      Entity__create("assets/lamb2.bmp", renderer, "BauBas9883"),
-      Entity__create("assets/stone.bmp", renderer, "physbuzz"),
-      Entity__create("assets/lamb2.bmp", renderer, "rizoma0x00"),
-      Entity__create("assets/stone.bmp", renderer, "Tkap1"),
-      Entity__create("assets/lamb2.bmp", renderer, "GavinsAwfulStream"),
-      Entity__create("assets/lamb2.bmp", renderer, "Resist_0"),
-      Entity__create("assets/stone.bmp", renderer, "b1k4sh"),
-      Entity__create("assets/lamb.bmp", renderer, "nhancodes"),
-      Entity__create("assets/stone.bmp", renderer, "qcircuit1"),
-      Entity__create("assets/stone.bmp", renderer, "fruloo"),
-      Entity__create("assets/stone.bmp", renderer, "programmer_jeff"),
-      Entity__create("assets/stone.bmp", renderer, "BluePinStudio"),
-  };
-
-  TTF_Font *fonts[] = {
-      load_font("assets/OpenSans-Regular.ttf", 32),
-      load_font("assets/OpenSans-Regular.ttf", 24),
-      load_font("assets/OpenSans-Regular.ttf", 16),
-  };
-
   RenderContext render_context = {
-      .renderer = renderer,
-      .current_time = 0,
-      .last_update_time = 0,
+      .renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
       .animated_time = 0,
       .speed = 200.0f,
       .delta_time = 0,
-      .window = window,
       .background_color = {45, 125, 2, 255},
       .camera = {
           .x = 0,
@@ -433,8 +506,14 @@ int main(int argc, char *args[])
               .velocity = 0.0f,
               .acceleration = 0.4f,
               .friction = 0.1f,
-          }},
-      .fonts = fonts,
+          },
+          .following_entity = -1,
+      },
+      .fonts = (TTF_Font *[]){
+          Font__load("assets/OpenSans-Regular.ttf", 32),
+          Font__load("assets/OpenSans-Regular.ttf", 24),
+          Font__load("assets/OpenSans-Regular.ttf", 16),
+      },
       .selection = {
           .spring_x = {
               .target = 1.0f,
@@ -452,9 +531,52 @@ int main(int argc, char *args[])
           },
       }};
 
-  int game_is_still_running = 1;
-  unsigned int start_ticks = SDL_GetTicks();
-  int frame_count = 0;
+  if (!render_context.renderer)
+  {
+    fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  Entity entities[] = {
+      Entity__create(&render_context, "assets/lamb2.bmp", "pushqrdx"),
+      Entity__create(&render_context, "assets/stone.bmp", "Athano"),
+      Entity__create(&render_context, "assets/lamb.bmp", "AshenHobs"),
+      Entity__create(&render_context, "assets/stone.bmp", "adrian_learns"),
+      Entity__create(&render_context, "assets/lamb.bmp", "RVerite"),
+      Entity__create(&render_context, "assets/stone.bmp", "Orshy"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "ruggs888"),
+      Entity__create(&render_context, "assets/fish.bmp", "Xent12"),
+      Entity__create(&render_context, "assets/fish.bmp", "nuke_bird"),
+      Entity__create(&render_context, "assets/stone.bmp", "Kasper_573"),
+      Entity__create(&render_context, "assets/fish.bmp", "SturdyPose"),
+      Entity__create(&render_context, "assets/stone.bmp", "coffee_lava"),
+      Entity__create(&render_context, "assets/stone.bmp", "goudacheeseburgers"),
+      Entity__create(&render_context, "assets/stone.bmp", "ikiwixz"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "NixAurvandil"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "smilingbig"),
+      Entity__create(&render_context, "assets/lamb.bmp", "tk_dev"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "realSuperku"),
+      Entity__create(&render_context, "assets/stone.bmp", "Hoby2000"),
+      Entity__create(&render_context, "assets/stone.bmp", "CuteMath"),
+      Entity__create(&render_context, "assets/stone.bmp", "forodor"),
+      Entity__create(&render_context, "assets/stone.bmp", "Azenris"),
+      Entity__create(&render_context, "assets/stone.bmp", "collector_of_stuff"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "EvanMMO"),
+      Entity__create(&render_context, "assets/stone.bmp", "thechaosbean"),
+      Entity__create(&render_context, "assets/stone.bmp", "Lutf1sk"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "BauBas9883"),
+      Entity__create(&render_context, "assets/stone.bmp", "physbuzz"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "rizoma0x00"),
+      Entity__create(&render_context, "assets/stone.bmp", "Tkap1"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "GavinsAwfulStream"),
+      Entity__create(&render_context, "assets/lamb2.bmp", "Resist_0"),
+      Entity__create(&render_context, "assets/stone.bmp", "b1k4sh"),
+      Entity__create(&render_context, "assets/lamb.bmp", "nhancodes"),
+      Entity__create(&render_context, "assets/stone.bmp", "qcircuit1"),
+      Entity__create(&render_context, "assets/stone.bmp", "fruloo"),
+      Entity__create(&render_context, "assets/stone.bmp", "programmer_jeff"),
+      Entity__create(&render_context, "assets/stone.bmp", "BluePinStudio"),
+  };
 
   MouseState mouse_state = {
       .prev_state = 0,
@@ -467,6 +589,12 @@ int main(int argc, char *args[])
       .y = 0,
   };
 
+  int game_is_still_running = 1;
+  unsigned int start_ticks = SDL_GetTicks();
+  int current_time = 0;
+  int frame_count = 0;
+  int last_update_time = 0;
+
   while (game_is_still_running)
   {
     frame_count++;
@@ -477,13 +605,13 @@ int main(int argc, char *args[])
       start_ticks = SDL_GetTicks();
     }
 
-    render_context.current_time = SDL_GetTicks();
-    render_context.delta_time = (float)(render_context.current_time - render_context.last_update_time) / 1000;
-    render_context.last_update_time = render_context.current_time;
+    current_time = SDL_GetTicks();
+    render_context.delta_time = (float)(current_time - last_update_time) / 1000;
+    last_update_time = current_time;
     render_context.animated_time = fmodf(render_context.animated_time + render_context.delta_time * 0.5f, 1);
     render_context.camera.zoom = Spring__update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
-    SDL_GetWindowSizeInPixels(render_context.window, &render_context.window_w, &render_context.window_h);
-    const Uint8 *keyboard = SDL_GetKeyboardState(NULL);
+    SDL_GetWindowSizeInPixels(window, &render_context.window_w, &render_context.window_h);
+    render_context.keyboard_state = SDL_GetKeyboardState(NULL);
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -548,6 +676,20 @@ int main(int argc, char *args[])
             render_context.prev_speed = render_context.speed;
             render_context.speed = 0;
           }
+        case SDLK_LCTRL:
+          // Deliberately inside the poll event loop
+          if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.clicks == 1)
+          {
+            for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--)
+            {
+              if (entity_under_mouse(&render_context, &entities[entity_i], &mouse_state))
+              {
+                render_context.camera.following_entity = entities[entity_i].selected ? entity_i : -1;
+                break;
+              }
+            }
+          }
+          break;
 
         default:
           break;
@@ -559,23 +701,11 @@ int main(int argc, char *args[])
       }
 
       // Deliberately inside the poll event loop
-      if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED)
+      if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.clicks == 1)
       {
         for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--)
         {
-          SDL_FRect source_rect = {
-              .w = entities[entity_i].w,
-              .h = entities[entity_i].h,
-              .x = entities[entity_i].x,
-              .y = entities[entity_i].y,
-          };
-          SDL_FRect rect = render_rect(&render_context, &source_rect);
-          SDL_FPoint point = {
-              .x = mouse_state.x,
-              .y = mouse_state.y,
-          };
-
-          if (SDL_PointInFRect(&point, &rect))
+          if (entity_under_mouse(&render_context, &entities[entity_i], &mouse_state))
           {
             entities[entity_i].selected = !entities[entity_i].selected;
             break;
@@ -594,52 +724,9 @@ int main(int argc, char *args[])
     //   }
     // }
 
-    {
-      if (mouse_state.button == SDL_BUTTON_RIGHT && mouse_state.state == SDL_PRESSED)
-      {
-        if (mouse_state.prev_x != mouse_state.x || mouse_state.prev_y != mouse_state.y)
-        {
-          float delta_x = mouse_state.x - mouse_state.prev_x;
-          float delta_y = mouse_state.y - mouse_state.prev_y;
-          mouse_state.prev_x = mouse_state.x;
-          mouse_state.prev_y = mouse_state.y;
+    mouse_control_camera(&render_context, &mouse_state);
 
-          render_context.camera.target_x -= delta_x / render_context.camera.zoom;
-          render_context.camera.target_y -= delta_y / render_context.camera.zoom;
-        }
-      }
-
-      {
-        SDL_SetRenderDrawColor(render_context.renderer,
-                               render_context.background_color.r, render_context.background_color.g, render_context.background_color.b, 255);
-        int result = SDL_RenderFillRect(render_context.renderer, NULL);
-        assert(result == 0);
-      }
-    }
-
-    {
-      float camera_keyboard_movement_speed = 5.0f;
-      if (keyboard[SDL_GetScancodeFromKey(SDLK_w)])
-      {
-        render_context.camera.target_y -= camera_keyboard_movement_speed / render_context.camera.zoom;
-        render_context.selection.target_y += camera_keyboard_movement_speed;
-      }
-      if (keyboard[SDL_GetScancodeFromKey(SDLK_s)])
-      {
-        render_context.camera.target_y += camera_keyboard_movement_speed / render_context.camera.zoom;
-        render_context.selection.target_y -= camera_keyboard_movement_speed;
-      }
-      if (keyboard[SDL_GetScancodeFromKey(SDLK_a)])
-      {
-        render_context.camera.target_x -= camera_keyboard_movement_speed / render_context.camera.zoom;
-        render_context.selection.target_x += camera_keyboard_movement_speed;
-      }
-      if (keyboard[SDL_GetScancodeFromKey(SDLK_d)])
-      {
-        render_context.camera.target_x += camera_keyboard_movement_speed / render_context.camera.zoom;
-        render_context.selection.target_x -= camera_keyboard_movement_speed;
-      }
-    }
+    keyboard_control_camera(&render_context);
 
     { // Selection rect creation
       if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
@@ -653,63 +740,9 @@ int main(int argc, char *args[])
       }
     }
 
-    { // Set the camera to follow an entity, if only one entity is selected
-      int selected_count = 0;
-      int selected_entity_index = 0;
-      for (int entity_i = 0; entity_i < array_count(entities); entity_i++)
-      {
-        if (entities[entity_i].selected)
-        {
-          selected_count++;
-          selected_entity_index = entity_i;
-          if (selected_count > 1)
-          {
-            break;
-          }
-        }
-      }
-      if (render_context.selection.rect.w == 0 && selected_count == 1)
-      {
-        // TODO: Make it center on the entity
-        render_context.camera.target_x = entities[selected_entity_index].x;
-        render_context.camera.target_y = entities[selected_entity_index].y;
-      }
-    }
+    camera_follow_entity(&render_context, entities);
 
-    { // Set selected on any entity within the selection_rect
-      for (int entity_i = 0; entity_i < array_count(entities); entity_i++)
-      {
-        SDL_FRect source_rect = {
-            .w = entities[entity_i].w,
-            .h = entities[entity_i].h,
-            .x = entities[entity_i].x,
-            .y = entities[entity_i].y,
-        };
-        SDL_FRect rect = render_rect(&render_context, &source_rect);
-        SDL_FPoint point_top_left = {
-            .x = rect.x,
-            .y = rect.y,
-        };
-        SDL_FPoint point = {
-            .x = rect.x + rect.w,
-            .y = rect.y + rect.h,
-        };
-        if (render_context.selection.rect.w > 3.0f)
-        {
-          if (SDL_PointInFRect(&point_top_left, &render_context.selection.rect) && SDL_PointInFRect(&point, &render_context.selection.rect))
-          {
-            entities[entity_i].selected = true;
-          }
-          else
-          {
-            if (!keyboard[SDL_GetScancodeFromKey(SDLK_LSHIFT)])
-            {
-              entities[entity_i].selected = false;
-            }
-          }
-        }
-      }
-    }
+    select_entities_within_selection_rect(&render_context, entities, array_count(entities));
 
     { // Spring the selection box
       render_context.selection.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target_x);
@@ -721,21 +754,20 @@ int main(int argc, char *args[])
       render_context.camera.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target_y);
     }
 
-    render_debug_info(&render_context, &mouse_state);
+    clear_screen(&render_context);
 
     for (int entity_i = 0; entity_i < array_count(entities); entity_i++)
     {
       if (entities[entity_i].texture)
       {
+        update_entity(&render_context, &entities[entity_i]);
         render_entity(&render_context, &entities[entity_i]);
       }
     }
 
-    { // Selection box rendering
-      SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 255);
-      int result = SDL_RenderDrawRectF(render_context.renderer, &render_context.selection.rect);
-      assert(result == 0);
-    }
+    render_selection_box(&render_context);
+
+    render_debug_info(&render_context, &mouse_state);
 
     SDL_RenderPresent(render_context.renderer);
 
