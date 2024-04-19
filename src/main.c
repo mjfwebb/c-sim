@@ -597,6 +597,7 @@ int main(int argc, char *args[]) {
       Entity__create(&render_context, "assets/stone.bmp", "fruloo"),
       Entity__create(&render_context, "assets/stone.bmp", "programmer_jeff"),
       Entity__create(&render_context, "assets/stone.bmp", "BluePinStudio"),
+      Entity__create(&render_context, "assets/stone.bmp", "Pierito95RsNg"),
   };
 
   MouseState mouse_state = {
