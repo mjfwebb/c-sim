@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "personalities.c"
 #include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
@@ -44,6 +45,7 @@ typedef struct {
   float direction_y;
   bool selected;
   char *name;
+  int personalities[array_count(Personality__Strings)];
 } Entity;
 
 typedef struct {
@@ -95,6 +97,25 @@ typedef struct {
 
 void render_entity(RenderContext *render_context, Entity *entity);
 
+int random_int_between(int min, int max) {
+  return min + (rand() % (max - min));
+}
+
+int Entity__get_personality_count(Entity entity) {
+  int result = 0;
+  for (int i = 0; i < array_count(Personality__Strings); i++) {
+    if (entity.personalities[i] > 0) {
+      result += 1;
+    }
+  }
+
+  return result;
+}
+
+bool Entity__has_personality(Entity entity, Personality personality) {
+  return entity.personalities[personality] > 0;
+}
+
 SDL_FRect camera_relative_rect(RenderContext *render_context, SDL_FRect *source_rect) {
   SDL_FRect rect = {
       .w = source_rect->w * render_context->camera.zoom,
@@ -104,7 +125,7 @@ SDL_FRect camera_relative_rect(RenderContext *render_context, SDL_FRect *source_
   };
 
   return rect;
-};
+}
 
 Entity Entity__create(RenderContext *render_context, char *image_path, char *name) {
   SDL_Surface *image = SDL_LoadBMP(image_path);
@@ -128,6 +149,12 @@ Entity Entity__create(RenderContext *render_context, char *image_path, char *nam
       .selected = false,
       .name = name,
   };
+
+  int random_amount_of_personalities = random_int_between(5, 10);
+  for (int i = 0; i < random_amount_of_personalities; i++) {
+    int personality = random_int_between(0, array_count(Personality__Strings));
+    entity.personalities[personality] = random_int_between(0, 100);
+  }
 
   // Surface no longer needed after the texture is created
   SDL_FreeSurface(image);
@@ -598,6 +625,7 @@ int main(int argc, char *args[]) {
       Entity__create(&render_context, "assets/stone.bmp", "programmer_jeff"),
       Entity__create(&render_context, "assets/stone.bmp", "BluePinStudio"),
       Entity__create(&render_context, "assets/stone.bmp", "Pierito95RsNg"),
+      Entity__create(&render_context, "assets/stone.bmp", "jumpylionnn"),
   };
 
   MouseState mouse_state = {
@@ -701,6 +729,15 @@ int main(int argc, char *args[]) {
         for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--) {
           if (entity_under_mouse(&render_context, &entities[entity_i], &mouse_state)) {
             entities[entity_i].selected = !entities[entity_i].selected;
+
+            for (int personality_i = 0; personality_i < array_count(entities[entity_i].personalities); personality_i++) {
+              if (Entity__has_personality(entities[entity_i], personality_i)) {
+                print(
+                    "Entity %s has personality %s with value %d", entities[entity_i].name, Personality__Strings[personality_i],
+                    entities[entity_i].personalities[personality_i]
+                );
+              }
+            }
 
             if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_LCTRL)]) {
               if (entities[entity_i].selected) {
