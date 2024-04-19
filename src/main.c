@@ -296,7 +296,9 @@ void render_entity(RenderContext *render_context, Entity *entity) {
     );
   }
 
-  draw_entity_name(render_context, entity);
+  if (render_context->camera.zoom > 0.5f) {
+    draw_entity_name(render_context, entity);
+  }
 }
 
 TTF_Font *Font__load(const char *font_file_path, int font_size) {
