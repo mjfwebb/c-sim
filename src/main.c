@@ -687,18 +687,6 @@ int main(int argc, char *args[]) {
               render_context.prev_speed = render_context.speed;
               render_context.speed = 0;
             }
-          case SDLK_LCTRL:
-            // Deliberately inside the poll event loop
-            if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.clicks == 1) {
-              for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--) {
-                if (entity_under_mouse(&render_context, &entities[entity_i], &mouse_state)) {
-                  render_context.camera.following_entity = entities[entity_i].selected ? entity_i : -1;
-                  break;
-                }
-              }
-            }
-            break;
-
           default:
             break;
         }
@@ -713,6 +701,18 @@ int main(int argc, char *args[]) {
         for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--) {
           if (entity_under_mouse(&render_context, &entities[entity_i], &mouse_state)) {
             entities[entity_i].selected = !entities[entity_i].selected;
+
+            if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_LCTRL)]) {
+              if (entities[entity_i].selected) {
+                render_context.camera.following_entity = entity_i;
+              } else {
+                render_context.camera.following_entity = -1;
+              }
+            }
+
+            if (!entities[entity_i].selected) {
+              render_context.camera.following_entity = -1;
+            }
             break;
           }
         }
