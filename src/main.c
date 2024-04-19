@@ -306,6 +306,60 @@ TTF_Font *Font__load(const char *font_file_path, int font_size) {
   return font;
 }
 
+SDL_FRect screen_to_world(RenderContext *render_context, SDL_FRect screen_rect) {
+  SDL_FRect world_rect = {
+      .w = screen_rect.w / render_context->camera.zoom,
+      .h = screen_rect.h / render_context->camera.zoom,
+      .x = (screen_rect.x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.x,
+      .y = (screen_rect.y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.y,
+  };
+
+  return world_rect;
+}
+
+SDL_FRect world_to_screen(RenderContext *render_context, SDL_FRect world_rect) {
+  SDL_FRect screen_rect = {
+      .w = world_rect.w * render_context->camera.zoom,
+      .h = world_rect.h * render_context->camera.zoom,
+      .x = (world_rect.x - render_context->camera.x) * render_context->camera.zoom + render_context->window_w / 2,
+      .y = (world_rect.y - render_context->camera.y) * render_context->camera.zoom + render_context->window_h / 2,
+  };
+
+  return screen_rect;
+}
+
+void draw_grid(RenderContext *render_context) {
+  // Draw it blended
+  SDL_SetRenderDrawBlendMode(render_context->renderer, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(render_context->renderer, 0, 0, 0, 25);
+  float grid_size = 100.0f;
+  float window_w = (float)render_context->window_w;
+  float window_h = (float)render_context->window_h;
+
+  SDL_FRect grid_to_screen = world_to_screen(
+      render_context,
+      (SDL_FRect){
+          .w = grid_size,
+          .h = grid_size,
+          .x = 0,
+          .y = 0,
+      }
+  );
+
+  float x_start = grid_to_screen.x - floorf(grid_to_screen.x / grid_to_screen.w) * grid_to_screen.w;
+  for (float x = x_start; x < window_w; x += grid_to_screen.w) {
+    SDL_RenderDrawLineF(render_context->renderer, x, 0, x, window_h);
+  }
+
+  float y_start = grid_to_screen.y - floorf(grid_to_screen.y / grid_to_screen.h) * grid_to_screen.h;
+  for (float y = y_start; y < window_h; y += grid_to_screen.h) {
+    SDL_RenderDrawLineF(render_context->renderer, 0, y, window_w, y);
+  }
+
+  // Reset the blend mode
+  SDL_SetRenderDrawBlendMode(render_context->renderer, SDL_BLENDMODE_NONE);
+}
+
 void clear_screen(RenderContext *render_context) {
   SDL_SetRenderDrawColor(
       render_context->renderer, render_context->background_color.r, render_context->background_color.g, render_context->background_color.b,
@@ -692,6 +746,8 @@ int main(int argc, char *args[]) {
     }
 
     clear_screen(&render_context);
+
+    draw_grid(&render_context);
 
     for (int entity_i = 0; entity_i < array_count(entities); entity_i++) {
       if (entities[entity_i].texture) {
