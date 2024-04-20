@@ -581,7 +581,6 @@ int main(int argc, char *args[]) {
                       .acceleration = 0.4f,
                       .friction = 0.1f,
                   },
-              .following_entity = 0,
           },
       .fonts =
           (TTF_Font *[]){
