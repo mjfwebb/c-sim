@@ -714,6 +714,10 @@ int main(int argc, char *args[]) {
         switch (event.key.keysym.sym) {
           case SDLK_ESCAPE:
             game_is_still_running = 0;
+            // Maybe the following process:
+            // 1. If anything is selected, then deselect it and break.
+            // 2. If nothing was deselected, then open the pause menu.
+            // 3. If in the pause menu, then close the pause menu.
             break;
 
           case SDLK_UP:
