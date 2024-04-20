@@ -97,6 +97,7 @@ typedef struct {
   int health[MAX_ENTITIES];
   char *names[MAX_ENTITIES];
   bool selected[MAX_ENTITIES];
+  bool hovered[MAX_ENTITIES];
   FRect rect[MAX_ENTITIES];
   int image[MAX_ENTITIES];
   FPoint direction[MAX_ENTITIES];
@@ -153,8 +154,9 @@ void Entity__create(RenderContext *render_context, char *name) {
   float height = (float)(render_context->images[image_id].h * scale);
 
   game_context.health[num_of_entities] = 100;
-  game_context.names[num_of_entities] = name;  // TODO: Double check this shit
+  game_context.names[num_of_entities] = name;
   game_context.selected[num_of_entities] = false;
+  game_context.hovered[num_of_entities] = false;
   game_context.rect[num_of_entities] = (FRect){
       .h = height,
       .w = width,
@@ -186,12 +188,24 @@ void draw_texture(RenderContext *render_context, int image_id, SDL_FRect *render
 }
 
 void draw_entity_name(RenderContext *render_context, int entity_id) {
-  TTF_Font *font = render_context->fonts[1];
-  SDL_Color White = {255, 255, 255};
-  SDL_Surface *text_surface = TTF_RenderText_Blended(font, game_context.names[entity_id], White);
-  if (!text_surface) {
-    fprintf(stderr, "could not create text surface: %s\n", SDL_GetError());
+  TTF_Font *font = NULL;
+  SDL_Surface *text_surface = NULL;
+  float y = (game_context.rect[entity_id].y - render_context->camera.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
+            render_context->window_h / 2;
+
+  if (game_context.hovered[entity_id]) {
+    SDL_Color Yellow = {255, 255, 0};
+    font = render_context->fonts[0];
+    text_surface = TTF_RenderText_Blended(font, game_context.names[entity_id], Yellow);
+    y -= 10.0f;  // move the text up a little when using the bigger font
+  } else {
+    SDL_Color Black = {0, 0, 0};
+    font = render_context->fonts[1];
+    text_surface = TTF_RenderText_Blended(font, game_context.names[entity_id], Black);
   }
+
+  assert(font);
+  assert(text_surface);
 
   SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
   if (!text_texture) {
@@ -201,13 +215,7 @@ void draw_entity_name(RenderContext *render_context, int entity_id) {
   float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_surface->w) / 2;
   float x = (((game_context.rect[entity_id].x - render_context->camera.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
 
-  SDL_FRect text_rect = {
-      .w = (float)text_surface->w,
-      .h = (float)text_surface->h,
-      .x = x,
-      .y = (game_context.rect[entity_id].y - render_context->camera.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
-           render_context->window_h / 2,
-  };
+  SDL_FRect text_rect = {.w = (float)text_surface->w, .h = (float)text_surface->h, .x = x, .y = y};
 
   SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
   SDL_FreeSurface(text_surface);
@@ -233,7 +241,7 @@ void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
       .w = (float)text_surface->w,
       .h = (float)text_surface->h,
       .x = 10.0f,
-      .y = 10.0f + (32.0f * index),
+      .y = (32.0f * index),
   };
 
   SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
@@ -336,10 +344,6 @@ void render_entity(RenderContext *render_context, int entity_id) {
         },
         5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom
     );
-  }
-
-  if (render_context->camera.zoom > 0.5f) {
-    draw_entity_name(render_context, entity_id);
   }
 }
 
@@ -515,12 +519,14 @@ bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState
       .y = game_context.rect[entity_id].y,
   };
   SDL_FRect rect = camera_relative_rect(render_context, &source_rect);
-  SDL_FPoint point = {
-      .x = mouse_state->x,
-      .y = mouse_state->y,
-  };
 
-  return SDL_PointInFRect(&point, &rect);
+  return SDL_PointInFRect(
+      &(SDL_FPoint){
+          .x = mouse_state->x,
+          .y = mouse_state->y,
+      },
+      &rect
+  );
 }
 
 void init() {
@@ -534,6 +540,17 @@ void init() {
   if (TTF_Init() == -1) {
     fprintf(stderr, "could not initialize ttf: %s\n", TTF_GetError());
     exit(1);
+  }
+}
+
+void log_entity_personalities(int entity_id) {
+  for (int personality_i = 0; personality_i < array_count(game_context.personalities[entity_id]); personality_i++) {
+    if (Entity__has_personality(entity_id, personality_i)) {
+      print(
+          "Entity %s has personality %s with value %d", game_context.names[entity_id], Personality__Strings[personality_i],
+          game_context.personalities[entity_id][personality_i]
+      );
+    }
   }
 }
 
@@ -554,7 +571,7 @@ int main(int argc, char *args[]) {
       .animated_time = 0,
       .speed = 200.0f,
       .delta_time = 0,
-      .background_color = {45, 125, 2, 255},
+      .background_color = {35, 127, 178, 255},
       .camera =
           {
               .x = 0,
@@ -763,32 +780,21 @@ int main(int argc, char *args[]) {
         game_is_still_running = 0;
       }
 
-      // Deliberately inside the poll event loop
-      // Select entities on left click, if the selection rect is not active
-      if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED &&
-          render_context.selection.rect.w == 0) {
-        for (int entity_i = num_of_entities - 1; entity_i >= 0; entity_i--) {
-          if (entity_under_mouse(&render_context, entity_i, &mouse_state)) {
-            game_context.selected[entity_i] = !game_context.selected[entity_i];
+      // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
+      for (int entity_id = num_of_entities - 1; entity_id >= 0; entity_id--) {
+        game_context.hovered[entity_id] = entity_under_mouse(&render_context, entity_id, &mouse_state);
+      }
 
-            for (int personality_i = 0; personality_i < array_count(game_context.personalities[entity_i]); personality_i++) {
-              if (Entity__has_personality(entity_i, personality_i)) {
-                print(
-                    "Entity %s has personality %s with value %d", game_context.names[entity_i], Personality__Strings[personality_i],
-                    game_context.personalities[entity_i][personality_i]
-                );
-              }
-            }
+      for (int entity_id = num_of_entities - 1; entity_id >= 0; entity_id--) {
+        if (entity_under_mouse(&render_context, entity_id, &mouse_state)) {
+          if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED &&
+              render_context.selection.rect.w == 0) {
+            game_context.selected[entity_id] = !game_context.selected[entity_id];
+            log_entity_personalities(entity_id);
 
-            if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_LCTRL)]) {
-              if (game_context.selected[entity_i]) {
-                render_context.camera.following_entity = entity_i;
-              } else {
-                render_context.camera.following_entity = -1;
-              }
-            }
-
-            if (!game_context.selected[entity_i]) {
+            if (game_context.selected[entity_id]) {
+              render_context.camera.following_entity = entity_id;
+            } else {
               render_context.camera.following_entity = -1;
             }
             break;
@@ -833,6 +839,12 @@ int main(int argc, char *args[]) {
     for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
       update_entity(&render_context, entity_i);
       render_entity(&render_context, entity_i);
+    }
+
+    if (render_context.camera.zoom > 0.5f) {
+      for (int entity_id = 0; entity_id < num_of_entities; entity_id++) {
+        draw_entity_name(&render_context, entity_id);
+      }
     }
 
     render_selection_box(&render_context);
