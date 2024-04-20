@@ -12,6 +12,7 @@
 #include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
+#define MAX_ENTITIES 1024
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
@@ -29,6 +30,18 @@
   printf(format "\n", ##__VA_ARGS__); \
   fflush(stdout)
 
+typedef struct FRect {
+  float x;
+  float y;
+  float w;
+  float h;
+} FRect;
+
+typedef struct FPoint {
+  float x;
+  float y;
+} FPoint;
+
 typedef struct Spring {
   float target;
   float current;
@@ -38,18 +51,6 @@ typedef struct Spring {
 } Spring;
 
 typedef struct {
-  SDL_Texture *texture;
-  rect_fields;
-  point_fields;
-  float direction_x;
-  float direction_y;
-  bool selected;
-  char *name;
-  int personalities[array_count(Personality__Strings)];
-} Entity;
-
-typedef struct {
-  SDL_Texture *texture;
   rect_fields;
   point_fields;
   target_point_fields;
@@ -70,6 +71,12 @@ typedef struct {
 } Selection;
 
 typedef struct {
+  int w;
+  int h;
+  SDL_Texture *texture;
+} Image;
+
+typedef struct {
   float speed;
   float prev_speed;
   float delta_time;
@@ -83,7 +90,18 @@ typedef struct {
   float fps;
   Selection selection;
   const Uint8 *keyboard_state;
+  Image *images;
 } RenderContext;
+
+typedef struct {
+  int health[MAX_ENTITIES];
+  char *names[MAX_ENTITIES];
+  bool selected[MAX_ENTITIES];
+  FRect rect[MAX_ENTITIES];
+  int image[MAX_ENTITIES];
+  FPoint direction[MAX_ENTITIES];
+  int personalities[MAX_ENTITIES][array_count(Personality__Strings)];
+} GameContext;
 
 typedef struct {
   int prev_state;
@@ -95,16 +113,17 @@ typedef struct {
   int clicks;
 } MouseState;
 
-void render_entity(RenderContext *render_context, Entity *entity);
+GameContext game_context = {0};
+int num_of_entities = 0;
 
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
 }
 
-int Entity__get_personality_count(Entity entity) {
+int Entity__get_personality_count(int entity_id) {
   int result = 0;
   for (int i = 0; i < array_count(Personality__Strings); i++) {
-    if (entity.personalities[i] > 0) {
+    if (game_context.personalities[i] > 0) {
       result += 1;
     }
   }
@@ -112,8 +131,8 @@ int Entity__get_personality_count(Entity entity) {
   return result;
 }
 
-bool Entity__has_personality(Entity entity, Personality personality) {
-  return entity.personalities[personality] > 0;
+bool Entity__has_personality(int entity_id, Personality personality) {
+  return game_context.personalities[entity_id][personality] > 0;
 }
 
 SDL_FRect camera_relative_rect(RenderContext *render_context, SDL_FRect *source_rect) {
@@ -127,53 +146,49 @@ SDL_FRect camera_relative_rect(RenderContext *render_context, SDL_FRect *source_
   return rect;
 }
 
-Entity Entity__create(RenderContext *render_context, char *image_path, char *name) {
-  SDL_Surface *image = SDL_LoadBMP(image_path);
-  assert(image);
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(render_context->renderer, image);
-  assert(texture);
-
+void Entity__create(RenderContext *render_context, char *name) {
+  int image_id = random_int_between(0, 3);
   float width = 100.0f;
-  float scale = width / image->w;
-  float height = (float)(image->h * scale);
+  float scale = width / render_context->images[image_id].w;
+  float height = (float)(render_context->images[image_id].h * scale);
 
-  Entity entity = {
-      .direction_x = ((float)(rand() % 200) - 100) / 100,
-      .direction_y = ((float)(rand() % 200) - 100) / 100,
-      .x = (float)(rand() % 2000) - 1000,
-      .y = (float)(rand() % 2000) - 1000,
-      .texture = texture,
+  game_context.health[num_of_entities] = 100;
+  game_context.names[num_of_entities] = name;  // TODO: Double check this shit
+  game_context.selected[num_of_entities] = false;
+  game_context.rect[num_of_entities] = (FRect){
       .h = height,
       .w = width,
-      .selected = false,
-      .name = name,
+      .x = (float)(rand() % 2000) - 1000,
+      .y = (float)(rand() % 2000) - 1000,
   };
+  game_context.direction[num_of_entities] = (FPoint){
+      .x = ((float)(rand() % 200) - 100) / 100,
+      .y = ((float)(rand() % 200) - 100) / 100,
+  };
+  game_context.image[num_of_entities] = image_id;
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
     int personality = random_int_between(0, array_count(Personality__Strings));
-    entity.personalities[personality] = random_int_between(0, 100);
+    game_context.personalities[num_of_entities][personality] = random_int_between(0, 100);
   }
 
-  // Surface no longer needed after the texture is created
-  SDL_FreeSurface(image);
-
-  return entity;
+  // Now increment num_of_entities so the next one has a higher index;
+  num_of_entities++;
 }
 
-void draw_texture(RenderContext *render_context, Entity *entity, SDL_FRect *rendering_rect) {
-  int copy_result = SDL_RenderCopyF(render_context->renderer, entity->texture, NULL, rendering_rect);
+void draw_texture(RenderContext *render_context, int image_id, SDL_FRect *rendering_rect) {
+  int copy_result = SDL_RenderCopyF(render_context->renderer, render_context->images[image_id].texture, NULL, rendering_rect);
   if (copy_result != 0) {
     printf("Failed to render copy: %s\n", SDL_GetError());
     return;
   }
 }
 
-void draw_entity_name(RenderContext *render_context, Entity *entity) {
+void draw_entity_name(RenderContext *render_context, int entity_id) {
   TTF_Font *font = render_context->fonts[1];
   SDL_Color White = {255, 255, 255};
-  SDL_Surface *text_surface = TTF_RenderText_Blended(font, entity->name, White);
+  SDL_Surface *text_surface = TTF_RenderText_Blended(font, game_context.names[entity_id], White);
   if (!text_surface) {
     fprintf(stderr, "could not create text surface: %s\n", SDL_GetError());
   }
@@ -183,15 +198,15 @@ void draw_entity_name(RenderContext *render_context, Entity *entity) {
     fprintf(stderr, "could not create text texture: %s\n", SDL_GetError());
   }
 
-  float diff = ((entity->w * render_context->camera.zoom) - text_surface->w) / 2;
-  float x = (((entity->x - render_context->camera.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
+  float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_surface->w) / 2;
+  float x = (((game_context.rect[entity_id].x - render_context->camera.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
 
   SDL_FRect text_rect = {
       .w = (float)text_surface->w,
       .h = (float)text_surface->h,
       .x = x,
-      .y =
-          (entity->y - render_context->camera.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom + render_context->window_h / 2,
+      .y = (game_context.rect[entity_id].y - render_context->camera.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
+           render_context->window_h / 2,
   };
 
   SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
@@ -292,40 +307,56 @@ void draw_border(RenderContext *render_context, SDL_FRect around, float gap_widt
   }
 }
 
-void update_entity(RenderContext *render_context, Entity *entity) {
-  entity->x += entity->direction_x * (render_context->delta_time * render_context->speed);
-  entity->y += entity->direction_y * (render_context->delta_time * render_context->speed);
+void update_entity(RenderContext *render_context, int entity_id) {
+  game_context.rect[entity_id].x += game_context.direction[entity_id].x * (render_context->delta_time * render_context->speed);
+  game_context.rect[entity_id].y += game_context.direction[entity_id].y * (render_context->delta_time * render_context->speed);
 }
 
-void render_entity(RenderContext *render_context, Entity *entity) {
+void render_entity(RenderContext *render_context, int entity_id) {
   SDL_FRect rendering_rect = camera_relative_rect(
       render_context,
       &(SDL_FRect){
-          .w = entity->w,
-          .h = entity->h,
-          .x = entity->x,
-          .y = entity->y,
+          .w = game_context.rect[entity_id].w,
+          .h = game_context.rect[entity_id].h,
+          .x = game_context.rect[entity_id].x,
+          .y = game_context.rect[entity_id].y,
       }
   );
 
-  draw_texture(render_context, entity, &rendering_rect);
+  draw_texture(render_context, game_context.image[entity_id], &rendering_rect);
 
-  if (entity->selected) {
+  if (game_context.selected[entity_id]) {
     draw_border(
         render_context,
         (SDL_FRect){
-            .h = entity->h,
-            .w = entity->w,
-            .x = entity->x,
-            .y = entity->y,
+            .h = game_context.rect[entity_id].h,
+            .w = game_context.rect[entity_id].w,
+            .x = game_context.rect[entity_id].x,
+            .y = game_context.rect[entity_id].y,
         },
         5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom
     );
   }
 
   if (render_context->camera.zoom > 0.5f) {
-    draw_entity_name(render_context, entity);
+    draw_entity_name(render_context, entity_id);
   }
+}
+
+Image Image__load(RenderContext *render_context, const char *texture_file_path) {
+  SDL_Surface *surface = SDL_LoadBMP(texture_file_path);
+  assert(surface);
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(render_context->renderer, surface);
+  assert(texture);
+
+  Image image = (Image){
+      .h = surface->h,
+      .w = surface->w,
+      .texture = texture,
+  };
+
+  return image;
 }
 
 TTF_Font *Font__load(const char *font_file_path, int font_size) {
@@ -433,24 +464,24 @@ void keyboard_control_camera(RenderContext *render_context) {
 }
 
 // Set the camera to follow an entity, if only one entity is selected
-void camera_follow_entity(RenderContext *render_context, Entity *entities) {
+void camera_follow_entity(RenderContext *render_context) {
   if (render_context->camera.following_entity > -1) {
     // TODO: Make it center on the entity
-    render_context->camera.target_x = entities[render_context->camera.following_entity].x;
-    render_context->camera.target_y = entities[render_context->camera.following_entity].y;
+    render_context->camera.target_x = game_context.rect[render_context->camera.following_entity].x;
+    render_context->camera.target_y = game_context.rect[render_context->camera.following_entity].y;
   }
 }
 
 // Set selected on any entity within the selection_rect
-void select_entities_within_selection_rect(RenderContext *render_context, Entity *entities, int entities_count) {
-  for (int entity_i = 0; entity_i < entities_count; entity_i++) {
+void select_entities_within_selection_rect(RenderContext *render_context) {
+  for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
     SDL_FRect rect = camera_relative_rect(
         render_context,
         &(SDL_FRect){
-            .w = entities[entity_i].w,
-            .h = entities[entity_i].h,
-            .x = entities[entity_i].x,
-            .y = entities[entity_i].y,
+            .w = game_context.rect[entity_i].w,
+            .h = game_context.rect[entity_i].h,
+            .x = game_context.rect[entity_i].x,
+            .y = game_context.rect[entity_i].y,
         }
     );
     SDL_FPoint point_top_left = {
@@ -466,22 +497,22 @@ void select_entities_within_selection_rect(RenderContext *render_context, Entity
     if (render_context->selection.rect.w > 3.0f) {
       if (SDL_PointInFRect(&point_top_left, &render_context->selection.rect) &&
           SDL_PointInFRect(&point_bottom_right, &render_context->selection.rect)) {
-        entities[entity_i].selected = true;
+        game_context.selected[entity_i] = true;
       } else {
         if (!render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
-          entities[entity_i].selected = false;
+          game_context.selected[entity_i] = false;
         }
       }
     }
   }
 }
 
-bool entity_under_mouse(RenderContext *render_context, Entity *entity, MouseState *mouse_state) {
+bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState *mouse_state) {
   SDL_FRect source_rect = {
-      .w = entity->w,
-      .h = entity->h,
-      .x = entity->x,
-      .y = entity->y,
+      .w = game_context.rect[entity_id].w,
+      .h = game_context.rect[entity_id].h,
+      .x = game_context.rect[entity_id].x,
+      .y = game_context.rect[entity_id].y,
   };
   SDL_FRect rect = camera_relative_rect(render_context, &source_rect);
   SDL_FPoint point = {
@@ -518,115 +549,125 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  RenderContext render_context =
-      {.renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
-       .animated_time = 0,
-       .speed = 200.0f,
-       .delta_time = 0,
-       .background_color = {45, 125, 2, 255},
-       .camera =
-           {
-               .x = 0,
-               .y = 0,
-               .target_zoom = 1.0f,
-               .pan_spring_x =
-                   {
-                       .target = 1.0f,
-                       .current = 1.0f,
-                       .velocity = 0.0f,
-                       .acceleration = 0.5f,
-                       .friction = 0.1f,
-                   },
-               .pan_spring_y =
-                   {
-                       .target = 1.0f,
-                       .current = 1.0f,
-                       .velocity = 0.0f,
-                       .acceleration = 0.5f,
-                       .friction = 0.1f,
-                   },
-               .zoom_spring =
-                   {
-                       .target = 1.0f,
-                       .current = 1.0f,
-                       .velocity = 0.0f,
-                       .acceleration = 0.4f,
-                       .friction = 0.1f,
-                   },
-               .following_entity = -1,
-           },
-       .fonts =
-           (TTF_Font *[]){
-               Font__load("assets/OpenSans-Regular.ttf", 32),
-               Font__load("assets/OpenSans-Regular.ttf", 24),
-               Font__load("assets/OpenSans-Regular.ttf", 16),
-           },
-       .selection = {
-           .spring_x =
-               {
-                   .target = 1.0f,
-                   .current = 1.0f,
-                   .velocity = 0.0f,
-                   .acceleration = 0.5f,
-                   .friction = 0.1f,
-               },
-           .spring_y =
-               {
-                   .target = 1.0f,
-                   .current = 1.0f,
-                   .velocity = 0.0f,
-                   .acceleration = 0.5f,
-                   .friction = 0.1f,
-               },
-       }};
+  RenderContext render_context = {
+      .renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
+      .animated_time = 0,
+      .speed = 200.0f,
+      .delta_time = 0,
+      .background_color = {45, 125, 2, 255},
+      .camera =
+          {
+              .x = 0,
+              .y = 0,
+              .target_zoom = 1.0f,
+              .pan_spring_x =
+                  {
+                      .target = 1.0f,
+                      .current = 1.0f,
+                      .velocity = 0.0f,
+                      .acceleration = 0.5f,
+                      .friction = 0.1f,
+                  },
+              .pan_spring_y =
+                  {
+                      .target = 1.0f,
+                      .current = 1.0f,
+                      .velocity = 0.0f,
+                      .acceleration = 0.5f,
+                      .friction = 0.1f,
+                  },
+              .zoom_spring =
+                  {
+                      .target = 1.0f,
+                      .current = 1.0f,
+                      .velocity = 0.0f,
+                      .acceleration = 0.4f,
+                      .friction = 0.1f,
+                  },
+              .following_entity = -1,
+          },
+      .fonts =
+          (TTF_Font *[]){
+              Font__load("assets/OpenSans-Regular.ttf", 32),
+              Font__load("assets/OpenSans-Regular.ttf", 24),
+              Font__load("assets/OpenSans-Regular.ttf", 16),
+          },
+      .selection =
+          {
+              .spring_x =
+                  {
+                      .target = 1.0f,
+                      .current = 1.0f,
+                      .velocity = 0.0f,
+                      .acceleration = 0.5f,
+                      .friction = 0.1f,
+                  },
+              .spring_y =
+                  {
+                      .target = 1.0f,
+                      .current = 1.0f,
+                      .velocity = 0.0f,
+                      .acceleration = 0.5f,
+                      .friction = 0.1f,
+                  },
+          },
+      .images =
+          (Image[]){
+              Image__load(&render_context, "assets/stone.bmp"),
+              Image__load(&render_context, "assets/fish.bmp"),
+              Image__load(&render_context, "assets/lamb.bmp"),
+              Image__load(&render_context, "assets/lamb2.bmp"),
+          }
+  };
 
   if (!render_context.renderer) {
     fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
     return 1;
   }
 
-  Entity entities[] = {
-      Entity__create(&render_context, "assets/lamb2.bmp", "pushqrdx"),
-      Entity__create(&render_context, "assets/stone.bmp", "Athano"),
-      Entity__create(&render_context, "assets/lamb.bmp", "AshenHobs"),
-      Entity__create(&render_context, "assets/stone.bmp", "adrian_learns"),
-      Entity__create(&render_context, "assets/lamb.bmp", "RVerite"),
-      Entity__create(&render_context, "assets/stone.bmp", "Orshy"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "ruggs888"),
-      Entity__create(&render_context, "assets/fish.bmp", "Xent12"),
-      Entity__create(&render_context, "assets/fish.bmp", "nuke_bird"),
-      Entity__create(&render_context, "assets/stone.bmp", "Kasper_573"),
-      Entity__create(&render_context, "assets/fish.bmp", "SturdyPose"),
-      Entity__create(&render_context, "assets/stone.bmp", "coffee_lava"),
-      Entity__create(&render_context, "assets/stone.bmp", "goudacheeseburgers"),
-      Entity__create(&render_context, "assets/stone.bmp", "ikiwixz"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "NixAurvandil"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "smilingbig"),
-      Entity__create(&render_context, "assets/lamb.bmp", "tk_dev"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "realSuperku"),
-      Entity__create(&render_context, "assets/stone.bmp", "Hoby2000"),
-      Entity__create(&render_context, "assets/stone.bmp", "CuteMath"),
-      Entity__create(&render_context, "assets/stone.bmp", "forodor"),
-      Entity__create(&render_context, "assets/stone.bmp", "Azenris"),
-      Entity__create(&render_context, "assets/stone.bmp", "collector_of_stuff"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "EvanMMO"),
-      Entity__create(&render_context, "assets/stone.bmp", "thechaosbean"),
-      Entity__create(&render_context, "assets/stone.bmp", "Lutf1sk"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "BauBas9883"),
-      Entity__create(&render_context, "assets/stone.bmp", "physbuzz"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "rizoma0x00"),
-      Entity__create(&render_context, "assets/stone.bmp", "Tkap1"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "GavinsAwfulStream"),
-      Entity__create(&render_context, "assets/lamb2.bmp", "Resist_0"),
-      Entity__create(&render_context, "assets/stone.bmp", "b1k4sh"),
-      Entity__create(&render_context, "assets/lamb.bmp", "nhancodes"),
-      Entity__create(&render_context, "assets/stone.bmp", "qcircuit1"),
-      Entity__create(&render_context, "assets/stone.bmp", "fruloo"),
-      Entity__create(&render_context, "assets/stone.bmp", "programmer_jeff"),
-      Entity__create(&render_context, "assets/stone.bmp", "BluePinStudio"),
-      Entity__create(&render_context, "assets/stone.bmp", "Pierito95RsNg"),
-      Entity__create(&render_context, "assets/stone.bmp", "jumpylionnn"),
-  };
+  Entity__create(&render_context, "pushqrdx");
+  Entity__create(&render_context, "Athano");
+  Entity__create(&render_context, "AshenHobs");
+  Entity__create(&render_context, "adrian_learns");
+  Entity__create(&render_context, "RVerite");
+  Entity__create(&render_context, "Orshy");
+  Entity__create(&render_context, "ruggs888");
+  Entity__create(&render_context, "Xent12");
+  Entity__create(&render_context, "nuke_bird");
+  Entity__create(&render_context, "Kasper_573");
+  Entity__create(&render_context, "SturdyPose");
+  Entity__create(&render_context, "coffee_lava");
+  Entity__create(&render_context, "goudacheeseburgers");
+  Entity__create(&render_context, "ikiwixz");
+  Entity__create(&render_context, "NixAurvandil");
+  Entity__create(&render_context, "smilingbig");
+  Entity__create(&render_context, "tk_dev");
+  Entity__create(&render_context, "realSuperku");
+  Entity__create(&render_context, "Hoby2000");
+  Entity__create(&render_context, "CuteMath");
+  Entity__create(&render_context, "forodor");
+  Entity__create(&render_context, "Azenris");
+  Entity__create(&render_context, "collector_of_stuff");
+  Entity__create(&render_context, "EvanMMO");
+  Entity__create(&render_context, "thechaosbean");
+  Entity__create(&render_context, "Lutf1sk");
+  Entity__create(&render_context, "BauBas9883");
+  Entity__create(&render_context, "physbuzz");
+  Entity__create(&render_context, "rizoma0x00");
+  Entity__create(&render_context, "Tkap1");
+  Entity__create(&render_context, "GavinsAwfulStream");
+  Entity__create(&render_context, "Resist_0");
+  Entity__create(&render_context, "b1k4sh");
+  Entity__create(&render_context, "nhancodes");
+  Entity__create(&render_context, "qcircuit1");
+  Entity__create(&render_context, "fruloo");
+  Entity__create(&render_context, "programmer_jeff");
+  Entity__create(&render_context, "BluePinStudio");
+  Entity__create(&render_context, "Pierito95RsNg");
+  Entity__create(&render_context, "jumpylionnn");
+  Entity__create(&render_context, "Aruseus");
+  Entity__create(&render_context, "lastmiles");
+  Entity__create(&render_context, "soulfoam");
 
   MouseState mouse_state = {
       .prev_state = 0,
@@ -726,28 +767,28 @@ int main(int argc, char *args[]) {
       // Select entities on left click, if the selection rect is not active
       if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED &&
           render_context.selection.rect.w == 0) {
-        for (int entity_i = array_count(entities) - 1; entity_i >= 0; entity_i--) {
-          if (entity_under_mouse(&render_context, &entities[entity_i], &mouse_state)) {
-            entities[entity_i].selected = !entities[entity_i].selected;
+        for (int entity_i = num_of_entities - 1; entity_i >= 0; entity_i--) {
+          if (entity_under_mouse(&render_context, entity_i, &mouse_state)) {
+            game_context.selected[entity_i] = !game_context.selected[entity_i];
 
-            for (int personality_i = 0; personality_i < array_count(entities[entity_i].personalities); personality_i++) {
-              if (Entity__has_personality(entities[entity_i], personality_i)) {
+            for (int personality_i = 0; personality_i < array_count(game_context.personalities[entity_i]); personality_i++) {
+              if (Entity__has_personality(entity_i, personality_i)) {
                 print(
-                    "Entity %s has personality %s with value %d", entities[entity_i].name, Personality__Strings[personality_i],
-                    entities[entity_i].personalities[personality_i]
+                    "Entity %s has personality %s with value %d", game_context.names[entity_i], Personality__Strings[personality_i],
+                    game_context.personalities[entity_i][personality_i]
                 );
               }
             }
 
             if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_LCTRL)]) {
-              if (entities[entity_i].selected) {
+              if (game_context.selected[entity_i]) {
                 render_context.camera.following_entity = entity_i;
               } else {
                 render_context.camera.following_entity = -1;
               }
             }
 
-            if (!entities[entity_i].selected) {
+            if (!game_context.selected[entity_i]) {
               render_context.camera.following_entity = -1;
             }
             break;
@@ -771,9 +812,9 @@ int main(int argc, char *args[]) {
       }
     }
 
-    camera_follow_entity(&render_context, entities);
+    camera_follow_entity(&render_context);
 
-    select_entities_within_selection_rect(&render_context, entities, array_count(entities));
+    select_entities_within_selection_rect(&render_context);
 
     {  // Spring the selection box
       render_context.selection.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target_x);
@@ -789,11 +830,9 @@ int main(int argc, char *args[]) {
 
     draw_grid(&render_context);
 
-    for (int entity_i = 0; entity_i < array_count(entities); entity_i++) {
-      if (entities[entity_i].texture) {
-        update_entity(&render_context, &entities[entity_i]);
-        render_entity(&render_context, &entities[entity_i]);
-      }
+    for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
+      update_entity(&render_context, entity_i);
+      render_entity(&render_context, entity_i);
     }
 
     render_selection_box(&render_context);
