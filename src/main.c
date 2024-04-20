@@ -137,7 +137,7 @@ bool Entity__has_personality(int entity_id, Personality personality) {
   return game_context.personalities[entity_id][personality] > 0;
 }
 
-SDL_FRect camera_relative_rect(RenderContext *render_context, SDL_FRect *source_rect) {
+SDL_FRect camera_relative_rect(RenderContext *render_context, FRect *source_rect) {
   SDL_FRect rect = {
       .w = source_rect->w * render_context->camera.zoom,
       .h = source_rect->h * render_context->camera.zoom,
@@ -285,8 +285,8 @@ float Spring__update(Spring *spring, float target) {
   return spring->current += spring->velocity;
 }
 
-void draw_border(RenderContext *render_context, SDL_FRect around, float gap_width, float border_width) {
-  SDL_FRect borders[4];
+void draw_border(RenderContext *render_context, FRect around, float gap_width, float border_width) {
+  FRect borders[4];
 
   //         1
   //   |-----------|
@@ -322,29 +322,12 @@ void update_entity(RenderContext *render_context, int entity_id) {
 }
 
 void render_entity(RenderContext *render_context, int entity_id) {
-  SDL_FRect rendering_rect = camera_relative_rect(
-      render_context,
-      &(SDL_FRect){
-          .w = game_context.rect[entity_id].w,
-          .h = game_context.rect[entity_id].h,
-          .x = game_context.rect[entity_id].x,
-          .y = game_context.rect[entity_id].y,
-      }
-  );
+  SDL_FRect rendering_rect = camera_relative_rect(render_context, &game_context.rect[entity_id]);
 
   draw_texture(render_context, game_context.image[entity_id], &rendering_rect);
 
   if (game_context.selected[entity_id]) {
-    draw_border(
-        render_context,
-        (SDL_FRect){
-            .h = game_context.rect[entity_id].h,
-            .w = game_context.rect[entity_id].w,
-            .x = game_context.rect[entity_id].x,
-            .y = game_context.rect[entity_id].y,
-        },
-        5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom
-    );
+    draw_border(render_context, game_context.rect[entity_id], 5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom);
   }
 }
 
@@ -480,15 +463,7 @@ void camera_follow_entity(RenderContext *render_context) {
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect(RenderContext *render_context) {
   for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
-    SDL_FRect rect = camera_relative_rect(
-        render_context,
-        &(SDL_FRect){
-            .w = game_context.rect[entity_i].w,
-            .h = game_context.rect[entity_i].h,
-            .x = game_context.rect[entity_i].x,
-            .y = game_context.rect[entity_i].y,
-        }
-    );
+    SDL_FRect rect = camera_relative_rect(render_context, &game_context.rect[entity_i]);
     SDL_FPoint point_top_left = {
         .x = rect.x,
         .y = rect.y,
@@ -513,13 +488,7 @@ void select_entities_within_selection_rect(RenderContext *render_context) {
 }
 
 bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState *mouse_state) {
-  SDL_FRect source_rect = {
-      .w = game_context.rect[entity_id].w,
-      .h = game_context.rect[entity_id].h,
-      .x = game_context.rect[entity_id].x,
-      .y = game_context.rect[entity_id].y,
-  };
-  SDL_FRect rect = camera_relative_rect(render_context, &source_rect);
+  SDL_FRect rect = camera_relative_rect(render_context, &game_context.rect[entity_id]);
 
   return SDL_PointInFRect(
       &(SDL_FPoint){
