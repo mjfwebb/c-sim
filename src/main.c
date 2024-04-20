@@ -518,6 +518,8 @@ void init() {
     fprintf(stderr, "could not initialize ttf: %s\n", TTF_GetError());
     exit(1);
   }
+
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
 }
 
 void log_entity_personalities(int entity_id) {
@@ -533,8 +535,6 @@ void log_entity_personalities(int entity_id) {
 
 int main(int argc, char *args[]) {
   init();
-
-  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
 
   SDL_Window *window =
       SDL_CreateWindow("Cultivation Sim", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
