@@ -9,11 +9,19 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <stdint.h>
+
+typedef uint8_t u8;
+typedef uint32_t u32;
+
 #include "personalities.c"
 #include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
-#define ENTITIES_START_INDEX 1  // 0 is reserved for the null entity (camera follows 0 by default)
+#define entity_loop(index_name) for(int index_name = 0; index_name < entities_count; index_name++)
+#define reverse_entity_loop(index_name) for(int index_name = entities_count - 1; index_name >= 0; index_name--)
+
+#define INVALID_ENTITY (-100000000)
 #define MAX_ENTITIES 1024
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
@@ -61,7 +69,6 @@ typedef struct {
   Spring zoom_spring;
   Spring pan_spring_x;
   Spring pan_spring_y;
-  int following_entity;
 } Camera;
 
 typedef struct {
@@ -91,7 +98,7 @@ typedef struct {
   TTF_Font **fonts;
   float fps;
   Selection selection;
-  const Uint8 *keyboard_state;
+  const u8 *keyboard_state;
   Image *images;
 } RenderContext;
 
@@ -103,7 +110,7 @@ typedef struct {
   FRect rect[MAX_ENTITIES];
   int image[MAX_ENTITIES];
   FPoint direction[MAX_ENTITIES];
-  int personalities[MAX_ENTITIES][array_count(Personality__Strings)];
+  int personalities[MAX_ENTITIES][Personality_Count];
 } GameContext;
 
 typedef struct {
@@ -117,15 +124,15 @@ typedef struct {
 } MouseState;
 
 GameContext game_context = {0};
-int entities_count = ENTITIES_START_INDEX;
+int entities_count = 0;
 
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
 }
 
-int Entity__get_personality_count(int entity_id) {
+int Entity__get_personality_count(int entity_index) {
   int result = 0;
-  for (int i = 0; i < array_count(Personality__Strings); i++) {
+  for (int i = 0; i < Personality_Count; i++) {
     if (game_context.personalities[i] > 0) {
       result += 1;
     }
@@ -134,8 +141,8 @@ int Entity__get_personality_count(int entity_id) {
   return result;
 }
 
-bool Entity__has_personality(int entity_id, Personality personality) {
-  return game_context.personalities[entity_id][personality] > 0;
+bool Entity__has_personality(int entity_index, Personality personality) {
+  return game_context.personalities[entity_index][personality] > 0;
 }
 
 void Entity__create(RenderContext *render_context, char *name) {
@@ -151,8 +158,8 @@ void Entity__create(RenderContext *render_context, char *name) {
   game_context.rect[entities_count] = (FRect){
       .h = height,
       .w = width,
-      .x = (float)(rand() % 2000) - 1000,
-      .y = (float)(rand() % 2000) - 1000,
+      .x = (float)random_int_between(-1000, 1000),
+      .y = (float)random_int_between(-1000, 1000),
   };
   game_context.direction[entities_count] = (FPoint){
       .x = ((float)(rand() % 200) - 100) / 100,
@@ -162,12 +169,11 @@ void Entity__create(RenderContext *render_context, char *name) {
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
-    int personality = random_int_between(0, array_count(Personality__Strings));
+    int personality = random_int_between(0, Personality_Count);
     game_context.personalities[entities_count][personality] = random_int_between(0, 100);
   }
 
-  // Now increment entities_count so the next one has a higher index;
-  entities_count++;
+  entities_count += 1;
 }
 
 SDL_FRect screen_to_world(RenderContext *render_context, SDL_FRect *screen_rect) {
@@ -441,18 +447,32 @@ void keyboard_control_camera(RenderContext *render_context) {
   }
 }
 
+int get_entity_to_follow()
+{
+  int result = INVALID_ENTITY;
+  int selected_count = 0;
+  entity_loop(entity_i) {
+    if (game_context.selected[entity_i]) {
+      selected_count += 1;
+      result = entity_i;
+    }
+  }
+  return selected_count == 1 ? result : INVALID_ENTITY;
+}
+
 // Set the camera to follow an entity, if only one entity is selected
 void camera_follow_entity(RenderContext *render_context) {
-  if (render_context->camera.following_entity > 0) {
+  int to_follow = get_entity_to_follow();
+  if (to_follow != INVALID_ENTITY) {
     // TODO: Make it center on the entity
-    render_context->camera.target_x = game_context.rect[render_context->camera.following_entity].x;
-    render_context->camera.target_y = game_context.rect[render_context->camera.following_entity].y;
+    render_context->camera.target_x = game_context.rect[to_follow].x;
+    render_context->camera.target_y = game_context.rect[to_follow].y;
   }
 }
 
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect(RenderContext *render_context) {
-  for (int entity_i = ENTITIES_START_INDEX; entity_i < entities_count; entity_i++) {
+  entity_loop(entity_i) {
     SDL_FRect rect = world_to_screen(render_context, &game_context.rect[entity_i]);
     SDL_FPoint point_top_left = {
         .x = rect.x,
@@ -504,7 +524,7 @@ void init() {
 }
 
 void log_entity_personalities(int entity_id) {
-  for (int personality_i = 0; personality_i < array_count(game_context.personalities[entity_id]); personality_i++) {
+  for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
     if (Entity__has_personality(entity_id, personality_i)) {
       print(
           "Entity %s has personality %s with value %d", game_context.names[entity_id], Personality__Strings[personality_i],
@@ -646,19 +666,10 @@ int main(int argc, char *args[]) {
   Entity__create(&render_context, "lastmiles");
   Entity__create(&render_context, "soulfoam");
 
-  MouseState mouse_state = {
-      .prev_state = 0,
-      .state = 0,
-      .button = 0,
-      .clicks = 0,
-      .prev_x = 0,
-      .prev_y = 0,
-      .x = 0,
-      .y = 0,
-  };
+  MouseState mouse_state = {0};
 
   int game_is_still_running = 1;
-  unsigned int start_ticks = SDL_GetTicks();
+  u32 start_ticks = SDL_GetTicks();
   int current_time = 0;
   int frame_count = 0;
   int last_update_time = 0;
@@ -714,7 +725,17 @@ int main(int argc, char *args[]) {
       if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
           case SDLK_ESCAPE:
-            game_is_still_running = 0;
+            bool was_something_selected = false;;
+
+            reverse_entity_loop(entity_i) {
+                if (game_context.selected[entity_i]) {
+                  was_something_selected = true;
+                  game_context.selected[entity_i] = false;
+              }
+            }
+            if(!was_something_selected) {
+              game_is_still_running = 0;
+            }
             // Maybe the following process:
             // 1. If anything is selected, then deselect it and break.
             // 2. If nothing was deselected, then open the pause menu.
@@ -745,22 +766,16 @@ int main(int argc, char *args[]) {
       }
 
       // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
-      for (int entity_i = entities_count - 1; entity_i >= ENTITIES_START_INDEX; entity_i--) {
+      reverse_entity_loop(entity_i) {
         game_context.hovered[entity_i] = entity_under_mouse(&render_context, entity_i, &mouse_state);
       }
 
-      for (int entity_i = entities_count - 1; entity_i >= ENTITIES_START_INDEX; entity_i--) {
+      reverse_entity_loop(entity_i) {
         if (entity_under_mouse(&render_context, entity_i, &mouse_state)) {
           if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED &&
               render_context.selection.rect.w == 0) {
             game_context.selected[entity_i] = !game_context.selected[entity_i];
             log_entity_personalities(entity_i);
-
-            if (game_context.selected[entity_i]) {
-              render_context.camera.following_entity = entity_i;
-            } else {
-              render_context.camera.following_entity = 0;
-            }
             break;
           }
         }
@@ -800,13 +815,13 @@ int main(int argc, char *args[]) {
 
     draw_grid(&render_context);
 
-    for (int entity_i = ENTITIES_START_INDEX; entity_i < entities_count; entity_i++) {
+    entity_loop(entity_i) {
       update_entity(&render_context, entity_i);
       render_entity(&render_context, entity_i);
     }
 
     if (render_context.camera.zoom > 0.5f) {
-      for (int entity_i = ENTITIES_START_INDEX; entity_i < entities_count; entity_i++) {
+      entity_loop(entity_i) {
         draw_entity_name(&render_context, entity_i);
       }
     }
