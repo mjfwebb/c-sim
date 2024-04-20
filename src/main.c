@@ -137,17 +137,6 @@ bool Entity__has_personality(int entity_id, Personality personality) {
   return game_context.personalities[entity_id][personality] > 0;
 }
 
-SDL_FRect camera_relative_rect(RenderContext *render_context, FRect *source_rect) {
-  SDL_FRect rect = {
-      .w = source_rect->w * render_context->camera.zoom,
-      .h = source_rect->h * render_context->camera.zoom,
-      .x = ((source_rect->x - render_context->camera.x) * render_context->camera.zoom + render_context->window_w / 2),
-      .y = ((source_rect->y - render_context->camera.y) * render_context->camera.zoom + render_context->window_h / 2),
-  };
-
-  return rect;
-}
-
 void Entity__create(RenderContext *render_context, char *name) {
   int image_id = random_int_between(0, 3);
   float width = 100.0f;
@@ -178,6 +167,28 @@ void Entity__create(RenderContext *render_context, char *name) {
 
   // Now increment num_of_entities so the next one has a higher index;
   num_of_entities++;
+}
+
+SDL_FRect screen_to_world(RenderContext *render_context, SDL_FRect *screen_rect) {
+  SDL_FRect world_rect = {
+      .w = screen_rect->w / render_context->camera.zoom,
+      .h = screen_rect->h / render_context->camera.zoom,
+      .x = (screen_rect->x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.x,
+      .y = (screen_rect->y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.y,
+  };
+
+  return world_rect;
+}
+
+SDL_FRect world_to_screen(RenderContext *render_context, FRect *world_rect) {
+  SDL_FRect screen_rect = {
+      .w = world_rect->w * render_context->camera.zoom,
+      .h = world_rect->h * render_context->camera.zoom,
+      .x = (world_rect->x - render_context->camera.x) * render_context->camera.zoom + render_context->window_w / 2,
+      .y = (world_rect->y - render_context->camera.y) * render_context->camera.zoom + render_context->window_h / 2,
+  };
+
+  return screen_rect;
 }
 
 void draw_texture(RenderContext *render_context, int image_id, SDL_FRect *rendering_rect) {
@@ -311,7 +322,7 @@ void draw_border(RenderContext *render_context, FRect around, float gap_width, f
     }
 
     SDL_SetRenderDrawColor(render_context->renderer, 255, 255, 255, 255);
-    SDL_FRect rect = camera_relative_rect(render_context, &borders[i]);
+    SDL_FRect rect = world_to_screen(render_context, &borders[i]);
     SDL_RenderFillRectF(render_context->renderer, &rect);
   }
 }
@@ -322,7 +333,7 @@ void update_entity(RenderContext *render_context, int entity_id) {
 }
 
 void render_entity(RenderContext *render_context, int entity_id) {
-  SDL_FRect rendering_rect = camera_relative_rect(render_context, &game_context.rect[entity_id]);
+  SDL_FRect rendering_rect = world_to_screen(render_context, &game_context.rect[entity_id]);
 
   draw_texture(render_context, game_context.image[entity_id], &rendering_rect);
 
@@ -354,28 +365,6 @@ TTF_Font *Font__load(const char *font_file_path, int font_size) {
   return font;
 }
 
-SDL_FRect screen_to_world(RenderContext *render_context, SDL_FRect screen_rect) {
-  SDL_FRect world_rect = {
-      .w = screen_rect.w / render_context->camera.zoom,
-      .h = screen_rect.h / render_context->camera.zoom,
-      .x = (screen_rect.x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.x,
-      .y = (screen_rect.y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.y,
-  };
-
-  return world_rect;
-}
-
-SDL_FRect world_to_screen(RenderContext *render_context, SDL_FRect world_rect) {
-  SDL_FRect screen_rect = {
-      .w = world_rect.w * render_context->camera.zoom,
-      .h = world_rect.h * render_context->camera.zoom,
-      .x = (world_rect.x - render_context->camera.x) * render_context->camera.zoom + render_context->window_w / 2,
-      .y = (world_rect.y - render_context->camera.y) * render_context->camera.zoom + render_context->window_h / 2,
-  };
-
-  return screen_rect;
-}
-
 void draw_grid(RenderContext *render_context) {
   // Draw it blended
   SDL_SetRenderDrawBlendMode(render_context->renderer, SDL_BLENDMODE_BLEND);
@@ -386,7 +375,7 @@ void draw_grid(RenderContext *render_context) {
 
   SDL_FRect grid_to_screen = world_to_screen(
       render_context,
-      (SDL_FRect){
+      &(FRect){
           .w = grid_size,
           .h = grid_size,
           .x = 0,
@@ -463,7 +452,7 @@ void camera_follow_entity(RenderContext *render_context) {
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect(RenderContext *render_context) {
   for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
-    SDL_FRect rect = camera_relative_rect(render_context, &game_context.rect[entity_i]);
+    SDL_FRect rect = world_to_screen(render_context, &game_context.rect[entity_i]);
     SDL_FPoint point_top_left = {
         .x = rect.x,
         .y = rect.y,
@@ -488,7 +477,7 @@ void select_entities_within_selection_rect(RenderContext *render_context) {
 }
 
 bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState *mouse_state) {
-  SDL_FRect rect = camera_relative_rect(render_context, &game_context.rect[entity_id]);
+  SDL_FRect rect = world_to_screen(render_context, &game_context.rect[entity_id]);
 
   return SDL_PointInFRect(
       &(SDL_FPoint){
