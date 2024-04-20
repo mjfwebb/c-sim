@@ -1,6 +1,7 @@
 #define SDL_MAIN_HANDLED
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -348,7 +349,7 @@ void render_entity(RenderContext *render_context, int entity_id) {
 }
 
 Image Image__load(RenderContext *render_context, const char *texture_file_path) {
-  SDL_Surface *surface = SDL_LoadBMP(texture_file_path);
+  SDL_Surface *surface = IMG_Load(texture_file_path);
   assert(surface);
 
   SDL_Texture *texture = SDL_CreateTextureFromSurface(render_context->renderer, surface);
