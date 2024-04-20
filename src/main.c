@@ -462,9 +462,8 @@ int get_entity_to_follow() {
 void camera_follow_entity(RenderContext *render_context) {
   int to_follow = get_entity_to_follow();
   if (to_follow != INVALID_ENTITY) {
-    // TODO: Make it center on the entity
-    render_context->camera.target_x = game_context.rect[to_follow].x;
-    render_context->camera.target_y = game_context.rect[to_follow].y;
+    render_context->camera.target_x = game_context.rect[to_follow].x + game_context.rect[to_follow].w / 2;
+    render_context->camera.target_y = game_context.rect[to_follow].y + game_context.rect[to_follow].h / 2;
   }
 }
 
