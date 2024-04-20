@@ -19,21 +19,14 @@ typedef uint32_t u32;
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 #define entity_loop(index_name) for (int index_name = 0; index_name < entities_count; index_name++)
 #define reverse_entity_loop(index_name) for (int index_name = entities_count - 1; index_name >= 0; index_name--)
+#define mouse_primary_pressed(mouse_state) \
+  (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
 
 #define INVALID_ENTITY (-100000000)
 #define MAX_ENTITIES 1024
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
-#define rect_fields \
-  float w;          \
-  float h
-#define point_fields \
-  float x;           \
-  float y
-#define target_point_fields \
-  float target_x;           \
-  float target_y
 
 #define print(format, ...)            \
   printf(format "\n", ##__VA_ARGS__); \
@@ -60,9 +53,8 @@ typedef struct Spring {
 } Spring;
 
 typedef struct {
-  rect_fields;
-  point_fields;
-  target_point_fields;
+  FRect rect;
+  FPoint target;
   float target_zoom;
   float zoom;
   Spring zoom_spring;
@@ -71,11 +63,10 @@ typedef struct {
 } Camera;
 
 typedef struct {
-  point_fields;
-  target_point_fields;
+  FPoint position;
+  FPoint target;
   Spring spring_x;
   Spring spring_y;
-  SDL_FRect rect;
 } Selection;
 
 typedef struct {
@@ -116,9 +107,8 @@ typedef struct {
   int prev_state;
   int state;
   int button;
-  point_fields;
-  float prev_x;
-  float prev_y;
+  FPoint position;
+  FPoint prev_position;
   int clicks;
 } MouseState;
 
@@ -175,12 +165,12 @@ void Entity__create(RenderContext *render_context, char *name) {
   entities_count += 1;
 }
 
-SDL_FRect screen_to_world(RenderContext *render_context, SDL_FRect *screen_rect) {
+SDL_FRect screen_to_world(RenderContext *render_context, FRect *screen_rect) {
   SDL_FRect world_rect = {
       .w = screen_rect->w / render_context->camera.zoom,
       .h = screen_rect->h / render_context->camera.zoom,
-      .x = (screen_rect->x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.x,
-      .y = (screen_rect->y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.y,
+      .x = (screen_rect->x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.rect.x,
+      .y = (screen_rect->y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.rect.y,
   };
 
   return world_rect;
@@ -190,8 +180,8 @@ SDL_FRect world_to_screen(RenderContext *render_context, FRect *world_rect) {
   SDL_FRect screen_rect = {
       .w = world_rect->w * render_context->camera.zoom,
       .h = world_rect->h * render_context->camera.zoom,
-      .x = (world_rect->x - render_context->camera.x) * render_context->camera.zoom + render_context->window_w / 2,
-      .y = (world_rect->y - render_context->camera.y) * render_context->camera.zoom + render_context->window_h / 2,
+      .x = (world_rect->x - render_context->camera.rect.x) * render_context->camera.zoom + render_context->window_w / 2,
+      .y = (world_rect->y - render_context->camera.rect.y) * render_context->camera.zoom + render_context->window_h / 2,
   };
 
   return screen_rect;
@@ -208,7 +198,7 @@ void draw_texture(RenderContext *render_context, int image_id, SDL_FRect *render
 void draw_entity_name(RenderContext *render_context, int entity_id) {
   TTF_Font *font = NULL;
   SDL_Surface *text_surface = NULL;
-  float y = (game_context.rect[entity_id].y - render_context->camera.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
+  float y = (game_context.rect[entity_id].y - render_context->camera.rect.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
             render_context->window_h / 2;
 
   if (game_context.hovered[entity_id]) {
@@ -231,7 +221,7 @@ void draw_entity_name(RenderContext *render_context, int entity_id) {
   }
 
   float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_surface->w) / 2;
-  float x = (((game_context.rect[entity_id].x - render_context->camera.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
+  float x = (((game_context.rect[entity_id].x - render_context->camera.rect.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
 
   SDL_FRect text_rect = {.w = (float)text_surface->w, .h = (float)text_surface->h, .x = x, .y = y};
 
@@ -272,6 +262,15 @@ void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
   SDL_DestroyTexture(text_texture);
 }
 
+FRect get_selection_rect(RenderContext *render_context, MouseState *mouse_state) {
+  return (FRect){
+      .x = SDL_min(mouse_state->position.x, render_context->selection.position.x),
+      .y = SDL_min(mouse_state->position.y, render_context->selection.position.y),
+      .w = SDL_fabsf(mouse_state->position.x - render_context->selection.position.x),
+      .h = SDL_fabsf(mouse_state->position.y - render_context->selection.position.y),
+  };
+}
+
 void render_debug_info(RenderContext *render_context, MouseState *mouse_state) {
   int index = 0;
   draw_debug_text(render_context, index++, "fps: %.2f", render_context->fps);
@@ -280,18 +279,31 @@ void render_debug_info(RenderContext *render_context, MouseState *mouse_state) {
   draw_debug_text(render_context, index++, "camera zoom: %.1f", render_context->camera.target_zoom);
   draw_debug_text(render_context, index++, "game speed: %.1f", render_context->speed);
   draw_debug_text(
-      render_context, index++, "camera: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context->camera.x, render_context->camera.y,
-      render_context->camera.target_x, render_context->camera.target_y
+      render_context, index++, "camera: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context->camera.rect.x, render_context->camera.rect.y,
+      render_context->camera.target.x, render_context->camera.target.y
   );
+  FRect selection_rect = get_selection_rect(render_context, mouse_state);
   draw_debug_text(
-      render_context, index++, "selection: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context->selection.x, render_context->selection.y,
-      render_context->selection.target_x, render_context->selection.target_y
+      render_context, index++, "selection: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", selection_rect.x, selection_rect.y,
+      render_context->selection.target.x, render_context->selection.target.y
   );
 }
 
-void render_selection_box(RenderContext *render_context) {
+void draw_selection_box(RenderContext *render_context, MouseState *mouse_state) {
+  FRect selection_rect = get_selection_rect(render_context, mouse_state);
+
+  if (selection_rect.w < 3.0f) {
+    return;
+  }
+
+  SDL_FRect selection_rect_f = {
+      .x = selection_rect.x,
+      .y = selection_rect.y,
+      .w = selection_rect.w,
+      .h = selection_rect.h,
+  };
   SDL_SetRenderDrawColor(render_context->renderer, 255, 255, 255, 255);
-  int result = SDL_RenderDrawRectF(render_context->renderer, &render_context->selection.rect);
+  int result = SDL_RenderDrawRectF(render_context->renderer, &selection_rect_f);
   assert(result == 0);
 }
 
@@ -413,14 +425,14 @@ void clear_screen(RenderContext *render_context) {
 
 void mouse_control_camera(RenderContext *render_context, MouseState *mouse_state) {
   if (mouse_state->button == SDL_BUTTON_RIGHT && mouse_state->state == SDL_PRESSED) {
-    if (mouse_state->prev_x != mouse_state->x || mouse_state->prev_y != mouse_state->y) {
-      float delta_x = mouse_state->x - mouse_state->prev_x;
-      float delta_y = mouse_state->y - mouse_state->prev_y;
-      mouse_state->prev_x = mouse_state->x;
-      mouse_state->prev_y = mouse_state->y;
+    if (mouse_state->prev_position.x != mouse_state->position.x || mouse_state->prev_position.y != mouse_state->position.y) {
+      float delta_x = mouse_state->position.x - mouse_state->prev_position.x;
+      float delta_y = mouse_state->position.y - mouse_state->prev_position.y;
+      mouse_state->prev_position.x = mouse_state->position.x;
+      mouse_state->prev_position.y = mouse_state->position.y;
 
-      render_context->camera.target_x -= delta_x / render_context->camera.zoom;
-      render_context->camera.target_y -= delta_y / render_context->camera.zoom;
+      render_context->camera.target.x -= delta_x / render_context->camera.zoom;
+      render_context->camera.target.y -= delta_y / render_context->camera.zoom;
     }
   }
 }
@@ -429,20 +441,20 @@ void mouse_control_camera(RenderContext *render_context, MouseState *mouse_state
 void keyboard_control_camera(RenderContext *render_context) {
   float camera_keyboard_movement_speed = 5.0f;
   if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_w)]) {
-    render_context->camera.target_y -= camera_keyboard_movement_speed / render_context->camera.zoom;
-    render_context->selection.target_y += camera_keyboard_movement_speed;
+    render_context->camera.target.y -= camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target.y += camera_keyboard_movement_speed;
   }
   if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_s)]) {
-    render_context->camera.target_y += camera_keyboard_movement_speed / render_context->camera.zoom;
-    render_context->selection.target_y -= camera_keyboard_movement_speed;
+    render_context->camera.target.y += camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target.y -= camera_keyboard_movement_speed;
   }
   if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_a)]) {
-    render_context->camera.target_x -= camera_keyboard_movement_speed / render_context->camera.zoom;
-    render_context->selection.target_x += camera_keyboard_movement_speed;
+    render_context->camera.target.x -= camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target.x += camera_keyboard_movement_speed;
   }
   if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_d)]) {
-    render_context->camera.target_x += camera_keyboard_movement_speed / render_context->camera.zoom;
-    render_context->selection.target_x -= camera_keyboard_movement_speed;
+    render_context->camera.target.x += camera_keyboard_movement_speed / render_context->camera.zoom;
+    render_context->selection.target.x -= camera_keyboard_movement_speed;
   }
 }
 
@@ -462,13 +474,13 @@ int get_entity_to_follow() {
 void camera_follow_entity(RenderContext *render_context) {
   int to_follow = get_entity_to_follow();
   if (to_follow != INVALID_ENTITY) {
-    render_context->camera.target_x = game_context.rect[to_follow].x + game_context.rect[to_follow].w / 2;
-    render_context->camera.target_y = game_context.rect[to_follow].y + game_context.rect[to_follow].h / 2;
+    render_context->camera.target.x = game_context.rect[to_follow].x + game_context.rect[to_follow].w / 2;
+    render_context->camera.target.y = game_context.rect[to_follow].y + game_context.rect[to_follow].h / 2;
   }
 }
 
 // Set selected on any entity within the selection_rect
-void select_entities_within_selection_rect(RenderContext *render_context) {
+void select_entities_within_selection_rect(RenderContext *render_context, MouseState *mouse_state) {
   entity_loop(entity_i) {
     SDL_FRect rect = world_to_screen(render_context, &game_context.rect[entity_i]);
     SDL_FPoint point_top_left = {
@@ -481,9 +493,15 @@ void select_entities_within_selection_rect(RenderContext *render_context) {
     };
 
     // If the selection rect is bigger than 3 pixels, select the entity if it's within the selection rect
-    if (render_context->selection.rect.w > 3.0f) {
-      if (SDL_PointInFRect(&point_top_left, &render_context->selection.rect) &&
-          SDL_PointInFRect(&point_bottom_right, &render_context->selection.rect)) {
+    FRect selection_rect = get_selection_rect(render_context, mouse_state);
+    SDL_FRect sdl_frect = {
+        .x = selection_rect.x,
+        .y = selection_rect.y,
+        .w = selection_rect.w,
+        .h = selection_rect.h,
+    };
+    if (selection_rect.w > 3.0f) {
+      if (SDL_PointInFRect(&point_top_left, &sdl_frect) && SDL_PointInFRect(&point_bottom_right, &sdl_frect)) {
         game_context.selected[entity_i] = true;
       } else {
         if (!render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
@@ -499,8 +517,8 @@ bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState
 
   return SDL_PointInFRect(
       &(SDL_FPoint){
-          .x = mouse_state->x,
-          .y = mouse_state->y,
+          .x = mouse_state->position.x,
+          .y = mouse_state->position.y,
       },
       &rect
   );
@@ -551,8 +569,6 @@ int main(int argc, char *args[]) {
       .background_color = {35, 127, 178, 255},
       .camera =
           {
-              .x = 0,
-              .y = 0,
               .target_zoom = 1.0f,
               .pan_spring_x =
                   {
@@ -695,19 +711,19 @@ int main(int argc, char *args[]) {
         mouse_state.clicks = event.button.clicks;
         if (mouse_state.prev_state != SDL_PRESSED) {
           // Set selection target to the current mouse position
-          render_context.selection.target_x = mouse_state.x;
-          render_context.selection.target_y = mouse_state.y;
+          render_context.selection.target.x = mouse_state.position.x;
+          render_context.selection.target.y = mouse_state.position.y;
           // Reset selection spring so it doesn't spring between the old selection and the new one
-          render_context.selection.spring_x.current = render_context.selection.target_x;
-          render_context.selection.spring_y.current = render_context.selection.target_y;
+          render_context.selection.spring_x.current = render_context.selection.target.x;
+          render_context.selection.spring_y.current = render_context.selection.target.y;
         }
       }
       if (event.type == SDL_MOUSEMOTION) {
         mouse_state.prev_state = mouse_state.state;
-        mouse_state.prev_x = mouse_state.x;
-        mouse_state.prev_y = mouse_state.y;
-        mouse_state.x = (float)event.motion.x;
-        mouse_state.y = (float)event.motion.y;
+        mouse_state.prev_position.x = mouse_state.position.x;
+        mouse_state.prev_position.y = mouse_state.position.y;
+        mouse_state.position.x = (float)event.motion.x;
+        mouse_state.position.y = (float)event.motion.y;
       }
       if (event.type == SDL_MOUSEWHEEL) {
         if (event.wheel.y > 0) {
@@ -768,8 +784,7 @@ int main(int argc, char *args[]) {
 
       reverse_entity_loop(entity_i) {
         if (entity_under_mouse(&render_context, entity_i, &mouse_state)) {
-          if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED &&
-              render_context.selection.rect.w == 0) {
+          if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
             game_context.selected[entity_i] = !game_context.selected[entity_i];
             log_entity_personalities(entity_i);
             break;
@@ -782,30 +797,19 @@ int main(int argc, char *args[]) {
 
     keyboard_control_camera(&render_context);
 
-    {  // Selection rect creation
-      if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED) {
-        render_context.selection.rect = (SDL_FRect){
-            .x = SDL_min(mouse_state.x, render_context.selection.x),
-            .y = SDL_min(mouse_state.y, render_context.selection.y),
-            .w = SDL_fabsf(mouse_state.x - render_context.selection.x),
-            .h = SDL_fabsf(mouse_state.y - render_context.selection.y),
-        };
-      }
+    if (mouse_primary_pressed(mouse_state)) {
+      select_entities_within_selection_rect(&render_context, &mouse_state);
+    } else {
+      camera_follow_entity(&render_context);
     }
 
-    camera_follow_entity(&render_context);
+    // Spring the selection box
+    render_context.selection.position.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target.x);
+    render_context.selection.position.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target.y);
 
-    select_entities_within_selection_rect(&render_context);
-
-    {  // Spring the selection box
-      render_context.selection.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target_x);
-      render_context.selection.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target_y);
-    }
-
-    {  // Spring the camera position
-      render_context.camera.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target_x);
-      render_context.camera.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target_y);
-    }
+    // Spring the camera position
+    render_context.camera.rect.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
+    render_context.camera.rect.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
 
     clear_screen(&render_context);
 
@@ -822,14 +826,14 @@ int main(int argc, char *args[]) {
       }
     }
 
-    render_selection_box(&render_context);
+    if (mouse_primary_pressed(mouse_state)) {
+      // Draw the selection box
+      draw_selection_box(&render_context, &mouse_state);
+    }
 
     render_debug_info(&render_context, &mouse_state);
 
     SDL_RenderPresent(render_context.renderer);
-
-    // Clear the selection rect
-    render_context.selection.rect = (SDL_FRect){0};
   }
 
   SDL_DestroyRenderer(render_context.renderer);
