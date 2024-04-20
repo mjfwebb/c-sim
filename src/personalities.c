@@ -80,11 +80,10 @@
   X(Visionary)           \
   X(Wisecracking)        \
   X(Wise)                \
-  X(Worldly)             \
-  X(count)
+  X(Worldly)
 
 #define X(name) Personalities__##name,
-typedef enum { PERSONALITY_LIST } Personality;
+typedef enum { PERSONALITY_LIST Personality_Count} Personality;
 #undef X
 
 #define X(name) [Personalities__##name] = #name,

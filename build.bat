@@ -42,10 +42,10 @@ setlocal ENABLEDELAYEDEXPANSION
 
         if %ERRORLEVEL%==0 (
         set "__outputMessage=Build successful"
-        Powershell -c "(New-Object Media.SoundPlayer 'E:\\development\\c\\cultivation-sim\\success.wav').PlaySync();"
+        start /MIN "" Powershell -c "(New-Object Media.SoundPlayer '..\success.wav').PlaySync();"
         ) else (
         set "__outputMessage=Build failed"
-        Powershell -c "(New-Object Media.SoundPlayer 'E:\\development\\c\\cultivation-sim\\fail.wav').PlaySync();"
+        start /MIN "" Powershell -c "(New-Object Media.SoundPlayer '..\fail.wav').PlaySync();"
         )
 
     popd
