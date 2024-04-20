@@ -5,11 +5,10 @@
 #include <SDL2/SDL_ttf.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
-#include <stdint.h>
 
 typedef uint8_t u8;
 typedef uint32_t u32;
@@ -18,8 +17,8 @@ typedef uint32_t u32;
 #include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
-#define entity_loop(index_name) for(int index_name = 0; index_name < entities_count; index_name++)
-#define reverse_entity_loop(index_name) for(int index_name = entities_count - 1; index_name >= 0; index_name--)
+#define entity_loop(index_name) for (int index_name = 0; index_name < entities_count; index_name++)
+#define reverse_entity_loop(index_name) for (int index_name = entities_count - 1; index_name >= 0; index_name--)
 
 #define INVALID_ENTITY (-100000000)
 #define MAX_ENTITIES 1024
@@ -447,8 +446,7 @@ void keyboard_control_camera(RenderContext *render_context) {
   }
 }
 
-int get_entity_to_follow()
-{
+int get_entity_to_follow() {
   int result = INVALID_ENTITY;
   int selected_count = 0;
   entity_loop(entity_i) {
@@ -724,15 +722,15 @@ int main(int argc, char *args[]) {
       if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
           case SDLK_ESCAPE:
-            bool was_something_selected = false;;
+            bool was_something_selected = false;
 
             reverse_entity_loop(entity_i) {
-                if (game_context.selected[entity_i]) {
-                  was_something_selected = true;
-                  game_context.selected[entity_i] = false;
+              if (game_context.selected[entity_i]) {
+                was_something_selected = true;
+                game_context.selected[entity_i] = false;
               }
             }
-            if(!was_something_selected) {
+            if (!was_something_selected) {
               game_is_still_running = 0;
             }
             // Maybe the following process:
