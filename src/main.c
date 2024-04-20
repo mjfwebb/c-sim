@@ -13,6 +13,7 @@
 #include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
+#define ENTITIES_START_INDEX 1  // 0 is reserved for the null entity (camera follows 0 by default)
 #define MAX_ENTITIES 1024
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
@@ -116,7 +117,7 @@ typedef struct {
 } MouseState;
 
 GameContext game_context = {0};
-int num_of_entities = 0;
+int entities_count = ENTITIES_START_INDEX;
 
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
@@ -143,30 +144,30 @@ void Entity__create(RenderContext *render_context, char *name) {
   float scale = width / render_context->images[image_id].w;
   float height = (float)(render_context->images[image_id].h * scale);
 
-  game_context.health[num_of_entities] = 100;
-  game_context.names[num_of_entities] = name;
-  game_context.selected[num_of_entities] = false;
-  game_context.hovered[num_of_entities] = false;
-  game_context.rect[num_of_entities] = (FRect){
+  game_context.health[entities_count] = 100;
+  game_context.names[entities_count] = name;
+  game_context.selected[entities_count] = false;
+  game_context.hovered[entities_count] = false;
+  game_context.rect[entities_count] = (FRect){
       .h = height,
       .w = width,
       .x = (float)(rand() % 2000) - 1000,
       .y = (float)(rand() % 2000) - 1000,
   };
-  game_context.direction[num_of_entities] = (FPoint){
+  game_context.direction[entities_count] = (FPoint){
       .x = ((float)(rand() % 200) - 100) / 100,
       .y = ((float)(rand() % 200) - 100) / 100,
   };
-  game_context.image[num_of_entities] = image_id;
+  game_context.image[entities_count] = image_id;
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
     int personality = random_int_between(0, array_count(Personality__Strings));
-    game_context.personalities[num_of_entities][personality] = random_int_between(0, 100);
+    game_context.personalities[entities_count][personality] = random_int_between(0, 100);
   }
 
-  // Now increment num_of_entities so the next one has a higher index;
-  num_of_entities++;
+  // Now increment entities_count so the next one has a higher index;
+  entities_count++;
 }
 
 SDL_FRect screen_to_world(RenderContext *render_context, SDL_FRect *screen_rect) {
@@ -442,7 +443,7 @@ void keyboard_control_camera(RenderContext *render_context) {
 
 // Set the camera to follow an entity, if only one entity is selected
 void camera_follow_entity(RenderContext *render_context) {
-  if (render_context->camera.following_entity > -1) {
+  if (render_context->camera.following_entity > 0) {
     // TODO: Make it center on the entity
     render_context->camera.target_x = game_context.rect[render_context->camera.following_entity].x;
     render_context->camera.target_y = game_context.rect[render_context->camera.following_entity].y;
@@ -451,7 +452,7 @@ void camera_follow_entity(RenderContext *render_context) {
 
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect(RenderContext *render_context) {
-  for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
+  for (int entity_i = ENTITIES_START_INDEX; entity_i < entities_count; entity_i++) {
     SDL_FRect rect = world_to_screen(render_context, &game_context.rect[entity_i]);
     SDL_FPoint point_top_left = {
         .x = rect.x,
@@ -560,7 +561,7 @@ int main(int argc, char *args[]) {
                       .acceleration = 0.4f,
                       .friction = 0.1f,
                   },
-              .following_entity = -1,
+              .following_entity = 0,
           },
       .fonts =
           (TTF_Font *[]){
@@ -744,21 +745,21 @@ int main(int argc, char *args[]) {
       }
 
       // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
-      for (int entity_id = num_of_entities - 1; entity_id >= 0; entity_id--) {
-        game_context.hovered[entity_id] = entity_under_mouse(&render_context, entity_id, &mouse_state);
+      for (int entity_i = entities_count - 1; entity_i >= ENTITIES_START_INDEX; entity_i--) {
+        game_context.hovered[entity_i] = entity_under_mouse(&render_context, entity_i, &mouse_state);
       }
 
-      for (int entity_id = num_of_entities - 1; entity_id >= 0; entity_id--) {
-        if (entity_under_mouse(&render_context, entity_id, &mouse_state)) {
+      for (int entity_i = entities_count - 1; entity_i >= ENTITIES_START_INDEX; entity_i--) {
+        if (entity_under_mouse(&render_context, entity_i, &mouse_state)) {
           if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED &&
               render_context.selection.rect.w == 0) {
-            game_context.selected[entity_id] = !game_context.selected[entity_id];
-            log_entity_personalities(entity_id);
+            game_context.selected[entity_i] = !game_context.selected[entity_i];
+            log_entity_personalities(entity_i);
 
-            if (game_context.selected[entity_id]) {
-              render_context.camera.following_entity = entity_id;
+            if (game_context.selected[entity_i]) {
+              render_context.camera.following_entity = entity_i;
             } else {
-              render_context.camera.following_entity = -1;
+              render_context.camera.following_entity = 0;
             }
             break;
           }
@@ -799,14 +800,14 @@ int main(int argc, char *args[]) {
 
     draw_grid(&render_context);
 
-    for (int entity_i = 0; entity_i < num_of_entities; entity_i++) {
+    for (int entity_i = ENTITIES_START_INDEX; entity_i < entities_count; entity_i++) {
       update_entity(&render_context, entity_i);
       render_entity(&render_context, entity_i);
     }
 
     if (render_context.camera.zoom > 0.5f) {
-      for (int entity_id = 0; entity_id < num_of_entities; entity_id++) {
-        draw_entity_name(&render_context, entity_id);
+      for (int entity_i = ENTITIES_START_INDEX; entity_i < entities_count; entity_i++) {
+        draw_entity_name(&render_context, entity_i);
       }
     }
 
