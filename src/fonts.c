@@ -130,7 +130,7 @@ void init_latin_character_sets(const u32 bits)
     }
     if(bits & LATIN_EXTENDED_B_BIT){
         for(int i = 0; i <= LATIN_EXTENDED_B_SET_COUNT; i++){
-            LATIN_EXTENDED_B_SET[i] = i + 256;
+            LATIN_EXTENDED_B_SET[i] = i + 384;
         }
     }
 }

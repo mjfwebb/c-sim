@@ -868,6 +868,10 @@ int main(int argc, char *args[]) {
     const char* text = "Hallå! Kör! Män!";
     draw_text_utf8(text, (FPoint){mouse_state.position.x, mouse_state.position.y}, swedish_text_color, &test_font);
 
+    const char* french = "j'ai mangé";
+    draw_text_utf8(french, (FPoint){mouse_state.position.x, mouse_state.position.y - 100}, swedish_text_color, &test_font);
+
+
     const char* konichiwa = "こんにちはありがとう";
     draw_text_utf8(konichiwa, (FPoint){mouse_state.position.x + 100, mouse_state.position.y + 100}, japanese_text_color, &japanese_font);
 
