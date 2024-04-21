@@ -431,7 +431,7 @@ void clear_screen(RenderContext *render_context) {
 }
 
 void mouse_control_camera(RenderContext *render_context, MouseState *mouse_state) {
-  if (mouse_state->button == SDL_BUTTON_RIGHT && mouse_state->state == SDL_PRESSED) {
+  if ((mouse_state->button == SDL_BUTTON_RIGHT || mouse_state->button == SDL_BUTTON_MIDDLE) && mouse_state->state == SDL_PRESSED) {
     if (mouse_state->prev_position.x != mouse_state->position.x || mouse_state->prev_position.y != mouse_state->position.y) {
       float delta_x = mouse_state->position.x - mouse_state->prev_position.x;
       float delta_y = mouse_state->position.y - mouse_state->prev_position.y;
@@ -446,7 +446,8 @@ void mouse_control_camera(RenderContext *render_context, MouseState *mouse_state
 
 // Camera movement and selection rect movement
 void keyboard_control_camera(RenderContext *render_context) {
-  float camera_keyboard_movement_speed = 5.0f;
+  float camera_zoom_scaling_factor = 4.5f;
+  float camera_keyboard_movement_speed = 5.0f * (render_context->camera.zoom * camera_zoom_scaling_factor);
   if (render_context->keyboard_state[SDL_GetScancodeFromKey(SDLK_w)]) {
     render_context->camera.target.y -= camera_keyboard_movement_speed / render_context->camera.zoom;
     render_context->selection.target.y += camera_keyboard_movement_speed;
