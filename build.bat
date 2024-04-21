@@ -24,7 +24,7 @@ setlocal ENABLEDELAYEDEXPANSION
     )
 
     set "exeName=cultivation.exe"
-    set "compilerFlags=-W4 -WX -O2 -nologo -Zc:strictStrings -GR- -favor:INTEL64 -cgthreads8 -MP /EHsc"
+    set "compilerFlags=-W4 -WX -Od -nologo -Zc:strictStrings -GR- -favor:INTEL64 -cgthreads8 -MP /EHsc"
     set "ignoreWarnings=-wd4100 -wd4996"
     set "includeDirs=..\include"
     set "linkerFlags=-INCREMENTAL:NO"
@@ -38,7 +38,7 @@ setlocal ENABLEDELAYEDEXPANSION
     pushd build
 
         @rem Compilation
-        cl %compilerFlags% %ignoreWarnings% -I %includeDirs% ..\src\main.c ..\src\fonts.c ..\src\colors.c ..\src\defs.c -Fe..\%exeName% -link %linkerFlags% ..\lib\*.lib
+        cl %compilerFlags% %ignoreWarnings% -I %includeDirs% ..\src\main.c -Fe..\%exeName% -link %linkerFlags% ..\lib\*.lib
 
         if %ERRORLEVEL%==0 (
         set "__outputMessage=Build successful"

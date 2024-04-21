@@ -1,7 +1,3 @@
-#pragma once
-
-#include "colors.h"
-#include "defs.h"
 
 #define BASIC_LATIN_SET_COUNT (126 - 32)
 #define LATIN_ONE_SUPPLEMENT_SET_COUNT (255 - 128)

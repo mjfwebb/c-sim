@@ -1,11 +1,4 @@
 
-#include "colors.h"
-
-#include <math.h>
-#include <stdbool.h>
-
-#include "defs.h"
-
 HSV rgb_to_hsv(RGBA rgb) {
   HSV color = {0};
   float rd = rgb.r;
