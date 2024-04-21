@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 typedef uint8_t u8;
 typedef uint32_t u32;
@@ -562,7 +563,7 @@ int main(int argc, char *args[]) {
   init();
 
   SDL_Window *window =
-      SDL_CreateWindow("Cultivation Sim", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+      SDL_CreateWindow("Cultivation Sim", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
   if (!window) {
     fprintf(stderr, "could not create window: %s\n", SDL_GetError());
     return 1;
