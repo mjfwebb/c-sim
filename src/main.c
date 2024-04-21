@@ -4,12 +4,12 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <assert.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
 
 #include "colors.h"
 #include "defs.h"
@@ -42,7 +42,7 @@ typedef struct Spring {
 } Spring;
 
 typedef struct {
-  FRect rect;
+  FPoint current;
   FPoint target;
   float target_zoom;
   float zoom;
@@ -158,8 +158,8 @@ SDL_FRect screen_to_world(RenderContext *render_context, FRect *screen_rect) {
   SDL_FRect world_rect = {
       .w = screen_rect->w / render_context->camera.zoom,
       .h = screen_rect->h / render_context->camera.zoom,
-      .x = (screen_rect->x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.rect.x,
-      .y = (screen_rect->y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.rect.y,
+      .x = (screen_rect->x - render_context->window_w / 2) / render_context->camera.zoom + render_context->camera.current.x,
+      .y = (screen_rect->y - render_context->window_h / 2) / render_context->camera.zoom + render_context->camera.current.y,
   };
 
   return world_rect;
@@ -169,8 +169,8 @@ SDL_FRect world_to_screen(RenderContext *render_context, FRect *world_rect) {
   SDL_FRect screen_rect = {
       .w = world_rect->w * render_context->camera.zoom,
       .h = world_rect->h * render_context->camera.zoom,
-      .x = (world_rect->x - render_context->camera.rect.x) * render_context->camera.zoom + render_context->window_w / 2,
-      .y = (world_rect->y - render_context->camera.rect.y) * render_context->camera.zoom + render_context->window_h / 2,
+      .x = (world_rect->x - render_context->camera.current.x) * render_context->camera.zoom + render_context->window_w / 2,
+      .y = (world_rect->y - render_context->camera.current.y) * render_context->camera.zoom + render_context->window_h / 2,
   };
 
   return screen_rect;
@@ -187,8 +187,9 @@ void draw_texture(RenderContext *render_context, int image_id, SDL_FRect *render
 void draw_entity_name(RenderContext *render_context, int entity_id) {
   Font *font = &render_context->fonts[0];
   RGBA color = (RGBA){1, 1, 1, 1};
-  float y = (game_context.rect[entity_id].y - render_context->camera.rect.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
-            render_context->window_h / 2;
+  float y =
+      (game_context.rect[entity_id].y - render_context->camera.current.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
+      render_context->window_h / 2;
 
   if (game_context.hovered[entity_id]) {
     y -= 10.0f;  // move the text up a little when using the bigger font
@@ -198,7 +199,8 @@ void draw_entity_name(RenderContext *render_context, int entity_id) {
 
   FPoint text_size = get_text_size(game_context.names[entity_id], font, false, true);
   float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_size.x) / 2;
-  float x = (((game_context.rect[entity_id].x - render_context->camera.rect.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
+  float x =
+      (((game_context.rect[entity_id].x - render_context->camera.current.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
 
   draw_text_outlined_utf8(game_context.names[entity_id], (FPoint){x, y}, color, (RGBA){0, 0, 0, 1}, font);
 }
@@ -231,8 +233,8 @@ void render_debug_info(RenderContext *render_context, MouseState *mouse_state) {
   draw_debug_text(render_context, index++, "camera zoom: %.1f", render_context->camera.target_zoom);
   draw_debug_text(render_context, index++, "game speed: %.1f", render_context->speed);
   draw_debug_text(
-      render_context, index++, "camera: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context->camera.rect.x, render_context->camera.rect.y,
-      render_context->camera.target.x, render_context->camera.target.y
+      render_context, index++, "camera: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context->camera.current.x,
+      render_context->camera.current.y, render_context->camera.target.x, render_context->camera.target.y
   );
   FRect selection_rect = get_selection_rect(render_context, mouse_state);
   draw_debug_text(
@@ -457,6 +459,18 @@ void select_entities_within_selection_rect(RenderContext *render_context, MouseS
   }
 }
 
+bool entity_collides_rect(RenderContext *render_context, int entity_id, FRect *rect) {
+  SDL_FRect rect_to_sdl_frect = {
+      .w = rect->w,
+      .y = rect->y,
+      .x = rect->x,
+      .h = rect->h,
+  };
+  SDL_FRect screen_entity = world_to_screen(render_context, &game_context.rect[entity_id]);
+
+  return SDL_HasIntersectionF(&rect_to_sdl_frect, &screen_entity);
+}
+
 bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState *mouse_state) {
   SDL_FRect rect = world_to_screen(render_context, &game_context.rect[entity_id]);
 
@@ -483,6 +497,7 @@ void init() {
   }
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
+  SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
 }
 
 void log_entity_personalities(int entity_id) {
@@ -499,8 +514,9 @@ void log_entity_personalities(int entity_id) {
 int main(int argc, char *args[]) {
   init();
 
-  SDL_Window *window =
-      SDL_CreateWindow("Cultivation Sim", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
+  SDL_Window *window = SDL_CreateWindow(
+      "Cultivation Sim", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+  );
   if (!window) {
     fprintf(stderr, "could not create window: %s\n", SDL_GetError());
     return 1;
@@ -630,6 +646,8 @@ int main(int argc, char *args[]) {
   Entity__create(&render_context, "Aruseus");
   Entity__create(&render_context, "lastmiles");
   Entity__create(&render_context, "soulfoam");
+  Entity__create(&render_context, "AQtun81");
+  Entity__create(&render_context, "jess_forrealz");
 
   MouseState mouse_state = {0};
 
@@ -761,21 +779,31 @@ int main(int argc, char *args[]) {
     render_context.selection.position.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target.y);
 
     // Spring the camera position
-    render_context.camera.rect.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
-    render_context.camera.rect.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
+    render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
+    render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
 
     clear_screen(&render_context);
 
     draw_grid(&render_context);
 
+    if (render_context.speed > 0.0f) {
+      entity_loop(entity_i) {
+        update_entity(&render_context, entity_i);
+      }
+    }
+
+    FRect camera_rect = (FRect){.w = (float)render_context.window_w, .h = (float)render_context.window_h, .x = 0, .y = 0};
     entity_loop(entity_i) {
-      update_entity(&render_context, entity_i);
-      render_entity(&render_context, entity_i);
+      if (entity_collides_rect(&render_context, entity_i, &camera_rect)) {
+        render_entity(&render_context, entity_i);
+      }
     }
 
     if (render_context.camera.zoom > 0.5f) {
       entity_loop(entity_i) {
-        draw_entity_name(&render_context, entity_i);
+        if (entity_collides_rect(&render_context, entity_i, &camera_rect)) {
+          draw_entity_name(&render_context, entity_i);
+        }
       }
     }
 
@@ -785,20 +813,6 @@ int main(int argc, char *args[]) {
     }
 
     render_debug_info(&render_context, &mouse_state);
-
-    // swedish_text_color = hsv_to_rgb((HSV){.h = (sinf(current_time * 0.0005f) * 0.5f + 0.5f) * 360.0f, .s = 1.0f, .v = 1.0f});
-
-    // const char *hello_chat = "Hello chat OwO";
-    // draw_text_outlined(
-    //     hello_chat, (FPoint){mouse_state.position.x, mouse_state.position.y}, swedish_text_color,
-    //     (RGBA){
-    //         .r = 0,
-    //         .g = 0,
-    //         .b = 0,
-    //         .a = 1,
-    //     },
-    //     &test_font
-    // );
 
     SDL_RenderPresent(render_context.renderer);
   }
