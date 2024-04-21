@@ -81,5 +81,7 @@ void draw_text(const char* text, FPoint position, const Color color, const Font*
 
 void draw_text_outlined(const char* text, FPoint position, const Color color, const Color outline_color, const Font* font);
 
+FPoint get_text_size(const char* text, const Font* font, const u8 do_outline, const u8 is_utf8);
+
 Font load_font(const char* path, const FontLoadParams loader);
 int free_font(Font *atlas);

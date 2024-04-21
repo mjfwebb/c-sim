@@ -635,6 +635,7 @@ int main(int argc, char *args[]) {
 
   FontLoadParams font_parameters = {0};
   font_parameters.size = 50;
+  font_parameters.outline_size = 2;
   font_parameters.renderer = render_context.renderer;
   font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
 
@@ -865,12 +866,8 @@ int main(int argc, char *args[]) {
         japanese_text_color.b = 0; 
     }
 
-    const char* text = "Hallå! Kör! Män!";
-    draw_text_utf8(text, (FPoint){mouse_state.position.x, mouse_state.position.y}, swedish_text_color, &test_font);
-
-    const char* french = "j'ai mangé";
-    draw_text_utf8(french, (FPoint){mouse_state.position.x, mouse_state.position.y - 100}, swedish_text_color, &test_font);
-
+    const char* french_and_spanish = "j'ai mangé\nun croissant! El Niño, \nel guapo javier!";
+    draw_text_utf8(french_and_spanish, (FPoint){mouse_state.position.x, mouse_state.position.y - 100}, swedish_text_color, &test_font);
 
     const char* konichiwa = "こんにちはありがとう";
     draw_text_utf8(konichiwa, (FPoint){mouse_state.position.x + 100, mouse_state.position.y + 100}, japanese_text_color, &japanese_font);

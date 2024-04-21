@@ -336,7 +336,7 @@ static void draw_text_internal(const char* text, const FPoint position, const Co
     {
         if(is_utf8){
             // there might be an optimal way to translate utf8 to unicode decimal value
-            uint8_t copy = *c;
+            u8 copy = *c;
             if((copy & mask) != trailing)
             {
                 if(copy & trailing)
@@ -444,6 +444,93 @@ void draw_text(const char* text, FPoint position, const Color color, const Font*
 void draw_text_outlined(const char* text, FPoint position, const Color color, const Color outline_color, const Font* font)
 {
     draw_text_internal(text, position, &color, &outline_color, font, 0);
+}
+
+FPoint get_text_size(const char* text, const Font* font, const u8 do_outline, const u8 is_utf8)
+{
+    const int outline = do_outline ? font->outline_size : 0;
+    const int height = font->height;
+ 
+    int x = 0;
+    int minx = 0;
+    int maxx = 0;
+ 
+    u32 prev_char = 0;
+    u32 current_char = 0;
+    
+    const int trailing = 0x80;
+    const int mask = 0xC0;
+    const int mask2 = 0xE0;
+    const int mask3 = 0xF0;
+
+    FPoint result = {-1, (float)(height * outline * 2)};
+
+    for(const u8* c = (u8*)text; *c; c++)
+    {
+        if(is_utf8){
+            // there might be an optimal way to translate utf8 to unicode decimal value
+            u8 copy = *c;
+            if((copy & mask) != trailing)
+            {
+                if(copy & trailing)
+                {
+                    if(copy & mask3){
+                        copy &= ~mask3;
+                    }
+                    else if(copy & mask2){
+                        copy &= ~mask2;
+                    }
+                    else if(copy & mask){
+                        copy &= ~mask;
+                    }
+                }
+                current_char = copy;
+                if(*c > 127){
+                    continue;
+                }
+            }
+            else{
+                copy &= ~trailing;
+                current_char <<= 6;
+                current_char |= copy;
+                const u8* p = c;
+                p++;
+                if((*p & mask) == trailing){
+                    continue;
+                }
+            }
+        }
+        else{
+            current_char = *c;
+        }
+
+        if(current_char == '\n') 
+        {
+            result.y += height + outline;
+            result.x = (maxx - minx) > result.x ? (maxx - minx) : result.x;
+            maxx = 0;
+            minx = 0;
+            x = 0;
+            prev_char = 0;
+            continue;
+        }
+ 
+        const GlyphMetrics *metric = &font->glyph_metrics[get_index_in_font(current_char, font)];
+ 
+        if(prev_char && metric->valid){
+            x += TTF_GetFontKerningSizeGlyphs32(font->font_handle, prev_char, current_char);
+        }
+ 
+        minx = min(minx, x + metric->min_x);
+        maxx = max(maxx, x + metric->max_x);
+        maxx = max(maxx, x + metric->advance);
+        maxx = max(maxx, x + metric->advance + outline);
+        x += metric->advance + outline;
+        prev_char = current_char;
+    }
+    result.x = result.x < (maxx - minx) ? (maxx - minx) : result.x;
+    result.x += outline;
+    return result;
 }
 
 int free_font(Font *atlas)
