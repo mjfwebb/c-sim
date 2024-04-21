@@ -28,15 +28,15 @@ typedef struct {
   int advance;
   int min_y;
   int max_y;
+  u32 atlas_index;
   u8 valid;
 } GlyphMetrics;
 
 typedef struct {
-  struct SDL_Texture* atlas;
-  struct SDL_Texture* outline_atlas;
+  struct SDL_Texture **atlas;
   GlyphMetrics* glyph_metrics;
-  GlyphMetrics* outline_glyph_metrics;
-  struct SDL_Renderer* renderer;
+  FRect* outline_sources;
+  struct SDL_Renderer *renderer;
   void* font_handle;
   int size;
   int line_skip;
@@ -45,6 +45,7 @@ typedef struct {
   int descent;
   int outline_size;
   int glyph_count;
+  int atlas_count;
   u32 character_sets;
 } Font;
 

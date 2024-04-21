@@ -59,16 +59,17 @@ static const u32 CHARACTER_SET_ARRAY_COUNT[] = {BASIC_LATIN_SET_COUNT,
                                                 KATAKANA_SET_COUNT,
                                                 EMOJI_SET_COUNT};
 
+static u8 (*SET_CHECKER[])(const u32) = {in_basic_latin, in_latin_one_supplement, in_latin_extended_a, in_latin_extended_b, in_hiragana, in_katakana, in_emoji};
+
+
 static const u32 CHARACTER_SETS_COUNT = sizeof(CHARACTER_SET_BITS) / sizeof(u32);
 
 static u32 get_index_in_font(const u32 character, const Font *font) {
-  static u8 (*set_checker[])(const u32
-  ) = {in_basic_latin, in_latin_one_supplement, in_latin_extended_a, in_latin_extended_b, in_hiragana, in_katakana, in_emoji};
 
   u32 offset_accumulation = 0;
 
   for (u32 i = 0; i < CHARACTER_SETS_COUNT; i++) {
-    if (set_checker[i](character)) {
+    if (SET_CHECKER[i](character)) {
       if (font->character_sets & CHARACTER_SET_BITS[i]) {
         return (character - CHARACTER_SET_STARTS[i]) + offset_accumulation;
       }
@@ -126,7 +127,6 @@ typedef struct {
   SDL_Surface **glyphs;
   SDL_Surface **outline_glyphs;
   GlyphMetrics *metrics;
-  GlyphMetrics *outline_metrics;
   int atlas_width;
   int outline_atlas_width;
   int glyph_max_height;
@@ -134,23 +134,17 @@ typedef struct {
 
 } LoadGlyphSetData;
 
-static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Font *font, const u8 do_outline) {
+static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Font *font) {
   SDL_Surface **glyphs;
   GlyphMetrics *metrics;
   int *atlas_width;
   int *glyph_max_height;
 
-  if (do_outline) {
-    glyphs = data->outline_glyphs;
-    metrics = data->outline_metrics;
-    atlas_width = &data->outline_atlas_width;
-    glyph_max_height = &data->outline_glyph_max_height;
-  } else {
-    glyphs = data->glyphs;
-    metrics = data->metrics;
-    atlas_width = &data->atlas_width;
-    glyph_max_height = &data->glyph_max_height;
-  }
+  TTF_SetFontOutline(font->font_handle, 0);
+  glyphs = data->glyphs;
+  metrics = data->metrics;
+  atlas_width = &data->atlas_width;
+  glyph_max_height = &data->glyph_max_height;
 
   const SDL_Color white = {255, 255, 255, 255};
   const u32 index = get_index_in_font(character, font);
@@ -175,52 +169,82 @@ static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Fon
   *atlas_width += g->w + 2;
   glyphs[index] = g;
   SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_NONE);
+  if(font->outline_size > 0){
+      TTF_SetFontOutline(font->font_handle, font->outline_size);
+      data->outline_glyphs[index] = TTF_RenderGlyph32_Blended(font->font_handle, character, white);
+      SDL_SetSurfaceBlendMode(data->outline_glyphs[index], SDL_BLENDMODE_NONE);
+  }
 }
 
 static void process_glyph_set(LoadGlyphSetData *data, const u32 *set, const u32 set_count, Font *font) {
   for (u32 i = 0; i < set_count; i++) {
-    TTF_SetFontOutline(font->font_handle, 0);
-    fill_glyph_set_data(data, set[i], font, 0);
-    if (font->outline_size > 0) {
-      TTF_SetFontOutline(font->font_handle, font->outline_size);
-      fill_glyph_set_data(data, set[i], font, 1);
-    }
+    fill_glyph_set_data(data, set[i], font);
   }
 }
 
-static void build_texture_atlas(LoadGlyphSetData *data, Font *font, const u8 do_outline) {
+static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
   const u32 format = SDL_PIXELFORMAT_BGRA32;
 
+  const u32 atlas_max_width = 8192;
+
+  if(font->outline_size > 0){
+      data->outline_atlas_width = data->atlas_width + (font->glyph_count * font->outline_size * 2);
+      data->outline_glyph_max_height = data->glyph_max_height + font->outline_size * 2;
+  }
+  data->atlas_width = max(data->atlas_width, data->outline_atlas_width);
+  int atlas_count = data->atlas_width / atlas_max_width;
+  if(atlas_count == 0){
+      atlas_count = 1;
+  }
+  else if(atlas_count > 1){
+    data->atlas_width = atlas_max_width;
+  }
+
+  font->atlas_count = atlas_count;
+  SDL_Texture **atlases = (SDL_Texture**)malloc(sizeof(SDL_Texture*)* atlas_count);
   SDL_Surface *glyph_cache;
   GlyphMetrics *metrics;
-  SDL_Surface **glyphs;
-  SDL_Texture **texture;
-  if (do_outline) {
-    metrics = font->outline_glyph_metrics;
-    glyphs = data->outline_glyphs;
-    glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->outline_atlas_width, data->outline_glyph_max_height, 32, format);
-    texture = &font->outline_atlas;
-  } else {
-    metrics = font->glyph_metrics;
-    glyphs = data->glyphs;
-    glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->atlas_width, data->glyph_max_height, 32, format);
-    texture = &font->atlas;
+  int glyph_counter = 0;
+  if(font->outline_size > 0){
+      font->outline_sources = (FRect*)malloc(sizeof(FRect) * font->glyph_count);
   }
-  assert(glyph_cache);
-  SDL_SetSurfaceBlendMode(glyph_cache, SDL_BLENDMODE_NONE);
-  for (int i = 0; i < font->glyph_count; i++) {
-    if (metrics[i].valid) {
-      SDL_Rect dst = {(int)metrics[i].source.x, (int)metrics[i].source.y, (int)metrics[i].source.w, (int)metrics[i].source.h};
+  for(int i = 0; i < atlas_count; i++)
+  {
+      metrics = font->glyph_metrics;
+      glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->atlas_width, data->glyph_max_height + (font->outline_size > 0 ? data->outline_glyph_max_height + 2 : 0), 32, format);
+      assert(glyph_cache);
+      SDL_SetSurfaceBlendMode(glyph_cache, SDL_BLENDMODE_NONE);
+      int outline_pos = 0;
+      for (; glyph_counter < font->glyph_count; glyph_counter++)
+      {
+          if (metrics[glyph_counter].valid) {
+              metrics[glyph_counter].atlas_index = i;
+              SDL_Rect dst = {(int)metrics[glyph_counter].source.x, (int)metrics[glyph_counter].source.y, (int)metrics[glyph_counter].source.w, (int)metrics[glyph_counter].source.h};
 
-      SDL_BlitSurface(glyphs[i], NULL, glyph_cache, &dst);
-    }
+              if(dst.x + dst.w > data->atlas_width){
+                  break;
+              }
+              SDL_BlitSurface(data->glyphs[glyph_counter], NULL, glyph_cache, &dst);
+              if(font->outline_size > 0){
+                    dst.y += data->glyph_max_height + 2;
+                    dst.w = data->outline_glyphs[glyph_counter]->w;
+                    dst.h = data->outline_glyphs[glyph_counter]->h;
+                    dst.x = outline_pos;
+                    font->outline_sources[glyph_counter] = (FRect){(float)dst.x, (float)dst.y, (float)dst.w, (float)dst.h};
+                  SDL_BlitSurface(data->outline_glyphs[glyph_counter], NULL, glyph_cache, &dst);
+                  outline_pos += dst.w + 2;
+              }
+          }
+      }
+      atlases[i] = SDL_CreateTextureFromSurface(font->renderer, glyph_cache);
+      SDL_SetTextureBlendMode(atlases[i], SDL_BLENDMODE_BLEND);
+      SDL_FreeSurface(glyph_cache);
+      assert(atlases[i]);
   }
-  *texture = SDL_CreateTextureFromSurface(font->renderer, glyph_cache);
-  assert(*texture);
-  SDL_SetTextureBlendMode(*texture, SDL_BLENDMODE_BLEND);
-  SDL_FreeSurface(glyph_cache);
+
+  font->atlas = atlases;
   for (int i = 0; i < font->glyph_count; i++) {
-    SDL_FreeSurface(glyphs[i]);
+    SDL_FreeSurface(data->glyphs[i]);
   }
 }
 
@@ -251,11 +275,9 @@ Font load_font(const char *path, const FontLoadParams loader) {
   glyph_set_data.glyphs = (SDL_Surface **)malloc(sizeof(SDL_Surface *) * font.glyph_count);
 
   if (font.outline_size > 0) {
-    font.outline_glyph_metrics = (GlyphMetrics *)malloc(sizeof(GlyphMetrics) * font.glyph_count);
     glyph_set_data.outline_glyphs = (SDL_Surface **)malloc(sizeof(SDL_Surface *) * font.glyph_count);
   }
   glyph_set_data.metrics = font.glyph_metrics;
-  glyph_set_data.outline_metrics = font.outline_glyph_metrics;
 
   u32 *character_set_arrays[] = {BASIC_LATIN_SET, LATIN_ONE_SUPPLEMENT_SET, LATIN_EXTENDED_A_SET, LATIN_EXTENDED_B_SET, HIRAGANA_SET, KATAKANA_SET,
                                  EMOJI_SET};
@@ -271,10 +293,7 @@ Font load_font(const char *path, const FontLoadParams loader) {
   font.ascent = TTF_FontAscent(main_font);
   font.descent = TTF_FontDescent(main_font);
 
-  build_texture_atlas(&glyph_set_data, &font, 0);
-  if (font.outline_size > 0) {
-    build_texture_atlas(&glyph_set_data, &font, 1);
-  }
+  build_texture_atlas(&glyph_set_data, &font);
 
   return font;
 }
@@ -354,24 +373,23 @@ static void draw_text_internal(
 
       SDL_Rect source;
       if (outline > 0) {
-        const GlyphMetrics *outline_metrics = &font->outline_glyph_metrics[char_index];
+        temp_dst = (SDL_FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
+        temp_dst.x -= outline * 0.5f;
+        temp_dst.y -= outline * 0.5f;
 
-        temp_dst = (SDL_FRect){dst.x, dst.y, outline_metrics->source.w, outline_metrics->source.h};
-
-        SDL_SetTextureColorMod(font->outline_atlas, (u8)(255 * outline_color->r), (u8)(255 * outline_color->g), (u8)(255 * outline_color->b));
-        SDL_SetTextureAlphaMod(font->outline_atlas, (u8)(255 * outline_color->a));
-        source = (SDL_Rect
-        ){(int)outline_metrics->source.x, (int)outline_metrics->source.y, (int)outline_metrics->source.w, (int)outline_metrics->source.h};
-        SDL_RenderCopyF(font->renderer, font->outline_atlas, &source, &temp_dst);
+        SDL_SetTextureColorMod(font->atlas[metrics->atlas_index], (u8)(255 * outline_color->r), (u8)(255 * outline_color->g), (u8)(255 * outline_color->b));
+        SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * outline_color->a));
+        source = (SDL_Rect){(int)font->outline_sources[char_index].x, (int)font->outline_sources[char_index].y, (int)font->outline_sources[char_index].w, (int)font->outline_sources[char_index].h};
+        SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &temp_dst);
       }
 
-      dst.x += outline;
-      dst.y += outline;
+      //dst.x = (float)outline;
+      //dst.y = (float)outline;
 
       source = (SDL_Rect){(int)metrics->source.x, (int)metrics->source.y, (int)metrics->source.w, (int)metrics->source.h};
-      SDL_SetTextureColorMod(font->atlas, (u8)(255 * color->r), (u8)(255 * color->g), (u8)(255 * color->b));
-      SDL_SetTextureAlphaMod(font->atlas, (u8)(255 * color->a));
-      SDL_RenderCopyF(font->renderer, font->atlas, &source, &dst);
+      SDL_SetTextureColorMod(font->atlas[metrics->atlas_index], (u8)(255 * color->r), (u8)(255 * color->g), (u8)(255 * color->b));
+      SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * color->a));
+      SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &dst);
     }
     prev_char = current_char;
     current_char = 0;
@@ -398,12 +416,8 @@ void draw_text_outlined(const char *text, FPoint position, const RGBA color, con
 int free_font(Font *atlas) {
   assert(atlas);
   free(atlas->glyph_metrics);
-  free(atlas->outline_glyph_metrics);
-  if (atlas->atlas) {
-    SDL_DestroyTexture(atlas->atlas);
-  }
-  if (atlas->outline_atlas) {
-    SDL_DestroyTexture(atlas->outline_atlas);
+  for(int i = 0; i < atlas->atlas_count; i++){
+    SDL_DestroyTexture(atlas->atlas[i]);
   }
   if (atlas->font_handle) {
     TTF_CloseFont(atlas->font_handle);
