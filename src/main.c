@@ -10,11 +10,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-typedef uint8_t u8;
-typedef uint32_t u32;
-
 #include "personalities.c"
 #include "seed.c"
+#include "type_defs.h"
+#include "math_types.h"
+#include "fonts.h"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 #define entity_loop(index_name) for (int index_name = 0; index_name < entities_count; index_name++)
@@ -31,18 +31,6 @@ typedef uint32_t u32;
 #define print(format, ...)            \
   printf(format "\n", ##__VA_ARGS__); \
   fflush(stdout)
-
-typedef struct FRect {
-  float x;
-  float y;
-  float w;
-  float h;
-} FRect;
-
-typedef struct FPoint {
-  float x;
-  float y;
-} FPoint;
 
 typedef struct Spring {
   float target;
@@ -629,11 +617,25 @@ int main(int argc, char *args[]) {
           }
   };
 
-  if (!render_context.renderer) {
+  if(!render_context.renderer) {
     fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
     return 1;
   }
 
+  init_japanese_character_sets(HIRAGANA_BIT | KATAKANA_BIT);
+
+  init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
+
+  FontLoadParams font_parameters = {0};
+  font_parameters.size = 50;
+  font_parameters.renderer = render_context.renderer;
+  font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
+
+  Font test_font = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+
+  font_parameters.character_sets = HIRAGANA_BIT | KATAKANA_BIT;
+  Font japanese_font = load_font("assets/NotoSansJP-Regular.ttf", font_parameters);
+  
   Entity__create(&render_context, "pushqrdx");
   Entity__create(&render_context, "Athano");
   Entity__create(&render_context, "AshenHobs");
@@ -685,6 +687,9 @@ int main(int argc, char *args[]) {
   int current_time = 0;
   int frame_count = 0;
   int last_update_time = 0;
+
+  Color swedish_text_color  = {1, 1, 1, 1};
+  Color japanese_text_color = {1, 1, 1, 1};
 
   while (game_is_still_running) {
     frame_count++;
@@ -832,6 +837,32 @@ int main(int argc, char *args[]) {
     }
 
     render_debug_info(&render_context, &mouse_state);
+
+    swedish_text_color.r += 1.5f * render_context.delta_time;
+    if(swedish_text_color.r > 1.f){
+        swedish_text_color.r = 0; 
+    }
+
+    swedish_text_color.b -= 1.5f * render_context.delta_time;
+    if(swedish_text_color.b < 0){
+        swedish_text_color.b = 1; 
+    }
+
+    japanese_text_color.g -= 1.5f * render_context.delta_time;
+    if(japanese_text_color.g < 0){
+        japanese_text_color.g = 1; 
+    }
+
+    japanese_text_color.b += 1.5f * render_context.delta_time;
+    if(japanese_text_color.b > 1){
+        japanese_text_color.b = 0; 
+    }
+
+    const char* text = "Hallå! Kör! Män!";
+    draw_text_utf8(text, (FPoint){mouse_state.position.x, mouse_state.position.y}, swedish_text_color, &test_font);
+
+    const char* konichiwa = "こんにちはありがとう";
+    draw_text_utf8(konichiwa, (FPoint){mouse_state.position.x + 100, mouse_state.position.y + 100}, japanese_text_color, &japanese_font);
 
     SDL_RenderPresent(render_context.renderer);
   }
