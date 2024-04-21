@@ -27,7 +27,14 @@ typedef uint32_t u32;
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
-
+/***
+ * Taken from SDL.
+ * NOTE: these double-evaluate their arguments, so you should never have side effects in the parameters
+ *      (e.g. SDL_min(x++, 10) is bad).
+ */
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
+#define clamp(x, a, b) (((x) < (a)) ? (a) : (((x) > (b)) ? (b) : (x)))
 #define print(format, ...)            \
   printf(format "\n", ##__VA_ARGS__); \
   fflush(stdout)
@@ -264,8 +271,8 @@ void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
 
 FRect get_selection_rect(RenderContext *render_context, MouseState *mouse_state) {
   return (FRect){
-      .x = SDL_min(mouse_state->position.x, render_context->selection.position.x),
-      .y = SDL_min(mouse_state->position.y, render_context->selection.position.y),
+      .x = min(mouse_state->position.x, render_context->selection.position.x),
+      .y = min(mouse_state->position.y, render_context->selection.position.y),
       .w = SDL_fabsf(mouse_state->position.x - render_context->selection.position.x),
       .h = SDL_fabsf(mouse_state->position.y - render_context->selection.position.y),
   };
@@ -728,10 +735,10 @@ int main(int argc, char *args[]) {
       if (event.type == SDL_MOUSEWHEEL) {
         if (event.wheel.y > 0) {
           // zoom in
-          render_context.camera.target_zoom = SDL_min(render_context.camera.target_zoom + 0.1f, 2.0f);
+          render_context.camera.target_zoom = min(render_context.camera.target_zoom + 0.1f, 2.0f);
         } else if (event.wheel.y < 0) {
           // zoom out
-          render_context.camera.target_zoom = SDL_max(render_context.camera.target_zoom - 0.1f, 0.1f);
+          render_context.camera.target_zoom = max(render_context.camera.target_zoom - 0.1f, 0.1f);
         }
       }
       if (event.type == SDL_KEYDOWN) {
@@ -759,7 +766,7 @@ int main(int argc, char *args[]) {
             break;
 
           case SDLK_DOWN:
-            render_context.speed = SDL_max(render_context.speed - 100.0f, 0);
+            render_context.speed = max(render_context.speed - 100.0f, 0);
             break;
 
           case SDLK_SPACE:
