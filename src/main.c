@@ -10,11 +10,11 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "colors.h"
+#include "defs.h"
+#include "fonts.h"
 #include "personalities.c"
 #include "seed.c"
-#include "type_defs.h"
-#include "math_types.h"
-#include "fonts.h"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 #define entity_loop(index_name) for (int index_name = 0; index_name < entities_count; index_name++)
@@ -23,18 +23,11 @@
   (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
 
 #define INVALID_ENTITY (-100000000)
+#define NUM_OF_FONTS 8
 #define MAX_ENTITIES 1024
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
-/***
- * Taken from SDL.
- * NOTE: these double-evaluate their arguments, so you should never have side effects in the parameters
- *      (e.g. SDL_min(x++, 10) is bad).
- */
-#define min(x, y) (((x) < (y)) ? (x) : (y))
-#define max(x, y) (((x) > (y)) ? (x) : (y))
-#define clamp(x, a, b) (((x) < (a)) ? (a) : (((x) > (b)) ? (b) : (x)))
 #define print(format, ...)            \
   printf(format "\n", ##__VA_ARGS__); \
   fflush(stdout)
@@ -80,7 +73,7 @@ typedef struct {
   int window_h;
   SDL_Color background_color;
   Camera camera;
-  TTF_Font **fonts;
+  Font fonts[NUM_OF_FONTS];
   float fps;
   Selection selection;
   const u8 *keyboard_state;
@@ -191,38 +184,22 @@ void draw_texture(RenderContext *render_context, int image_id, SDL_FRect *render
 }
 
 void draw_entity_name(RenderContext *render_context, int entity_id) {
-  TTF_Font *font = NULL;
-  SDL_Surface *text_surface = NULL;
+  Font *font = &render_context->fonts[0];
+  RGBA color = (RGBA){1, 1, 1, 1};
   float y = (game_context.rect[entity_id].y - render_context->camera.rect.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
             render_context->window_h / 2;
 
   if (game_context.hovered[entity_id]) {
-    SDL_Color Yellow = {255, 255, 0};
-    font = render_context->fonts[0];
-    text_surface = TTF_RenderText_Blended(font, game_context.names[entity_id], Yellow);
     y -= 10.0f;  // move the text up a little when using the bigger font
-  } else {
-    SDL_Color Black = {0, 0, 0};
-    font = render_context->fonts[1];
-    text_surface = TTF_RenderText_Blended(font, game_context.names[entity_id], Black);
+    color = (RGBA){1, 1, 0, 1};
+    font = &render_context->fonts[1];
   }
 
-  assert(font);
-  assert(text_surface);
-
-  SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
-  if (!text_texture) {
-    fprintf(stderr, "could not create text texture: %s\n", SDL_GetError());
-  }
-
-  float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_surface->w) / 2;
+  FPoint text_size = get_text_size(game_context.names[entity_id], font, false, true);
+  float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_size.x) / 2;
   float x = (((game_context.rect[entity_id].x - render_context->camera.rect.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
 
-  SDL_FRect text_rect = {.w = (float)text_surface->w, .h = (float)text_surface->h, .x = x, .y = y};
-
-  SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
-  SDL_FreeSurface(text_surface);
-  SDL_DestroyTexture(text_texture);
+  draw_text_outlined_utf8(game_context.names[entity_id], (FPoint){x, y}, color, (RGBA){0, 0, 0, 1}, font);
 }
 
 void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
@@ -233,28 +210,7 @@ void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
   assert(chars_written > 0);
   va_end(args);
 
-  TTF_Font *font = render_context->fonts[0];
-  SDL_Color White = {255, 255, 255};
-  SDL_Surface *text_surface = TTF_RenderText_Blended(font, text_buffer, White);
-  if (!text_surface) {
-    fprintf(stderr, "could not create text surface: %s\n", SDL_GetError());
-  }
-
-  SDL_FRect text_rect = {
-      .w = (float)text_surface->w,
-      .h = (float)text_surface->h,
-      .x = 10.0f,
-      .y = (32.0f * index),
-  };
-
-  SDL_Texture *text_texture = SDL_CreateTextureFromSurface(render_context->renderer, text_surface);
-  if (!text_texture) {
-    fprintf(stderr, "could not create text texture: %s\n", SDL_GetError());
-  }
-
-  SDL_RenderCopyF(render_context->renderer, text_texture, NULL, &text_rect);
-  SDL_FreeSurface(text_surface);
-  SDL_DestroyTexture(text_texture);
+  draw_text_outlined_utf8(text_buffer, (FPoint){10.0f, (32.0f * index)}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1}, &render_context->fonts[0]);
 }
 
 FRect get_selection_rect(RenderContext *render_context, MouseState *mouse_state) {
@@ -369,13 +325,6 @@ Image Image__load(RenderContext *render_context, const char *texture_file_path) 
   };
 
   return image;
-}
-
-TTF_Font *Font__load(const char *font_file_path, int font_size) {
-  TTF_Font *font = TTF_OpenFont(font_file_path, font_size);
-  assert(font);
-
-  return font;
 }
 
 void draw_grid(RenderContext *render_context) {
@@ -590,12 +539,6 @@ int main(int argc, char *args[]) {
                       .friction = 0.1f,
                   },
           },
-      .fonts =
-          (TTF_Font *[]){
-              Font__load("assets/OpenSans-Regular.ttf", 32),
-              Font__load("assets/OpenSans-Regular.ttf", 24),
-              Font__load("assets/OpenSans-Regular.ttf", 16),
-          },
       .selection =
           {
               .spring_x =
@@ -624,25 +567,25 @@ int main(int argc, char *args[]) {
           }
   };
 
-  if(!render_context.renderer) {
-    fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
-    return 1;
-  }
-
   init_japanese_character_sets(HIRAGANA_BIT | KATAKANA_BIT);
 
   init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
 
   FontLoadParams font_parameters = {0};
-  font_parameters.size = 50;
+  font_parameters.size = 24;
   font_parameters.renderer = render_context.renderer;
   font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
+  font_parameters.outline_size = 1;
 
-  Font test_font = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+  render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+  font_parameters.size = 32;
+  render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
-  font_parameters.character_sets = HIRAGANA_BIT | KATAKANA_BIT;
-  Font japanese_font = load_font("assets/NotoSansJP-Regular.ttf", font_parameters);
-  
+  if (!render_context.renderer) {
+    fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
+    return 1;
+  }
+
   Entity__create(&render_context, "pushqrdx");
   Entity__create(&render_context, "Athano");
   Entity__create(&render_context, "AshenHobs");
@@ -694,9 +637,6 @@ int main(int argc, char *args[]) {
   int current_time = 0;
   int frame_count = 0;
   int last_update_time = 0;
-
-  Color swedish_text_color  = {1, 1, 1, 1};
-  Color japanese_text_color = {1, 1, 1, 1};
 
   while (game_is_still_running) {
     frame_count++;
@@ -845,35 +785,19 @@ int main(int argc, char *args[]) {
 
     render_debug_info(&render_context, &mouse_state);
 
-    swedish_text_color.r += 1.5f * render_context.delta_time;
-    if(swedish_text_color.r > 1.f){
-        swedish_text_color.r = 0; 
-    }
+    // swedish_text_color = hsv_to_rgb((HSV){.h = (sinf(current_time * 0.0005f) * 0.5f + 0.5f) * 360.0f, .s = 1.0f, .v = 1.0f});
 
-    swedish_text_color.b -= 1.5f * render_context.delta_time;
-    if(swedish_text_color.b < 0){
-        swedish_text_color.b = 1; 
-    }
-
-    japanese_text_color.g -= 1.5f * render_context.delta_time;
-    if(japanese_text_color.g < 0){
-        japanese_text_color.g = 1; 
-    }
-
-    japanese_text_color.b += 1.5f * render_context.delta_time;
-    if(japanese_text_color.b > 1){
-        japanese_text_color.b = 0; 
-    }
-
-    const char* text = "Hallå! Kör! Män!";
-    draw_text_utf8(text, (FPoint){mouse_state.position.x, mouse_state.position.y}, swedish_text_color, &test_font);
-
-    const char* french = "j'ai mangé";
-    draw_text_utf8(french, (FPoint){mouse_state.position.x, mouse_state.position.y - 100}, swedish_text_color, &test_font);
-
-
-    const char* konichiwa = "こんにちはありがとう";
-    draw_text_utf8(konichiwa, (FPoint){mouse_state.position.x + 100, mouse_state.position.y + 100}, japanese_text_color, &japanese_font);
+    // const char *hello_chat = "Hello chat OwO";
+    // draw_text_outlined(
+    //     hello_chat, (FPoint){mouse_state.position.x, mouse_state.position.y}, swedish_text_color,
+    //     (RGBA){
+    //         .r = 0,
+    //         .g = 0,
+    //         .b = 0,
+    //         .a = 1,
+    //     },
+    //     &test_font
+    // );
 
     SDL_RenderPresent(render_context.renderer);
   }
