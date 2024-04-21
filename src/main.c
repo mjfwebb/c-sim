@@ -870,7 +870,10 @@ int main(int argc, char *args[]) {
     draw_text_utf8(french_and_spanish, (FPoint){mouse_state.position.x, mouse_state.position.y - 100}, swedish_text_color, &test_font);
 
     const char* konichiwa = "こんにちはありがとう";
-    draw_text_utf8(konichiwa, (FPoint){mouse_state.position.x + 100, mouse_state.position.y + 100}, japanese_text_color, &japanese_font);
+
+    FPoint japanese_size = get_text_size(konichiwa, &japanese_font, 0, 1);
+
+    draw_text_utf8(konichiwa, (FPoint){mouse_state.position.x - japanese_size.x * 0.5f, mouse_state.position.y - japanese_size.y * 0.5f}, japanese_text_color, &japanese_font);
 
     SDL_RenderPresent(render_context.renderer);
   }

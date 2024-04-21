@@ -463,7 +463,7 @@ FPoint get_text_size(const char* text, const Font* font, const u8 do_outline, co
     const int mask2 = 0xE0;
     const int mask3 = 0xF0;
 
-    FPoint result = {-1, (float)(height * outline * 2)};
+    FPoint result = {-1, (float)(height + outline * 2)};
 
     for(const u8* c = (u8*)text; *c; c++)
     {
