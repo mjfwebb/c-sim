@@ -586,7 +586,7 @@ int main(int argc, char *args[]) {
   font_parameters.size = 32;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
-  font_parameters.size = 500;
+  font_parameters.size = 1000;
   Font test_font = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
   if (!render_context.renderer) {

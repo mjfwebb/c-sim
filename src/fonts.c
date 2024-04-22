@@ -60,7 +60,7 @@ static const u32 CHARACTER_SET_ARRAY_COUNT[] = {BASIC_LATIN_SET_COUNT,
                                                 EMOJI_SET_COUNT};
 
 static const int UTF8_TRAILING = 0x80;
-static const int UTF8_MARK_ONE = 0xC0;
+static const int UTF8_MASK_ONE = 0xC0;
 static const int UTF8_MASK_TWO = 0xE0;
 static const int UTF8_MASK_THREE = 0xF0;
 
@@ -342,14 +342,14 @@ GlyphMetrics* metrics;
     if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
       uint8_t copy = *c;
-      if ((copy & UTF8_MARK_ONE) != UTF8_TRAILING) {
+      if ((copy & UTF8_MASK_ONE) != UTF8_TRAILING) {
         if (copy & UTF8_TRAILING) {
           if (copy & UTF8_MASK_THREE) {
             copy &= ~UTF8_MASK_THREE;
           } else if (copy & UTF8_MASK_TWO) {
             copy &= ~UTF8_MASK_TWO;
-          } else if (copy & UTF8_MARK_ONE) {
-            copy &= ~UTF8_MARK_ONE;
+          } else if (copy & UTF8_MASK_ONE) {
+            copy &= ~UTF8_MASK_ONE;
           }
         }
         current_char = copy;
@@ -360,7 +360,7 @@ GlyphMetrics* metrics;
         current_char |= copy;
         const u8 *p = c;
         p++;
-        if ((*p & UTF8_MARK_ONE) == UTF8_TRAILING) {
+        if ((*p & UTF8_MASK_ONE) == UTF8_TRAILING) {
           continue;
         }
       }
@@ -456,14 +456,14 @@ FPoint get_text_size(const char *text, const Font *font, const u8 do_outline, co
     if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
       u8 copy = *c;
-      if ((copy & UTF8_MARK_ONE) != UTF8_TRAILING) {
+      if ((copy & UTF8_MASK_ONE) != UTF8_TRAILING) {
         if (copy & UTF8_TRAILING) {
           if (copy & UTF8_MASK_THREE) {
             copy &= ~UTF8_MASK_THREE;
           } else if (copy & UTF8_MASK_TWO) {
             copy &= ~UTF8_MASK_TWO;
-          } else if (copy & UTF8_MARK_ONE) {
-            copy &= ~UTF8_MARK_ONE;
+          } else if (copy & UTF8_MASK_ONE) {
+            copy &= ~UTF8_MASK_ONE;
           }
         }
         current_char = copy;
@@ -474,7 +474,7 @@ FPoint get_text_size(const char *text, const Font *font, const u8 do_outline, co
         current_char |= copy;
         const u8 *p = c;
         p++;
-        if ((*p & UTF8_MARK_ONE) == UTF8_TRAILING) {
+        if ((*p & UTF8_MASK_ONE) == UTF8_TRAILING) {
           continue;
         }
       }
