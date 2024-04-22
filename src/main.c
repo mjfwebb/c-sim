@@ -14,9 +14,9 @@
 
 #define INVALID_ENTITY (-100000000)
 #define NUM_OF_FONTS 8
-#define MAX_ENTITIES 1024
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
+#define MAX_ENTITIES 1000000 
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
 #define print(format, ...)            \
   printf(format "\n", ##__VA_ARGS__); \
@@ -578,13 +578,13 @@ int main(int argc, char *args[]) {
   init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
 
   FontLoadParams font_parameters = {0};
-  font_parameters.size = 24;
+  font_parameters.size = 12;
   font_parameters.renderer = render_context.renderer;
   font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
   font_parameters.outline_size = 1;
 
   render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
-  font_parameters.size = 32;
+  font_parameters.size = 16;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
   if (!render_context.renderer) {
@@ -637,6 +637,15 @@ int main(int argc, char *args[]) {
   Entity__create(&render_context, "soulfoam");
   Entity__create(&render_context, "AQtun81");
   Entity__create(&render_context, "jess_forrealz");
+
+  const u32 test_count = 99999;
+
+    char buffer[99999][8];
+  for(u32 i = 0; i < test_count; i++)
+  {
+      sprintf(buffer[i], "%i", i);
+      Entity__create(&render_context, buffer[i]);
+  }
 
   MouseState mouse_state = {0};
 
