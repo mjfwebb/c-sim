@@ -83,7 +83,7 @@ typedef struct {
 
 typedef struct {
   int health[MAX_ENTITIES];
-  char *names[MAX_ENTITIES];
+  char names[MAX_ENTITIES][128];
   bool selected[MAX_ENTITIES];
   bool hovered[MAX_ENTITIES];
   FRect rect[MAX_ENTITIES];
@@ -130,7 +130,6 @@ void Entity__create(RenderContext *render_context, char *name) {
   float height = (float)(render_context->images[image_id].h * scale);
 
   game_context.health[entities_count] = 100;
-  game_context.names[entities_count] = name;
   game_context.selected[entities_count] = false;
   game_context.hovered[entities_count] = false;
   game_context.rect[entities_count] = (FRect){
@@ -150,6 +149,7 @@ void Entity__create(RenderContext *render_context, char *name) {
     int personality = random_int_between(0, Personality_Count);
     game_context.personalities[entities_count][personality] = random_int_between(0, 100);
   }
+  sprintf(game_context.names[entities_count], "%s", name);
 
   entities_count += 1;
 }
@@ -472,6 +472,10 @@ bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState
 void init() {
   srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
 
+   //this seems to be faster but crashes sometimes ?
+  //SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
+  //SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
     exit(1);
@@ -573,14 +577,17 @@ int main(int argc, char *args[]) {
   init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
 
   FontLoadParams font_parameters = {0};
-  font_parameters.size = 12;
+  font_parameters.size = 24;
   font_parameters.renderer = render_context.renderer;
   font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
   font_parameters.outline_size = 1;
 
   render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
-  font_parameters.size = 16;
+  font_parameters.size = 32;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+
+  font_parameters.size = 1000;
+  Font test_font = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
   if (!render_context.renderer) {
     fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
@@ -631,14 +638,14 @@ int main(int argc, char *args[]) {
   Entity__create(&render_context, "lastmiles");
   Entity__create(&render_context, "soulfoam");
 
-  const u32 test_count = 99999;
+  //const u32 test_count = 99999;
 
-    char buffer[99999][8];
-  for(u32 i = 0; i < test_count; i++)
-  {
-      sprintf(buffer[i], "%i", i);
-      Entity__create(&render_context, buffer[i]);
-  }
+  //  char buffer[8];
+  //for(u32 i = 0; i < test_count; i++)
+  //{
+  //    sprintf(buffer, "%i", i);
+  //    Entity__create(&render_context, buffer);
+  //}
 
   MouseState mouse_state = {0};
 
@@ -794,6 +801,10 @@ int main(int argc, char *args[]) {
     }
 
     render_debug_info(&render_context, &mouse_state);
+
+    const char *text = "BIG FUCK TEXT!";
+
+    draw_text_utf8(text, (FPoint){mouse_state.position.x, mouse_state.position.y}, (RGBA){1, 0, 1, 1}, &test_font);
 
     // swedish_text_color = hsv_to_rgb((HSV){.h = (sinf(current_time * 0.0005f) * 0.5f + 0.5f) * 360.0f, .s = 1.0f, .v = 1.0f});
 

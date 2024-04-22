@@ -59,7 +59,12 @@ static const u32 CHARACTER_SET_ARRAY_COUNT[] = {BASIC_LATIN_SET_COUNT,
                                                 KATAKANA_SET_COUNT,
                                                 EMOJI_SET_COUNT};
 
-static u8 (*SET_CHECKER[])(const u32) = {in_basic_latin, in_latin_one_supplement, in_latin_extended_a, in_latin_extended_b, in_hiragana, in_katakana, in_emoji};
+static const int UTF8_TRAILING = 0x80;
+static const int UTF8_MARK_ONE = 0xC0;
+static const int UTF8_MASK_TWO = 0xE0;
+static const int UTF8_MASK_THREE = 0xF0;
+
+static u8 (*CHARACTER_SET_CHECKER[])(const u32) = {in_basic_latin, in_latin_one_supplement, in_latin_extended_a, in_latin_extended_b, in_hiragana, in_katakana, in_emoji};
 
 
 static const u32 CHARACTER_SETS_COUNT = sizeof(CHARACTER_SET_BITS) / sizeof(u32);
@@ -68,15 +73,11 @@ static u32 get_index_in_font(const u32 character, const Font *font) {
 
   u32 offset_accumulation = 0;
 
-  for (u32 i = 0; i < CHARACTER_SETS_COUNT; i++) {
-    if (SET_CHECKER[i](character)) {
-      if (font->character_sets & CHARACTER_SET_BITS[i]) {
-        return (character - CHARACTER_SET_STARTS[i]) + offset_accumulation;
-      }
+  for (u32 i = 0; i < font->character_set_count; i++) {
+    if (font->character_set_checker[i](character)) {
+        return (character - font->character_set_starts[i]) + offset_accumulation;
     }
-    if (font->character_sets & CHARACTER_SET_BITS[i]) {
-      offset_accumulation += CHARACTER_SET_ARRAY_COUNT[i];
-    }
+    offset_accumulation += font->character_set_array_count[i];
   }
   return INVALID_CHARACTER_INDEX;
 }
@@ -128,7 +129,6 @@ typedef struct {
   SDL_Surface **outline_glyphs;
   GlyphMetrics *metrics;
   int atlas_width;
-  int outline_atlas_width;
   int glyph_max_height;
   int outline_glyph_max_height;
 
@@ -159,8 +159,6 @@ static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Fon
     return;
   }
   m->valid = 1;
-  m->source.x = (float)(*atlas_width);
-  m->source.y = 0;
   m->source.w = (float)g->w;
   m->source.h = (float)g->h;
   if (g->h > *glyph_max_height) {
@@ -185,13 +183,12 @@ static void process_glyph_set(LoadGlyphSetData *data, const u32 *set, const u32 
 static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
   const u32 format = SDL_PIXELFORMAT_BGRA32;
 
-  const u32 atlas_max_width = 8192;
+  const u32 atlas_max_width = 8192; // this might have to be lower
 
   if(font->outline_size > 0){
-      data->outline_atlas_width = data->atlas_width + (font->glyph_count * font->outline_size * 2);
-      data->outline_glyph_max_height = data->glyph_max_height + font->outline_size * 2;
+      data->atlas_width = data->atlas_width + (font->glyph_count * font->outline_size * 2);
+      data->glyph_max_height = data->glyph_max_height + (data->glyph_max_height + font->outline_size * 2) + 2;
   }
-  data->atlas_width = max(data->atlas_width, data->outline_atlas_width);
   int atlas_count = data->atlas_width / atlas_max_width;
   if(atlas_count == 0){
       atlas_count = 1;
@@ -200,46 +197,74 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
     data->atlas_width = atlas_max_width;
   }
 
+  {
+      // position the glyph sources
+      int current_pos = 0;
+    for (int i = 0; i < font->glyph_count; i++)
+    {
+        if (font->glyph_metrics[i].valid) {
+            font->glyph_metrics[i].source.y = 0;
+
+            if((font->outline_size > 0 && current_pos + data->outline_glyphs[i]->w > data->atlas_width) || current_pos + data->glyphs[i]->w > data->atlas_width){
+                font->glyph_metrics[i].source.x = 0;
+                if(font->outline_size){
+                    current_pos = data->outline_glyphs[i]->w + 2;
+                }
+                else{
+                    current_pos = data->glyphs[i]->w + 2;
+                }
+            }
+            else{
+                font->glyph_metrics[i].source.x = (float)current_pos;
+                if(font->outline_size){
+                    current_pos += data->outline_glyphs[i]->w + 2;
+                }
+                else{
+                    current_pos += data->glyphs[i]->w + 2;
+                }
+            }
+        }
+    }
+  }
+
   font->atlas_count = atlas_count;
   SDL_Texture **atlases = (SDL_Texture**)malloc(sizeof(SDL_Texture*)* atlas_count);
   SDL_Surface *glyph_cache;
-  GlyphMetrics *metrics;
-  int glyph_counter = 0;
   if(font->outline_size > 0){
       font->outline_sources = (FRect*)malloc(sizeof(FRect) * font->glyph_count);
   }
+  int glyph_counter = 0;
   for(int i = 0; i < atlas_count; i++)
   {
-      metrics = font->glyph_metrics;
-      glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->atlas_width, data->glyph_max_height + (font->outline_size > 0 ? data->outline_glyph_max_height + 2 : 0), 32, format);
+      int rendered_glyphs_counter = 0;
+      glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->atlas_width, data->glyph_max_height, 32, format);
       assert(glyph_cache);
       SDL_SetSurfaceBlendMode(glyph_cache, SDL_BLENDMODE_NONE);
-      int outline_pos = 0;
       for (; glyph_counter < font->glyph_count; glyph_counter++)
       {
-          if (metrics[glyph_counter].valid) {
-              metrics[glyph_counter].atlas_index = i;
-              SDL_Rect dst = {(int)metrics[glyph_counter].source.x, (int)metrics[glyph_counter].source.y, (int)metrics[glyph_counter].source.w, (int)metrics[glyph_counter].source.h};
+          if (font->glyph_metrics[glyph_counter].valid) {
+              SDL_Rect dst = {(int)font->glyph_metrics[glyph_counter].source.x, (int)font->glyph_metrics[glyph_counter].source.y, (int)font->glyph_metrics[glyph_counter].source.w, (int)font->glyph_metrics[glyph_counter].source.h};
 
-              if(dst.x + dst.w > data->atlas_width){
+              if(rendered_glyphs_counter > 0 && dst.x == 0){ // surface is full, time to create a new atlas
                   break;
               }
+
+              font->glyph_metrics[glyph_counter].atlas_index = i;
               SDL_BlitSurface(data->glyphs[glyph_counter], NULL, glyph_cache, &dst);
               if(font->outline_size > 0){
-                    dst.y += data->glyph_max_height + 2;
+                    dst.y += dst.h + 2;
                     dst.w = data->outline_glyphs[glyph_counter]->w;
                     dst.h = data->outline_glyphs[glyph_counter]->h;
-                    dst.x = outline_pos;
                     font->outline_sources[glyph_counter] = (FRect){(float)dst.x, (float)dst.y, (float)dst.w, (float)dst.h};
                   SDL_BlitSurface(data->outline_glyphs[glyph_counter], NULL, glyph_cache, &dst);
-                  outline_pos += dst.w + 2;
               }
+              rendered_glyphs_counter++;
           }
       }
       atlases[i] = SDL_CreateTextureFromSurface(font->renderer, glyph_cache);
+      assert(atlases[i]);
       SDL_SetTextureBlendMode(atlases[i], SDL_BLENDMODE_BLEND);
       SDL_FreeSurface(glyph_cache);
-      assert(atlases[i]);
   }
 
   font->atlas = atlases;
@@ -263,10 +288,15 @@ Font load_font(const char *path, const FontLoadParams loader) {
   font.character_sets = loader.character_sets;
   font.size = loader.size;
   font.outline_size = loader.outline_size;
+    font.character_set_count = 0;
 
   for (u32 i = 0; i < CHARACTER_SETS_COUNT; i++) {
     if (font.character_sets & CHARACTER_SET_BITS[i]) {
       font.glyph_count += CHARACTER_SET_ARRAY_COUNT[i];
+      font.character_set_starts[font.character_set_count] = CHARACTER_SET_STARTS[i];
+      font.character_set_array_count[font.character_set_count] = CHARACTER_SET_ARRAY_COUNT[i];
+      font.character_set_checker[font.character_set_count] = CHARACTER_SET_CHECKER[i];
+      font.character_set_count++;
     }
   }
 
@@ -313,37 +343,31 @@ static void draw_text_internal(
 
   SDL_FRect dst;
   SDL_FRect temp_dst;
-
-  const int trailing = 0x80;
-  const int mask = 0xC0;
-  const int mask2 = 0xE0;
-  const int mask3 = 0xF0;
-
+  SDL_Rect source;
+GlyphMetrics* metrics;
   for (const u8 *c = (u8 *)text; *c; c++) {
-    if (is_utf8) {
+    if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
       uint8_t copy = *c;
-      if ((copy & mask) != trailing) {
-        if (copy & trailing) {
-          if (copy & mask3) {
-            copy &= ~mask3;
-          } else if (copy & mask2) {
-            copy &= ~mask2;
-          } else if (copy & mask) {
-            copy &= ~mask;
+      if ((copy & UTF8_MARK_ONE) != UTF8_TRAILING) {
+        if (copy & UTF8_TRAILING) {
+          if (copy & UTF8_MASK_THREE) {
+            copy &= ~UTF8_MASK_THREE;
+          } else if (copy & UTF8_MASK_TWO) {
+            copy &= ~UTF8_MASK_TWO;
+          } else if (copy & UTF8_MARK_ONE) {
+            copy &= ~UTF8_MARK_ONE;
           }
         }
         current_char = copy;
-        if (*c > 127) {
-          continue;
-        }
+        continue;
       } else {
-        copy &= ~trailing;
+        copy &= ~UTF8_TRAILING;
         current_char <<= 6;
         current_char |= copy;
         const u8 *p = c;
         p++;
-        if ((*p & mask) == trailing) {
+        if ((*p & UTF8_MARK_ONE) == UTF8_TRAILING) {
           continue;
         }
       }
@@ -360,7 +384,7 @@ static void draw_text_internal(
     }
 
     char_index = get_index_in_font(current_char, font);
-    const GlyphMetrics *metrics = &font->glyph_metrics[char_index];
+    metrics = &font->glyph_metrics[char_index];
 
     if (metrics->valid && metrics->source.w > 0) {
       if (prev_char) {
@@ -371,8 +395,7 @@ static void draw_text_internal(
       dst = (SDL_FRect){xc, yc, metrics->source.w, metrics->source.h};
       dst.x = min(dst.x, dst.x + metrics->min_x);
 
-      SDL_Rect source;
-      if (outline > 0) {
+      if (outline > 0 && outline_color->a > 0) {
         temp_dst = (SDL_FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
         temp_dst.x -= outline * 0.5f;
         temp_dst.y -= outline * 0.5f;
@@ -382,9 +405,6 @@ static void draw_text_internal(
         source = (SDL_Rect){(int)font->outline_sources[char_index].x, (int)font->outline_sources[char_index].y, (int)font->outline_sources[char_index].w, (int)font->outline_sources[char_index].h};
         SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &temp_dst);
       }
-
-      //dst.x = (float)outline;
-      //dst.y = (float)outline;
 
       source = (SDL_Rect){(int)metrics->source.x, (int)metrics->source.y, (int)metrics->source.w, (int)metrics->source.h};
       SDL_SetTextureColorMod(font->atlas[metrics->atlas_index], (u8)(255 * color->r), (u8)(255 * color->g), (u8)(255 * color->b));
@@ -436,38 +456,32 @@ FPoint get_text_size(const char *text, const Font *font, const u8 do_outline, co
   u32 prev_char = 0;
   u32 current_char = 0;
 
-  const int trailing = 0x80;
-  const int mask = 0xC0;
-  const int mask2 = 0xE0;
-  const int mask3 = 0xF0;
-
   FPoint result = {-1, (float)(height + outline * 2)};
+  GlyphMetrics *metric;
 
   for (const u8 *c = (u8 *)text; *c; c++) {
-    if (is_utf8) {
+    if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
       u8 copy = *c;
-      if ((copy & mask) != trailing) {
-        if (copy & trailing) {
-          if (copy & mask3) {
-            copy &= ~mask3;
-          } else if (copy & mask2) {
-            copy &= ~mask2;
-          } else if (copy & mask) {
-            copy &= ~mask;
+      if ((copy & UTF8_MARK_ONE) != UTF8_TRAILING) {
+        if (copy & UTF8_TRAILING) {
+          if (copy & UTF8_MASK_THREE) {
+            copy &= ~UTF8_MASK_THREE;
+          } else if (copy & UTF8_MASK_TWO) {
+            copy &= ~UTF8_MASK_TWO;
+          } else if (copy & UTF8_MARK_ONE) {
+            copy &= ~UTF8_MARK_ONE;
           }
         }
         current_char = copy;
-        if (*c > 127) {
-          continue;
-        }
+        continue;
       } else {
-        copy &= ~trailing;
+        copy &= ~UTF8_TRAILING;
         current_char <<= 6;
         current_char |= copy;
         const u8 *p = c;
         p++;
-        if ((*p & mask) == trailing) {
+        if ((*p & UTF8_MARK_ONE) == UTF8_TRAILING) {
           continue;
         }
       }
@@ -485,7 +499,7 @@ FPoint get_text_size(const char *text, const Font *font, const u8 do_outline, co
       continue;
     }
 
-    const GlyphMetrics *metric = &font->glyph_metrics[get_index_in_font(current_char, font)];
+    metric = &font->glyph_metrics[get_index_in_font(current_char, font)];
 
     if (prev_char && metric->valid) {
       x += TTF_GetFontKerningSizeGlyphs32(font->font_handle, prev_char, current_char);

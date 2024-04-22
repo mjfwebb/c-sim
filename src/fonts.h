@@ -47,6 +47,10 @@ typedef struct {
   int glyph_count;
   int atlas_count;
   u32 character_sets;
+  u32 character_set_count;
+  u32 character_set_starts[10]; // hardcoded to 10 for now
+  u32 character_set_array_count[10]; // hardcoded to 10 for now
+  u8 (*character_set_checker[10])(const u32); // hardcoded to 10 for now
 } Font;
 
 typedef struct {
