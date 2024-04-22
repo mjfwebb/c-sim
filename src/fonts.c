@@ -130,48 +130,41 @@ typedef struct {
   GlyphMetrics *metrics;
   int atlas_width;
   int glyph_max_height;
-  int outline_glyph_max_height;
 
 } LoadGlyphSetData;
 
 static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Font *font) {
-  SDL_Surface **glyphs;
-  GlyphMetrics *metrics;
-  int *atlas_width;
-  int *glyph_max_height;
 
   TTF_SetFontOutline(font->font_handle, 0);
-  glyphs = data->glyphs;
-  metrics = data->metrics;
-  atlas_width = &data->atlas_width;
-  glyph_max_height = &data->glyph_max_height;
 
   const SDL_Color white = {255, 255, 255, 255};
   const u32 index = get_index_in_font(character, font);
-  GlyphMetrics *m = &metrics[index];
+  GlyphMetrics *m = &data->metrics[index];
   m->valid = 0;
   if (TTF_GlyphMetrics32(font->font_handle, character, &m->min_x, &m->max_x, &m->min_y, &m->max_y, &m->advance) == -1) {
     return;
   }
-  SDL_Surface *g = TTF_RenderGlyph32_Blended(font->font_handle, character, white);
-  if (!g) {
+  data->glyphs[index] = TTF_RenderGlyph32_Blended(font->font_handle, character, white);
+  if (!data->glyphs[index]) {
     SDL_Log("%s\n", SDL_GetError());
     return;
   }
   m->valid = 1;
-  m->source.w = (float)g->w;
-  m->source.h = (float)g->h;
-  if (g->h > *glyph_max_height) {
-    *glyph_max_height = g->h;
+  m->source.w = (float)data->glyphs[index]->w;
+  m->source.h = (float)data->glyphs[index]->h;
+  if (data->glyphs[index]->h > data->glyph_max_height) {
+      data->glyph_max_height = data->glyphs[index]->h;
   }
-  *atlas_width += g->w + 2;
-  glyphs[index] = g;
-  SDL_SetSurfaceBlendMode(g, SDL_BLENDMODE_NONE);
   if(font->outline_size > 0){
       TTF_SetFontOutline(font->font_handle, font->outline_size);
       data->outline_glyphs[index] = TTF_RenderGlyph32_Blended(font->font_handle, character, white);
+      data->atlas_width += data->outline_glyphs[index]->w + 2;
       SDL_SetSurfaceBlendMode(data->outline_glyphs[index], SDL_BLENDMODE_NONE);
   }
+  else{
+      data->atlas_width += data->glyphs[index]->w + 2;
+  }
+  SDL_SetSurfaceBlendMode(data->glyphs[index], SDL_BLENDMODE_NONE);
 }
 
 static void process_glyph_set(LoadGlyphSetData *data, const u32 *set, const u32 set_count, Font *font) {
@@ -186,9 +179,9 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
   const u32 atlas_max_width = 8192; // this might have to be lower
 
   if(font->outline_size > 0){
-      data->atlas_width = data->atlas_width + (font->glyph_count * font->outline_size * 2);
-      data->glyph_max_height = data->glyph_max_height + (data->glyph_max_height + font->outline_size * 2) + 2;
+      data->glyph_max_height += data->glyph_max_height + font->outline_size * 2;
   }
+
   int atlas_count = data->atlas_width / atlas_max_width;
   if(atlas_count == 0){
       atlas_count = 1;
@@ -237,7 +230,7 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
   for(int i = 0; i < atlas_count; i++)
   {
       int rendered_glyphs_counter = 0;
-      glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->atlas_width, data->glyph_max_height, 32, format);
+      glyph_cache = SDL_CreateRGBSurfaceWithFormat(0, data->atlas_width, data->glyph_max_height + 2, 32, format);
       assert(glyph_cache);
       SDL_SetSurfaceBlendMode(glyph_cache, SDL_BLENDMODE_NONE);
       for (; glyph_counter < font->glyph_count; glyph_counter++)
