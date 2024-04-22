@@ -1,25 +1,10 @@
 #define SDL_MAIN_HANDLED
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
-#include <assert.h>
-#include <math.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include "colors.h"
-#include "defs.h"
-#include "fonts.h"
+#include "headers.h"
 
 #include "fonts.c"
 #include "personalities.c"
 #include "seed.c"
-
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 #define entity_loop(index_name) for (int index_name = 0; index_name < entities_count; index_name++)

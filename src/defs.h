@@ -1,4 +1,3 @@
-
 typedef struct FRect {
   float x;
   float y;
