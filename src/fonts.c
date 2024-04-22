@@ -1,11 +1,3 @@
-#include "fonts.h"
-
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-#include <assert.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
 
 static u32 BASIC_LATIN_SET[BASIC_LATIN_SET_COUNT] = {0};
 static u32 LATIN_ONE_SUPPLEMENT_SET[LATIN_ONE_SUPPLEMENT_SET_COUNT] = {0};
