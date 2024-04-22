@@ -1,4 +1,3 @@
-
 typedef struct {
   float r;
   float g;

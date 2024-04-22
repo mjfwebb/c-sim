@@ -1,3 +1,6 @@
+#pragma once
+
+#include "headers.h"
 
 #define BASIC_LATIN_SET_COUNT (126 - 32)
 #define LATIN_ONE_SUPPLEMENT_SET_COUNT (255 - 128)
@@ -24,16 +27,16 @@ typedef struct {
   int advance;
   int min_y;
   int max_y;
+  u32 atlas_index;
   u8 valid;
 } GlyphMetrics;
 
 typedef struct {
-  struct SDL_Texture* atlas;
-  struct SDL_Texture* outline_atlas;
+  struct SDL_Texture** atlas;
   GlyphMetrics* glyph_metrics;
-  GlyphMetrics* outline_glyph_metrics;
+  FRect* outline_sources;
   struct SDL_Renderer* renderer;
-  void* font_handle;
+  struct _TTF_Font* font_handle;
   int size;
   int line_skip;
   int height;
@@ -41,7 +44,12 @@ typedef struct {
   int descent;
   int outline_size;
   int glyph_count;
+  int atlas_count;
   u32 character_sets;
+  u32 character_set_count;
+  u32 character_set_starts[10];  // hardcoded to 10 for now
+  u32 character_set_array_count[10];  // hardcoded to 10 for now
+  u8 (*character_set_checker[10])(const u32);  // hardcoded to 10 for now
 } Font;
 
 typedef struct {
