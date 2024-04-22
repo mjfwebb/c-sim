@@ -18,7 +18,7 @@ static u32 EMOJI_SET[EMOJI_SET_COUNT] = {0};
 static const u32 INVALID_CHARACTER_INDEX = (u32)-1;
 
 static u8 in_basic_latin(const u32 character) {
-  return character >= 32 && character <= 126;
+  return character >= 32 && character <= 127;
 }
 
 static u8 in_latin_one_supplement(const u32 character) {
@@ -83,19 +83,19 @@ static u32 get_index_in_font(const u32 character, const Font *font) {
 }
 
 void init_emoji_set() {
-  for (int i = 0; i <= EMOJI_SET_COUNT; i++) {
+  for (int i = 0; i < EMOJI_SET_COUNT; i++) {
     EMOJI_SET[i] = i + 128512;
   }
 }
 
 void init_japanese_character_sets(const u32 bits) {
   if (bits & HIRAGANA_BIT) {
-    for (int i = 0; i <= HIRAGANA_SET_COUNT; i++) {
+    for (int i = 0; i < HIRAGANA_SET_COUNT; i++) {
       HIRAGANA_SET[i] = i + 12353;
     }
   }
   if (bits & KATAKANA_BIT) {
-    for (int i = 0; i <= KATAKANA_SET_COUNT; i++) {
+    for (int i = 0; i < KATAKANA_SET_COUNT; i++) {
       KATAKANA_SET[i] = i + 12449;
     }
   }
@@ -103,22 +103,22 @@ void init_japanese_character_sets(const u32 bits) {
 
 void init_latin_character_sets(const u32 bits) {
   if (bits & BASIC_LATIN_BIT) {
-    for (int i = 0; i <= BASIC_LATIN_SET_COUNT; i++) {
+    for (int i = 0; i < BASIC_LATIN_SET_COUNT; i++) {
       BASIC_LATIN_SET[i] = i + 32;
     }
   }
   if (bits & LATIN_ONE_SUPPLEMENT_BIT) {
-    for (int i = 0; i <= LATIN_ONE_SUPPLEMENT_SET_COUNT; i++) {
+    for (int i = 0; i < LATIN_ONE_SUPPLEMENT_SET_COUNT; i++) {
       LATIN_ONE_SUPPLEMENT_SET[i] = i + 128;
     }
   }
   if (bits & LATIN_EXTENDED_A_BIT) {
-    for (int i = 0; i <= LATIN_EXTENDED_A_SET_COUNT; i++) {
+    for (int i = 0; i < LATIN_EXTENDED_A_SET_COUNT; i++) {
       LATIN_EXTENDED_A_SET[i] = i + 256;
     }
   }
   if (bits & LATIN_EXTENDED_B_BIT) {
-    for (int i = 0; i <= LATIN_EXTENDED_B_SET_COUNT; i++) {
+    for (int i = 0; i < LATIN_EXTENDED_B_SET_COUNT; i++) {
       LATIN_EXTENDED_B_SET[i] = i + 384;
     }
   }
