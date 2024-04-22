@@ -11,6 +11,7 @@ RenderBatcher new_render_batcher(int count, SDL_Renderer* renderer)
 {
     RenderBatcher result = {0};
     result.renderer = renderer;
+    result.current_texture = NULL;
     result.vertex_buffer = (SDL_Vertex*)malloc(sizeof(SDL_Vertex) * 6 * count);
     result.count = 0;
     result.cursor = 0;
