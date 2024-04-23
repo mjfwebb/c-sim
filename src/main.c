@@ -134,7 +134,7 @@ void Entity__create(RenderContext *render_context, char *name) {
       .y = ((float)(rand() % 200) - 100) / 100,
   };
   // idealy you want to have all your sprites in one atlas to have least amount of state changes
-  // so let's hard code this for now just for the demo
+  // so let's hard code to 0 for now just for the demo
   game_context.image[entities_count] = 0;
 
   int random_amount_of_personalities = random_int_between(5, 10);
@@ -523,7 +523,6 @@ bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState
 
 void init() {
 
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
   srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -857,7 +856,7 @@ int main(int argc, char *args[]) {
       }
     }
 
-    flush_render_batcher(&render_batcher);
+   flush_render_batcher(&render_batcher);
 
     if (mouse_primary_pressed(mouse_state)) {
       // Draw the selection box
