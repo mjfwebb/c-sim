@@ -629,13 +629,13 @@ int main(int argc, char *args[]) {
   init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
 
   FontLoadParams font_parameters = {0};
-  font_parameters.size = 12;
+  font_parameters.size = 24;
   font_parameters.renderer = render_context.renderer;
   font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
   font_parameters.outline_size = 1;
 
   render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
-  font_parameters.size = 16;
+  font_parameters.size = 32;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
   if (!render_context.renderer) {
@@ -689,13 +689,13 @@ int main(int argc, char *args[]) {
   Entity__create(&render_context, "AQtun81");
   Entity__create(&render_context, "jess_forrealz");
 
-    //const u32 test_count = 99999;
-    //char test_names[99999][8];
-    //for(u32 i = 0; i < test_count; i++)
-    //{
-    //    sprintf(test_names[i], "%i", i);
-    //    Entity__create(&render_context, test_names[i]);
-    //}
+  const u32 test_count = 99999;
+  char test_names[99999][8];
+  for(u32 i = 0; i < test_count; i++)
+  {
+      sprintf(test_names[i], "%i", i);
+      Entity__create(&render_context, test_names[i]);
+  }
 
   RenderBatcher render_batcher = new_render_batcher(1000000, render_context.renderer);
 
