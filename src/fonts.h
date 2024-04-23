@@ -1,6 +1,8 @@
 #pragma once
 
 #include "headers.h"
+#include "render_batcher.h"
+                           
 
 #define BASIC_LATIN_SET_COUNT (126 - 32)
 #define LATIN_ONE_SUPPLEMENT_SET_COUNT (255 - 128)
@@ -72,6 +74,14 @@ void draw_text_outlined_utf8(const char* text, FPoint position, const RGBA color
 void draw_text(const char* text, FPoint position, const RGBA color, const Font* font);
 
 void draw_text_outlined(const char* text, FPoint position, const RGBA color, const RGBA outline_color, const Font* font);
+
+void draw_text_utf8_batched(const char* text, FPoint position, const RGBA color, const Font* font, RenderBatcher *batcher);
+
+void draw_text_outlined_utf8_batched(const char* text, FPoint position, const RGBA color, const RGBA outline_color, const Font* font, RenderBatcher *batcher);
+
+void draw_text_batched(const char* text, FPoint position, const RGBA color, const Font* font, RenderBatcher *batcher);
+
+void draw_text_outlined_batched(const char* text, FPoint position, const RGBA color, const RGBA outline_color, const Font* font, RenderBatcher *batcher);
 
 FPoint get_text_size(const char* text, const Font* font, const u8 do_outline, const u8 is_utf8);
 

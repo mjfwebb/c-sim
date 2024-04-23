@@ -3,6 +3,7 @@
 #include "headers.h"
 
 #include "fonts.c"
+#include "render_batcher.c"
 #include "personalities.c"
 #include "seed.c"
 
@@ -132,7 +133,9 @@ void Entity__create(RenderContext *render_context, char *name) {
       .x = ((float)(rand() % 200) - 100) / 100,
       .y = ((float)(rand() % 200) - 100) / 100,
   };
-  game_context.image[entities_count] = image_id;
+  // idealy you want to have all your sprites in one atlas to have least amount of state changes
+  // so let's hard code this for now just for the demo
+  game_context.image[entities_count] = 0;
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
@@ -156,6 +159,17 @@ SDL_FRect screen_to_world(RenderContext *render_context, FRect *screen_rect) {
 
 SDL_FRect world_to_screen(RenderContext *render_context, FRect *world_rect) {
   SDL_FRect screen_rect = {
+      .w = world_rect->w * render_context->camera.zoom,
+      .h = world_rect->h * render_context->camera.zoom,
+      .x = (world_rect->x - render_context->camera.current.x) * render_context->camera.zoom + render_context->window_w / 2,
+      .y = (world_rect->y - render_context->camera.current.y) * render_context->camera.zoom + render_context->window_h / 2,
+  };
+
+  return screen_rect;
+}
+
+FRect frect_world_to_screen(RenderContext *render_context, FRect *world_rect) {
+  FRect screen_rect = {
       .w = world_rect->w * render_context->camera.zoom,
       .h = world_rect->h * render_context->camera.zoom,
       .x = (world_rect->x - render_context->camera.current.x) * render_context->camera.zoom + render_context->window_w / 2,
@@ -194,6 +208,27 @@ void draw_entity_name(RenderContext *render_context, int entity_id) {
   draw_text_outlined_utf8(game_context.names[entity_id], (FPoint){x, y}, color, (RGBA){0, 0, 0, 1}, font);
 }
 
+void draw_entity_name_batched(RenderContext *render_context, int entity_id, RenderBatcher *batcher) {
+  Font *font = &render_context->fonts[0];
+  RGBA color = (RGBA){1, 1, 1, 1};
+  float y =
+      (game_context.rect[entity_id].y - render_context->camera.current.y - (45.0f / render_context->camera.zoom)) * render_context->camera.zoom +
+      render_context->window_h / 2;
+
+  if (game_context.hovered[entity_id]) {
+    y -= 10.0f;  // move the text up a little when using the bigger font
+    color = (RGBA){1, 1, 0, 1};
+    font = &render_context->fonts[1];
+  }
+
+  FPoint text_size = get_text_size(game_context.names[entity_id], font, false, true);
+  float diff = ((game_context.rect[entity_id].w * render_context->camera.zoom) - text_size.x) / 2;
+  float x =
+      (((game_context.rect[entity_id].x - render_context->camera.current.x) * render_context->camera.zoom) + diff) + render_context->window_w / 2;
+
+  draw_text_outlined_utf8_batched(game_context.names[entity_id], (FPoint){x, y}, color, (RGBA){0, 0, 0, 1}, font, batcher);
+}
+
 void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
   char text_buffer[128];
   va_list args;
@@ -202,7 +237,7 @@ void draw_debug_text(RenderContext *render_context, int index, char *str, ...) {
   assert(chars_written > 0);
   va_end(args);
 
-  draw_text_outlined_utf8(text_buffer, (FPoint){10.0f, (32.0f * index)}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1}, &render_context->fonts[0]);
+  draw_text_outlined_utf8(text_buffer, (FPoint){10.0f, (32.0f * index)}, (RGBA){0, 1, 0, 1}, (RGBA){0, 0, 0, 1}, &render_context->fonts[0]);
 }
 
 FRect get_selection_rect(RenderContext *render_context, MouseState *mouse_state) {
@@ -301,6 +336,20 @@ void render_entity(RenderContext *render_context, int entity_id) {
   if (game_context.selected[entity_id]) {
     draw_border(render_context, game_context.rect[entity_id], 5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom);
   }
+}
+
+// make this explicit, but you can abstract this in render_entity if you want
+void render_entity_batched(RenderContext *render_context, int entity_id, RenderBatcher* batcher) {
+  FRect rendering_rect = frect_world_to_screen(render_context, &game_context.rect[entity_id]);
+
+  RGBA color = {1, 1, 1, 1};
+  render_batcher_copy_texture_quad(batcher, render_context->images[game_context.image[entity_id]].texture, &color, &rendering_rect, NULL);
+
+  // disabled for now because draw_border will cause a state change and that will ruin the BatChest batcher demo
+
+  //if (game_context.selected[entity_id]) {
+  //  draw_border(render_context, game_context.rect[entity_id], 5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom);
+  //}
 }
 
 Image Image__load(RenderContext *render_context, const char *texture_file_path) {
@@ -473,6 +522,8 @@ bool entity_under_mouse(RenderContext *render_context, int entity_id, MouseState
 }
 
 void init() {
+
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
   srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -638,14 +689,15 @@ int main(int argc, char *args[]) {
   Entity__create(&render_context, "AQtun81");
   Entity__create(&render_context, "jess_forrealz");
 
-  const u32 test_count = 99999;
+    //const u32 test_count = 99999;
+    //char test_names[99999][8];
+    //for(u32 i = 0; i < test_count; i++)
+    //{
+    //    sprintf(test_names[i], "%i", i);
+    //    Entity__create(&render_context, test_names[i]);
+    //}
 
-    char buffer[99999][8];
-  for(u32 i = 0; i < test_count; i++)
-  {
-      sprintf(buffer[i], "%i", i);
-      Entity__create(&render_context, buffer[i]);
-  }
+  RenderBatcher render_batcher = new_render_batcher(1000000, render_context.renderer);
 
   MouseState mouse_state = {0};
 
@@ -793,17 +845,19 @@ int main(int argc, char *args[]) {
     FRect camera_rect = (FRect){.w = (float)render_context.window_w, .h = (float)render_context.window_h, .x = 0, .y = 0};
     entity_loop(entity_i) {
       if (entity_collides_rect(&render_context, entity_i, &camera_rect)) {
-        render_entity(&render_context, entity_i);
+        render_entity_batched(&render_context, entity_i, &render_batcher);
       }
     }
 
     if (render_context.camera.zoom > 0.5f) {
       entity_loop(entity_i) {
         if (entity_collides_rect(&render_context, entity_i, &camera_rect)) {
-          draw_entity_name(&render_context, entity_i);
+          draw_entity_name_batched(&render_context, entity_i, &render_batcher);
         }
       }
     }
+
+    flush_render_batcher(&render_batcher);
 
     if (mouse_primary_pressed(mouse_state)) {
       // Draw the selection box

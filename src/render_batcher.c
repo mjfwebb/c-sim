@@ -1,11 +1,7 @@
-#include "render_batcher.h"
 
-#include <SDL2/SDL.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
-#include "defs.h"
-#include "colors.h"
+
+#include "headers.h"
+#include "render_batcher.h"
 
 RenderBatcher new_render_batcher(int count, SDL_Renderer* renderer)
 {
@@ -114,10 +110,10 @@ void render_batcher_copy_texture_quad(RenderBatcher *batcher, SDL_Texture *textu
     if(uvs){
         vertex_data[0].tex_coord = (SDL_FPoint){uvs[0].x, uvs[0].y};
         vertex_data[1].tex_coord = (SDL_FPoint){uvs[1].x, uvs[1].y};
-        vertex_data[2].tex_coord = (SDL_FPoint){uvs[2].x, uvs[2].y};
+        vertex_data[2].tex_coord = (SDL_FPoint){uvs[3].x, uvs[3].y};
         vertex_data[3].tex_coord = (SDL_FPoint){uvs[1].x, uvs[1].y};
-        vertex_data[4].tex_coord = (SDL_FPoint){uvs[2].x, uvs[2].y};
-        vertex_data[5].tex_coord = (SDL_FPoint){uvs[5].x, uvs[5].y};
+        vertex_data[4].tex_coord = (SDL_FPoint){uvs[3].x, uvs[3].y};
+        vertex_data[5].tex_coord = (SDL_FPoint){uvs[2].x, uvs[2].y};
     }
     else{
         vertex_data[0].tex_coord = (SDL_FPoint){0, 0};
