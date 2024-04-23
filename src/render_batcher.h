@@ -2,7 +2,7 @@
 
 /*
     this was made for batched font rendering but
-    this can be also used for any sprite OkayChamp
+    this can be also used for any sprite/shape OkayChamp
 */
 
 typedef struct
