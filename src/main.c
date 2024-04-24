@@ -200,13 +200,6 @@ void create_entities() {
       "Kisamius"
   };
 
-  const u32 test_count = 99999;
-  char test_names[99999][8];
-  for (u32 i = 0; i < test_count; i++) {
-    sprintf(test_names[i], "%i", i);
-    create_entity(test_names[i]);
-  }
-
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
     create_entity(entity_names[name_index]);
   }
