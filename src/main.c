@@ -7,8 +7,8 @@
 #include "seed.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
-#define entity_loop(index_name) for (int index_name = 0; index_name < entities_count; index_name++)
-#define reverse_entity_loop(index_name) for (int index_name = entities_count - 1; index_name >= 0; index_name--)
+#define entity_loop(index_name) for (int index_name = 0; index_name < game_context.entity_count; index_name++)
+#define reverse_entity_loop(index_name) for (int index_name = game_context.entity_count - 1; index_name >= 0; index_name--)
 #define mouse_primary_pressed(mouse_state) \
   (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
 
@@ -72,13 +72,14 @@ typedef struct {
 
 typedef struct {
   int health[MAX_ENTITIES];
-  char *names[MAX_ENTITIES];
+  char names[MAX_ENTITIES][128];
   bool selected[MAX_ENTITIES];
   bool hovered[MAX_ENTITIES];
   FRect rect[MAX_ENTITIES];
   int image[MAX_ENTITIES];
   FPoint direction[MAX_ENTITIES];
   int personalities[MAX_ENTITIES][Personality_Count];
+  int entity_count;
 } GameContext;
 
 typedef struct {
@@ -92,7 +93,6 @@ typedef struct {
 
 GameContext game_context = {0};
 RenderContext render_context = {0};
-int entities_count = 0;
 
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
@@ -113,35 +113,89 @@ bool Entity__has_personality(int entity_index, Personality personality) {
   return game_context.personalities[entity_index][personality] > 0;
 }
 
-void Entity__create(char *name) {
-  int image_id = random_int_between(0, 3);
-  float width = 100.0f;
-  float scale = width / render_context.images[image_id].w;
-  float height = (float)(render_context.images[image_id].h * scale);
+void create_entities() {
+  float entity_width = 100.0f;
 
-  game_context.health[entities_count] = 100;
-  game_context.names[entities_count] = name;
-  game_context.selected[entities_count] = false;
-  game_context.hovered[entities_count] = false;
-  game_context.rect[entities_count] = (FRect){
-      .h = height,
-      .w = width,
-      .x = (float)random_int_between(-1000, 1000),
-      .y = (float)random_int_between(-1000, 1000),
+  char entity_names[][32] = {
+      "pushqrdx",
+      "Athano",
+      "AshenHobs",
+      "adrian_learns",
+      "RVerite",
+      "Orshy",
+      "ruggs888",
+      "Xent12",
+      "nuke_bird",
+      "Kasper_573",
+      "SturdyPose",
+      "coffee_lava",
+      "goudacheeseburgers",
+      "ikiwixz",
+      "NixAurvandil",
+      "smilingbig",
+      "tk_dev",
+      "realSuperku",
+      "Hoby2000",
+      "CuteMath",
+      "forodor",
+      "Azenris",
+      "collector_of_stuff",
+      "EvanMMO",
+      "thechaosbean",
+      "Lutf1sk",
+      "BauBas9883",
+      "physbuzz",
+      "rizoma0x00",
+      "Tkap1",
+      "GavinsAwfulStream",
+      "Resist_0",
+      "b1k4sh",
+      "nhancodes",
+      "qcircuit1",
+      "fruloo",
+      "programmer_jeff",
+      "BluePinStudio",
+      "Pierito95RsNg",
+      "jumpylionnn",
+      "Aruseus",
+      "lastmiles",
+      "soulfoam",
+      "AQtun81",
+      "jess_forrealz",
+      "RAFi18",
+      "Delvoid",
+      "Lolboy_30"
   };
-  game_context.direction[entities_count] = (FPoint){
-      .x = ((float)(rand() % 200) - 100) / 100,
-      .y = ((float)(rand() % 200) - 100) / 100,
-  };
-  game_context.image[entities_count] = image_id;
 
-  int random_amount_of_personalities = random_int_between(5, 10);
-  for (int i = 0; i < random_amount_of_personalities; i++) {
-    int personality = random_int_between(0, Personality_Count);
-    game_context.personalities[entities_count][personality] = random_int_between(0, 100);
+  for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
+    int image_id = random_int_between(0, 3);
+    float scale = entity_width / render_context.images[image_id].w;
+    float entity_height = (float)(render_context.images[image_id].h * scale);
+
+    game_context.health[game_context.entity_count] = 100;
+    strcpy(game_context.names[game_context.entity_count], entity_names[name_index]);  // FIXME: Use the safe version strcpy_s. PRs welcome
+    game_context.selected[game_context.entity_count] = false;
+    game_context.hovered[game_context.entity_count] = false;
+    game_context.rect[game_context.entity_count] = (FRect){
+        .h = entity_height,
+        .w = entity_width,
+        .x = (float)random_int_between(-1000, 1000),
+        .y = (float)random_int_between(-1000, 1000),
+    };
+    game_context.direction[game_context.entity_count] = (FPoint){
+        .x = ((float)(rand() % 200) - 100) / 100,
+        .y = ((float)(rand() % 200) - 100) / 100,
+    };
+    game_context.image[game_context.entity_count] = image_id;
+
+    int random_amount_of_personalities = random_int_between(5, 10);
+    for (int i = 0; i < random_amount_of_personalities; i++) {
+      int personality = random_int_between(0, Personality_Count);
+      game_context.personalities[game_context.entity_count][personality] = random_int_between(0, 100);
+    }
+
+    game_context.entity_count++;
   }
-
-  entities_count += 1;
 }
 
 SDL_FRect screen_to_world(FRect *screen_rect) {
@@ -586,53 +640,9 @@ int main(int argc, char *args[]) {
   font_parameters.size = 32;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 
-  Entity__create("pushqrdx");
-  Entity__create("Athano");
-  Entity__create("AshenHobs");
-  Entity__create("adrian_learns");
-  Entity__create("RVerite");
-  Entity__create("Orshy");
-  Entity__create("ruggs888");
-  Entity__create("Xent12");
-  Entity__create("nuke_bird");
-  Entity__create("Kasper_573");
-  Entity__create("SturdyPose");
-  Entity__create("coffee_lava");
-  Entity__create("goudacheeseburgers");
-  Entity__create("ikiwixz");
-  Entity__create("NixAurvandil");
-  Entity__create("smilingbig");
-  Entity__create("tk_dev");
-  Entity__create("realSuperku");
-  Entity__create("Hoby2000");
-  Entity__create("CuteMath");
-  Entity__create("forodor");
-  Entity__create("Azenris");
-  Entity__create("collector_of_stuff");
-  Entity__create("EvanMMO");
-  Entity__create("thechaosbean");
-  Entity__create("Lutf1sk");
-  Entity__create("BauBas9883");
-  Entity__create("physbuzz");
-  Entity__create("rizoma0x00");
-  Entity__create("Tkap1");
-  Entity__create("GavinsAwfulStream");
-  Entity__create("Resist_0");
-  Entity__create("b1k4sh");
-  Entity__create("nhancodes");
-  Entity__create("qcircuit1");
-  Entity__create("fruloo");
-  Entity__create("programmer_jeff");
-  Entity__create("BluePinStudio");
-  Entity__create("Pierito95RsNg");
-  Entity__create("jumpylionnn");
-  Entity__create("Aruseus");
-  Entity__create("lastmiles");
-  Entity__create("soulfoam");
-  Entity__create("AQtun81");
-  Entity__create("jess_forrealz");
-
   MouseState mouse_state = {0};
+
+  create_entities();
 
   int game_is_still_running = 1;
   u32 start_ticks = SDL_GetTicks();
