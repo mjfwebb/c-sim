@@ -198,7 +198,7 @@ void create_entities() {
   }
 }
 
-SDL_FRect screen_to_world(FRect *screen_rect) {
+SDL_FRect create_screen_to_world_rect(FRect *screen_rect) {
   SDL_FRect world_rect = {
       .w = screen_rect->w / render_context.camera.zoom,
       .h = screen_rect->h / render_context.camera.zoom,
