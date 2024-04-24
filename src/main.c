@@ -209,7 +209,7 @@ SDL_FRect screen_to_world(FRect *screen_rect) {
   return world_rect;
 }
 
-SDL_FRect world_to_screen(FRect *world_rect) {
+SDL_FRect create_world_to_screen_rect(FRect *world_rect) {
   SDL_FRect screen_rect = {
       .w = world_rect->w * render_context.camera.zoom,
       .h = world_rect->h * render_context.camera.zoom,
@@ -336,7 +336,7 @@ void draw_border(FRect around, float gap_width, float border_width) {
     }
 
     SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 255);
-    SDL_FRect rect = world_to_screen(&borders[i]);
+    SDL_FRect rect = create_world_to_screen_rect(&borders[i]);
     SDL_RenderFillRectF(render_context.renderer, &rect);
   }
 }
@@ -347,7 +347,7 @@ void update_entity(int entity_id) {
 }
 
 void render_entity(int entity_id) {
-  SDL_FRect rendering_rect = world_to_screen(&game_context.rect[entity_id]);
+  SDL_FRect rendering_rect = create_world_to_screen_rect(&game_context.rect[entity_id]);
 
   draw_texture(game_context.image[entity_id], &rendering_rect);
 
@@ -380,7 +380,7 @@ void draw_grid() {
   float window_w = (float)render_context.window_w;
   float window_h = (float)render_context.window_h;
 
-  SDL_FRect grid_to_screen = world_to_screen(&(FRect){
+  SDL_FRect grid_to_screen = create_world_to_screen_rect(&(FRect){
       .w = grid_size,
       .h = grid_size,
       .x = 0,
@@ -468,7 +468,7 @@ void camera_follow_entity() {
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect(MouseState *mouse_state) {
   entity_loop(entity_i) {
-    SDL_FRect rect = world_to_screen(&game_context.rect[entity_i]);
+    SDL_FRect rect = create_world_to_screen_rect(&game_context.rect[entity_i]);
     SDL_FPoint point_top_left = {
         .x = rect.x,
         .y = rect.y,
@@ -505,13 +505,13 @@ bool entity_collides_rect(int entity_id, FRect *rect) {
       .x = rect->x,
       .h = rect->h,
   };
-  SDL_FRect screen_entity = world_to_screen(&game_context.rect[entity_id]);
+  SDL_FRect screen_entity = create_world_to_screen_rect(&game_context.rect[entity_id]);
 
   return SDL_HasIntersectionF(&rect_to_sdl_frect, &screen_entity);
 }
 
 bool entity_under_mouse(int entity_id, MouseState *mouse_state) {
-  SDL_FRect rect = world_to_screen(&game_context.rect[entity_id]);
+  SDL_FRect rect = create_world_to_screen_rect(&game_context.rect[entity_id]);
 
   return SDL_PointInFRect(
       &(SDL_FPoint){
