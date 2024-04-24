@@ -292,7 +292,6 @@ Font load_font(const char *path, const FontLoadParams loader) {
   u32 *character_set_arrays[] = {BASIC_LATIN_SET, LATIN_ONE_SUPPLEMENT_SET, LATIN_EXTENDED_A_SET, LATIN_EXTENDED_B_SET, HIRAGANA_SET, KATAKANA_SET,
                                  EMOJI_SET};
 
-  // NOTE: "INFO: Text has zero width" was reported here
   for (u32 i = 0; i < CHARACTER_SETS_COUNT; i++) {
     if (font.character_sets & CHARACTER_SET_BITS[i]) {
       process_glyph_set(&glyph_set_data, character_set_arrays[i], CHARACTER_SET_ARRAY_COUNT[i], &font);
@@ -310,7 +309,7 @@ Font load_font(const char *path, const FontLoadParams loader) {
 }
 
 static void draw_text_internal(
-    const char *text, const FPoint position, const RGBA *color, const RGBA *outline_color, const Font *font, const u8 is_utf8
+    const char *text, const FPoint position, const RGBA *color, const RGBA *outline_color, const Font *font, const u8 is_utf8, RenderBatcher *batcher
 ) {
   const float height = (float)font->height;
   const float outline = outline_color->a > 0 ? ((float)font->outline_size) : 0;
@@ -325,7 +324,10 @@ static void draw_text_internal(
   SDL_FRect dst = {0};
   SDL_FRect temp_dst;
   SDL_Rect source;
+
+  FRect batcher_quad;
   GlyphMetrics *metrics;
+  FPoint uvs[4];
   for (const u8 *c = (u8 *)text; *c; c++) {
     if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
@@ -377,24 +379,58 @@ static void draw_text_internal(
       dst.x = min(dst.x, dst.x + metrics->min_x);
 
       if (outline > 0 && outline_color->a > 0) {
-        temp_dst = (SDL_FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
-        temp_dst.x -= outline * 0.5f;
-        temp_dst.y -= outline * 0.5f;
-
-        SDL_SetTextureColorMod(
-            font->atlas[metrics->atlas_index], (u8)(255 * outline_color->r), (u8)(255 * outline_color->g), (u8)(255 * outline_color->b)
-        );
-        SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * outline_color->a));
         source = (SDL_Rect
         ){(int)font->outline_sources[char_index].x, (int)font->outline_sources[char_index].y, (int)font->outline_sources[char_index].w,
           (int)font->outline_sources[char_index].h};
-        SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &temp_dst);
+        if (batcher) {
+          batcher_quad = (FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
+          batcher_quad.x -= outline * 0.5f;
+          batcher_quad.y -= outline * 0.5f;
+          int atlas_width;
+          int atlas_height;
+          SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
+          uvs[0].x = (float)(source.x) / (float)atlas_width;
+          uvs[0].y = (float)(source.y) / (float)atlas_height;
+          uvs[1].x = (float)(source.x + source.w) / (float)atlas_width;
+          uvs[1].y = (float)(source.y) / (float)atlas_height;
+          uvs[2].x = (float)(source.x + source.w) / (float)atlas_width;
+          uvs[2].y = (float)(source.y + source.h) / (float)atlas_height;
+          uvs[3].x = (float)(source.x) / (float)atlas_width;
+          uvs[3].y = (float)(source.y + source.h) / (float)atlas_height;
+          render_batcher_copy_texture_quad(batcher, font->atlas[metrics->atlas_index], outline_color, &batcher_quad, uvs);
+        } else {
+          temp_dst = (SDL_FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
+          temp_dst.x -= outline * 0.5f;
+          temp_dst.y -= outline * 0.5f;
+
+          SDL_SetTextureColorMod(
+              font->atlas[metrics->atlas_index], (u8)(255 * outline_color->r), (u8)(255 * outline_color->g), (u8)(255 * outline_color->b)
+          );
+          SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * outline_color->a));
+          SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &temp_dst);
+        }
       }
 
       source = (SDL_Rect){(int)metrics->source.x, (int)metrics->source.y, (int)metrics->source.w, (int)metrics->source.h};
-      SDL_SetTextureColorMod(font->atlas[metrics->atlas_index], (u8)(255 * color->r), (u8)(255 * color->g), (u8)(255 * color->b));
-      SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * color->a));
-      SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &dst);
+      if (batcher) {
+        batcher_quad = (FRect){dst.x, dst.y, metrics->source.w, metrics->source.h};
+        int atlas_width;
+        int atlas_height;
+        SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
+        uvs[0].x = (float)(source.x) / (float)atlas_width;
+        uvs[0].y = (float)(source.y) / (float)atlas_height;
+        uvs[1].x = (float)(source.x + source.w) / (float)atlas_width;
+        uvs[1].y = (float)(source.y) / (float)atlas_height;
+        uvs[2].x = (float)(source.x + source.w) / (float)atlas_width;
+        uvs[2].y = (float)(source.y + source.h) / (float)atlas_height;
+        uvs[3].x = (float)(source.x) / (float)atlas_width;
+        uvs[3].y = (float)(source.y + source.h) / (float)atlas_height;
+        render_batcher_copy_texture_quad(batcher, font->atlas[metrics->atlas_index], color, &batcher_quad, uvs);
+      } else {
+        SDL_SetTextureColorMod(font->atlas[metrics->atlas_index], (u8)(255 * color->r), (u8)(255 * color->g), (u8)(255 * color->b));
+        SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * color->a));
+        SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &dst);
+      }
     }
     prev_char = current_char;
     current_char = 0;
@@ -403,19 +439,39 @@ static void draw_text_internal(
 }
 
 void draw_text_utf8(const char *text, FPoint position, const RGBA color, const Font *font) {
-  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1);
+  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1, NULL);
 }
 
 void draw_text_outlined_utf8(const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font) {
-  draw_text_internal(text, position, &color, &outline_color, font, 1);
+  draw_text_internal(text, position, &color, &outline_color, font, 1, NULL);
 }
 
 void draw_text(const char *text, FPoint position, const RGBA color, const Font *font) {
-  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0);
+  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0, NULL);
 }
 
 void draw_text_outlined(const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font) {
-  draw_text_internal(text, position, &color, &outline_color, font, 0);
+  draw_text_internal(text, position, &color, &outline_color, font, 0, NULL);
+}
+
+void draw_text_utf8_batched(const char *text, FPoint position, const RGBA color, const Font *font, RenderBatcher *batcher) {
+  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1, batcher);
+}
+
+void draw_text_outlined_utf8_batched(
+    const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
+) {
+  draw_text_internal(text, position, &color, &outline_color, font, 1, batcher);
+}
+
+void draw_text_batched(const char *text, FPoint position, const RGBA color, const Font *font, RenderBatcher *batcher) {
+  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0, batcher);
+}
+
+void draw_text_outlined_batched(
+    const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
+) {
+  draw_text_internal(text, position, &color, &outline_color, font, 0, batcher);
 }
 
 int free_font(Font *atlas) {
