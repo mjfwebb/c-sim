@@ -292,6 +292,7 @@ Font load_font(const char *path, const FontLoadParams loader) {
   u32 *character_set_arrays[] = {BASIC_LATIN_SET, LATIN_ONE_SUPPLEMENT_SET, LATIN_EXTENDED_A_SET, LATIN_EXTENDED_B_SET, HIRAGANA_SET, KATAKANA_SET,
                                  EMOJI_SET};
 
+  // NOTE: "INFO: Text has zero width" was reported here
   for (u32 i = 0; i < CHARACTER_SETS_COUNT; i++) {
     if (font.character_sets & CHARACTER_SET_BITS[i]) {
       process_glyph_set(&glyph_set_data, character_set_arrays[i], CHARACTER_SET_ARRAY_COUNT[i], &font);
