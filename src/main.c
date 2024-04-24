@@ -135,9 +135,7 @@ void create_entity(char *name) {
       .x = ((float)(rand() % 200) - 100) / 100,
       .y = ((float)(rand() % 200) - 100) / 100,
   };
-  // ideally you want to have all your sprites in one atlas to have least amount of state changes
-  // so let's hard code to 0 for now just for the demo
-  game_context.image[game_context.entity_count] = 0;
+  game_context.image[game_context.entity_count] = image_id;
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
@@ -197,7 +195,9 @@ void create_entities() {
       "jess_forrealz",
       "RAFi18",
       "Delvoid",
-      "Lolboy_30"
+      "Lolboy_30",
+      "VevenVelour",
+      "Kisamius"
   };
 
   const u32 test_count = 99999;
