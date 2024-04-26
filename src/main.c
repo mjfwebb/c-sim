@@ -402,9 +402,9 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
 
   // disabled for now because draw_border will cause a state change and that will ruin the BatChest batcher demo
 
-  // if (game_context.selected[entity_id]) {
-  //   draw_border(render_context, game_context.rect[entity_id], 5.0f / render_context->camera.zoom, 4.0f / render_context->camera.zoom);
-  // }
+  if (game_context.selected[entity_id]) {
+    draw_border(game_context.rect[entity_id], 5.0f / render_context.camera.zoom, 4.0f / render_context.camera.zoom);
+  }
 }
 
 Image Image__load(const char *texture_file_path) {
