@@ -197,7 +197,11 @@ void create_entities() {
       "Delvoid",
       "Lolboy_30",
       "VevenVelour",
-      "Kisamius"
+      "Kisamius",
+      "tobias_bms",
+      "spectral_ray1",
+      "Toasty",  // AKA CarbonCollins
+      "Roilisi"
   };
 
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
