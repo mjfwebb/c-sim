@@ -28,6 +28,9 @@ typedef uint64_t u64;
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 #define clamp(x, a, b) (((x) < (a)) ? (a) : (((x) > (b)) ? (b) : (x)))
+#define abs(x) (((x) >= 0) ? (x) : -(x))
+#define fabs(x) (((x) >= 0.0) ? (x) : -(x))
+#define fabsf(x) (((x) >= 0.0f) ? (x) : -(x))
 #define ath_epsilon 1E-6
 
 bool floats_equal(float a, float b);
