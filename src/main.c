@@ -6,82 +6,11 @@
 #include "render_batcher.c"
 #include "personalities.c"
 #include "seed.c"
+#include "console.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
-#define entity_loop(index_name) for (int index_name = 0; index_name < game_context.entity_count; index_name++)
-#define reverse_entity_loop(index_name) for (int index_name = game_context.entity_count - 1; index_name >= 0; index_name--)
 #define mouse_primary_pressed(mouse_state) \
   (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
-
-#define INVALID_ENTITY (-100000000)
-#define NUM_OF_FONTS 8
-#define MAX_ENTITIES 1000000
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
-#define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
-#define print(format, ...)            \
-  printf(format "\n", ##__VA_ARGS__); \
-  fflush(stdout)
-
-typedef struct Spring {
-  float target;
-  float current;
-  float velocity;
-  float acceleration;
-  float friction;
-} Spring;
-
-typedef struct {
-  FPoint current;
-  FPoint target;
-  float target_zoom;
-  float zoom;
-  Spring zoom_spring;
-  Spring pan_spring_x;
-  Spring pan_spring_y;
-} Camera;
-
-typedef struct {
-  FPoint position;
-  FPoint target;
-  Spring spring_x;
-  Spring spring_y;
-} Selection;
-
-typedef struct {
-  int w;
-  int h;
-  SDL_Texture *texture;
-} Image;
-
-typedef struct {
-  float speed;
-  float prev_speed;
-  float delta_time;
-  float animated_time;
-  SDL_Renderer *renderer;
-  int window_w;
-  int window_h;
-  SDL_Color background_color;
-  Camera camera;
-  Font fonts[NUM_OF_FONTS];
-  float fps;
-  Selection selection;
-  const u8 *keyboard_state;
-  Image *images;
-} RenderContext;
-
-typedef struct {
-  int health[MAX_ENTITIES];
-  char names[MAX_ENTITIES][128];
-  bool selected[MAX_ENTITIES];
-  bool hovered[MAX_ENTITIES];
-  FRect rect[MAX_ENTITIES];
-  int image[MAX_ENTITIES];
-  FPoint direction[MAX_ENTITIES];
-  int personalities[MAX_ENTITIES][Personality_Count];
-  int entity_count;
-} GameContext;
 
 typedef struct {
   int prev_state;
@@ -91,9 +20,6 @@ typedef struct {
   FPoint prev_position;
   int clicks;
 } MouseState;
-
-GameContext game_context = {0};
-RenderContext render_context = {0};
 
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
@@ -157,7 +83,7 @@ void create_entities() {
       "ruggs888",
       "Xent12",
       "nuke_bird",
-      "Kasper_573",
+      "kasper_573",
       "SturdyPose",
       "coffee_lava",
       "goudacheeseburgers",
@@ -201,7 +127,11 @@ void create_entities() {
       "tobias_bms",
       "spectral_ray1",
       "Toasty",  // AKA CarbonCollins
-      "Roilisi"
+      "Roilisi",
+      "MickyMaven",
+      "Katsuida",
+      "YogiEisbar",
+      "WaryOfDairy"
   };
 
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
@@ -680,6 +610,15 @@ int main(int argc, char *args[]) {
       Image__load("assets/lamb.bmp"),
       Image__load("assets/lamb2.bmp"),
   };
+  console.y_spring = (Spring){
+      .target = 1.0f,
+      .current = 1.0f,
+      .velocity = 0.0f,
+      .acceleration = 0.5f,
+      .friction = 0.1f,
+  };
+
+  game_context.game_is_still_running = 1;
 
   init_japanese_character_sets(HIRAGANA_BIT | KATAKANA_BIT);
 
@@ -701,13 +640,12 @@ int main(int argc, char *args[]) {
 
   RenderBatcher render_batcher = new_render_batcher(1000000, render_context.renderer);
 
-  int game_is_still_running = 1;
   u32 start_ticks = SDL_GetTicks();
   int current_time = 0;
   int frame_count = 0;
   int last_update_time = 0;
 
-  while (game_is_still_running) {
+  while (game_context.game_is_still_running) {
     frame_count++;
     if (SDL_GetTicks() - start_ticks >= 1000) {
       render_context.fps = (float)frame_count;
@@ -725,6 +663,10 @@ int main(int argc, char *args[]) {
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_TEXTINPUT && console_is_open) {
+        append_console_input(event.text.text);
+      }
+
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
         mouse_state.prev_state = mouse_state.state;
         mouse_state.state = event.button.state;
@@ -767,23 +709,23 @@ int main(int argc, char *args[]) {
               }
             }
             if (!was_something_selected) {
-              game_is_still_running = 0;
+              game_context.game_is_still_running = 0;
             }
             // Maybe the following process:
             // 1. If anything is selected, then deselect it and break.
             // 2. If nothing was deselected, then open the pause menu.
             // 3. If in the pause menu, then close the pause menu.
             break;
-
           case SDLK_UP:
             render_context.speed += 100.0f;
             break;
-
           case SDLK_DOWN:
             render_context.speed = max(render_context.speed - 100.0f, 0);
             break;
-
           case SDLK_SPACE:
+            if (console_is_open) {
+              break;
+            }
             if (render_context.prev_speed > 0) {
               render_context.speed = render_context.prev_speed;
               render_context.prev_speed = 0;
@@ -791,11 +733,48 @@ int main(int argc, char *args[]) {
               render_context.prev_speed = render_context.speed;
               render_context.speed = 0;
             }
+            break;
+          case SDLK_TAB:
+            if (console_is_open) {
+              SDL_StopTextInput();
+              console.target_y = 0;
+            } else {
+              SDL_StartTextInput();
+              console.target_y = (float)render_context.window_h / 2;
+            }
+            break;
+          case SDLK_RETURN: {
+            if (console_is_open) {
+              handle_console_input();
+            };
+            break;
+          }
+          case SDLK_BACKSPACE: {
+            if (console_is_open) {
+              if (console.input_length > 0) {
+                console.input_length--;
+                console.input[console.input_length] = 0;
+              }
+            };
+            break;
+          }
           default:
             break;
         }
+
+        // Handle copy
+        // if (event.key.keysym.sym == SDLK_c && SDL_GetModState() & KMOD_CTRL) {
+        //   SDL_SetClipboardText(inputText.c_str());
+        // }
+        // Handle paste
+        if (event.key.keysym.sym == SDLK_v && SDL_GetModState() & KMOD_CTRL) {
+          char *clipboard_text = SDL_GetClipboardText();
+          append_console_input(clipboard_text);
+          SDL_free(clipboard_text);
+        }
+
       } else if (event.type == SDL_QUIT) {
-        game_is_still_running = 0;
+        game_context.game_is_still_running = 0;
       }
 
       // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
@@ -816,7 +795,9 @@ int main(int argc, char *args[]) {
 
     mouse_control_camera(&mouse_state);
 
-    keyboard_control_camera();
+    if (!console_is_open) {
+      keyboard_control_camera();
+    }
 
     if (mouse_primary_pressed(mouse_state)) {
       select_entities_within_selection_rect(&mouse_state);
@@ -831,6 +812,9 @@ int main(int argc, char *args[]) {
     // Spring the camera position
     render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
     render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
+
+    // Spring the console position
+    console.y = Spring__update(&console.y_spring, console.target_y);
 
     clear_screen();
 
@@ -865,6 +849,8 @@ int main(int argc, char *args[]) {
     }
 
     render_debug_info(&mouse_state);
+
+    draw_console();
 
     SDL_RenderPresent(render_context.renderer);
   }

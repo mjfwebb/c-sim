@@ -12,6 +12,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "colors.h"
 #include "defs.h"
+#include "colors.h"
 #include "fonts.h"
+#include "render.h"
+#include "personalities.h"
+#include "console.h"

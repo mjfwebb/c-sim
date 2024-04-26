@@ -1,3 +1,19 @@
+#pragma once
+
+#include "headers.h"
+
+#define NUM_OF_FONTS 8
+#define MAX_CONSOLE_INPUT_LENGTH 1024
+#define MAX_ENTITIES 1000000
+
+#define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
+#define print(format, ...)            \
+  printf(format "\n", ##__VA_ARGS__); \
+  fflush(stdout)
+
+#define entity_loop(index_name) for (int index_name = 0; index_name < game_context.entity_count; index_name++)
+#define reverse_entity_loop(index_name) for (int index_name = game_context.entity_count - 1; index_name >= 0; index_name--)
+
 typedef struct FRect {
   float x;
   float y;
@@ -32,5 +48,3 @@ typedef uint64_t u64;
 #define fabs(x) (((x) >= 0.0) ? (x) : -(x))
 #define fabsf(x) (((x) >= 0.0f) ? (x) : -(x))
 #define ath_epsilon 1E-6
-
-bool floats_equal(float a, float b);
