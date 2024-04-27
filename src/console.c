@@ -1,15 +1,24 @@
 #include "headers.h"
 
-typedef bool (*CommandCallback)(char*);
-
 #define CONSOLE_INPUT_HEIGHT 64.0f
 #define MAX_CONSOLE_OUTPUT_LENGTH 128
 #define MAX_CONSOLE_OUTPUT_MESSAGES 16
 #define MAX_CONSOLE_INPUT_HISTORY 16
+#define MAX_ARGS_SUGGESTIONS 8
+
+typedef bool (*CommandCallback)(char*);
+
+typedef struct {
+  int count;
+  char suggestions[MAX_ARGS_SUGGESTIONS][128];
+} CommandArgsSuggestions;
+
+typedef CommandArgsSuggestions (*CommandArgsSuggestionCallback)(char*);
 
 typedef struct {
   char* name;
   CommandCallback callback;
+  CommandArgsSuggestionCallback args_suggestion_callback;
   bool close_console_on_success;
 } ConsoleCommand;
 
@@ -40,6 +49,23 @@ void add_message_to_output(char* message);
 bool quit(char* text) {
   game_context.game_is_still_running = 0;
   return true;
+}
+
+CommandArgsSuggestions get_entity_names(char* text) {
+  CommandArgsSuggestions suggestions = {0};
+
+  entity_loop(entity_i) {
+    if (_strnicmp(game_context.names[entity_i], text, strlen(text)) == 0) {
+      strcpy(suggestions.suggestions[suggestions.count], game_context.names[entity_i]);
+      suggestions.count++;
+
+      if (suggestions.count == MAX_ARGS_SUGGESTIONS) {
+        break;
+      }
+    }
+  }
+
+  return suggestions;
 }
 
 bool follow_entity(char* text) {
@@ -74,15 +100,51 @@ ConsoleCommand console_commands[] = {
         .name = "quit",
         .callback = quit,
         .close_console_on_success = true,
+        .args_suggestion_callback = NULL,
     },
     {
         .name = "follow",
         .callback = follow_entity,
         .close_console_on_success = true,
+        .args_suggestion_callback = get_entity_names,
     }
 };
 
 Console console = {0};
+
+CommandArgsSuggestions find_command_suggestion_argument(void) {
+  for (int i = 0; i < array_count(console_commands); i++) {
+    int command_length = (int)strlen(console_commands[i].name);
+    if (command_length > console.input[console.input_index].input_length) {
+      continue;
+    }
+    if (strncmp(console_commands[i].name, console.input[console.input_index].value, command_length) == 0) {
+      return console_commands[i].args_suggestion_callback(console.input[console.input_index].value + command_length + 1);
+    }
+  }
+
+  return (CommandArgsSuggestions){0};
+}
+
+char* find_command_suggestion(void) {
+  for (int i = 0; i < array_count(console_commands); i++) {
+    if (strncmp(console_commands[i].name, console.input[console.input_index].value, console.input[console.input_index].input_length) == 0) {
+      return console_commands[i].name;
+    }
+  }
+
+  return NULL;
+}
+
+char* find_current_command(void) {
+  for (int i = 0; i < array_count(console_commands); i++) {
+    if (strncmp(console_commands[i].name, console.input[console.input_index].value, strlen(console_commands[i].name)) == 0) {
+      return console_commands[i].name;
+    }
+  }
+
+  return NULL;
+}
 
 void handle_console_input() {
   if (console.input[console.input_index].input_length == 0) {
@@ -174,10 +236,32 @@ void draw_console() {
   SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 200);
   SDL_RenderFillRectF(render_context.renderer, &console_input_rect);
 
-  draw_text_utf8(console.input[console.input_index].value, (FPoint){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]);
+  FPoint input_text_size = get_text_size(console.input[console.input_index].value, &render_context.fonts[1], false, true);
+
+  if (console.input[console.input_index].input_length > 0) {
+    // Draw suggested command text
+    char* suggested_command = find_command_suggestion();
+    if (suggested_command) {
+      draw_text_utf8(suggested_command, (FPoint){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0.5, 0.5, 0.5, 1}, &render_context.fonts[1]);
+    }
+
+    CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
+    if (suggested_command_argument.count > 0) {
+      for (int suggestion_index = 0; suggestion_index < suggested_command_argument.count; suggestion_index++) {
+        // print("%s", suggested_command_argument.suggestions[suggestion_index]);
+        draw_text_utf8(
+            suggested_command_argument.suggestions[suggestion_index],
+            (FPoint){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
+            &render_context.fonts[1]
+        );
+      }
+    }
+
+    // Draw current input text
+    draw_text_utf8(console.input[console.input_index].value, (FPoint){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]);
+  }
 
   // Draw a blinking cursor at the rightmost point of the text
-  FPoint input_text_size = get_text_size(console.input[console.input_index].value, &render_context.fonts[1], false, true);
   SDL_FRect console_input_cursor_rect = {.h = CONSOLE_INPUT_HEIGHT - 20.0f, .w = 12.0f, .x = input_text_size.x + 10.0f, .y = input_y + 10.0f};
   Uint8 console_input_cursor_rect_opacity = (Uint8)(100 * (1 - sin(6 * M_PI * render_context.animated_time)));
   SDL_SetRenderDrawColor(render_context.renderer, 0, 0, 0, console_input_cursor_rect_opacity);

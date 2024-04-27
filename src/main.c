@@ -131,7 +131,10 @@ void create_entities() {
       "MickyMaven",
       "Katsuida",
       "YogiEisbar",
-      "WaryOfDairy"
+      "WaryOfDairy",
+      "BauBas9883",
+      "Kataemoi",
+      "AgentulSRI"
   };
 
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
@@ -508,7 +511,7 @@ bool entity_under_mouse(int entity_id, MouseState *mouse_state) {
 }
 
 void init() {
-  srand(create_seed("ATHANO_LOVES_CHAT_OWO"));
+  srand(create_seed("ATHANO_THINKS_CHAT_IS_KINDA_CUTE"));
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
@@ -611,9 +614,9 @@ int main(int argc, char *args[]) {
       Image__load("assets/lamb2.bmp"),
   };
   console.y_spring = (Spring){
-      .target = 1.0f,
-      .current = 1.0f,
-      .velocity = 0.0f,
+      .target = 0.0f,
+      .current = 0.0f,
+      .velocity = 0.1f,
       .acceleration = 0.5f,
       .friction = 0.1f,
   };
@@ -700,17 +703,27 @@ int main(int argc, char *args[]) {
       if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
           case SDLK_ESCAPE:
-            bool was_something_selected = false;
+            if (console_is_open) {
+              SDL_StopTextInput();
+              console.target_y = 0.0f;
+              break;
+            }
+
+            bool entity_had_selection = false;
 
             reverse_entity_loop(entity_i) {
               if (game_context.selected[entity_i]) {
-                was_something_selected = true;
+                entity_had_selection = true;
                 game_context.selected[entity_i] = false;
               }
             }
-            if (!was_something_selected) {
-              game_context.game_is_still_running = 0;
+
+            if (entity_had_selection) {
+              break;
             }
+
+            game_context.game_is_still_running = 0;
+
             // Maybe the following process:
             // 1. If anything is selected, then deselect it and break.
             // 2. If nothing was deselected, then open the pause menu.
@@ -768,8 +781,33 @@ int main(int argc, char *args[]) {
             break;
           case SDLK_TAB:
             if (console_is_open) {
+              if (console.input[console.input_index].input_length > 0) {
+                char *suggested_command = find_command_suggestion();
+                if (suggested_command) {
+                  strcpy(console.input[console.input_index].value, suggested_command);
+                  console.input[console.input_index].input_length = (int)strlen(suggested_command);
+                  break;
+                }
+
+                CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
+                // Figure out what the current argument is (we can assume 1st for now)
+                // Concat the existing input (removing any arg values) with the accepted suggestion
+
+                if (suggested_command_argument.count > 0) {
+                  char *current_command = find_current_command();
+                  // print("%s", current_command);
+
+                  // print("%s", suggested_command_argument.suggestions[0]);
+
+                  strcpy(console.input[console.input_index].value + strlen(current_command) + 1, suggested_command_argument.suggestions[0]);
+                  console.input[console.input_index].input_length =
+                      (int)strlen(current_command) + 1 + (int)strlen(suggested_command_argument.suggestions[0]);
+                }
+                break;
+              }
+
               SDL_StopTextInput();
-              console.target_y = 0;
+              console.target_y = 0.0f;
             } else {
               SDL_StartTextInput();
               console.target_y = (float)render_context.window_h / 2;
