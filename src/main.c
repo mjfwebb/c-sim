@@ -717,10 +717,42 @@ int main(int argc, char *args[]) {
             // 3. If in the pause menu, then close the pause menu.
             break;
           case SDLK_UP:
-            render_context.speed += 100.0f;
+            if (console_is_open) {
+              int new_index = (console.input_index - 1);
+              if (new_index < 0) {
+                new_index = MAX_CONSOLE_INPUT_HISTORY - 1;
+              }
+
+              bool current_index_has_value = console.input[console.input_index].input_length > 0;
+              bool next_index_has_value = console.input[new_index].input_length > 0;
+
+              if (!current_index_has_value && !next_index_has_value) {
+                break;
+              }
+
+              console.input_index = new_index;
+            } else {
+              render_context.speed += 100.0f;
+            }
             break;
           case SDLK_DOWN:
-            render_context.speed = max(render_context.speed - 100.0f, 0);
+            if (console_is_open) {
+              int new_index = console.input_index + 1;
+              if (new_index == MAX_CONSOLE_INPUT_HISTORY) {
+                new_index = 0;
+              }
+
+              bool current_index_has_value = console.input[console.input_index].input_length > 0;
+              bool next_index_has_value = console.input[new_index].input_length > 0;
+
+              if (!current_index_has_value && !next_index_has_value) {
+                break;
+              }
+
+              console.input_index = new_index;
+            } else {
+              render_context.speed = max(render_context.speed - 100.0f, 0);
+            }
             break;
           case SDLK_SPACE:
             if (console_is_open) {
@@ -751,9 +783,9 @@ int main(int argc, char *args[]) {
           }
           case SDLK_BACKSPACE: {
             if (console_is_open) {
-              if (console.input_length > 0) {
-                console.input_length--;
-                console.input[console.input_length] = 0;
+              if (console.input[console.input_index].input_length > 0) {
+                console.input[console.input_index].input_length--;
+                console.input[console.input_index].value[console.input[console.input_index].input_length] = 0;
               }
             };
             break;
