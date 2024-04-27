@@ -48,3 +48,5 @@ typedef uint64_t u64;
 #define fabs(x) (((x) >= 0.0) ? (x) : -(x))
 #define fabsf(x) (((x) >= 0.0f) ? (x) : -(x))
 #define ath_epsilon 1E-6
+
+bool floats_equal(float a, float b);
