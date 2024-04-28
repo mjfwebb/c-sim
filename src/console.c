@@ -243,17 +243,17 @@ void draw_console() {
     char* suggested_command = find_command_suggestion();
     if (suggested_command) {
       draw_text_utf8(suggested_command, (FPoint){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0.5, 0.5, 0.5, 1}, &render_context.fonts[1]);
-    }
-
-    CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
-    if (suggested_command_argument.count > 0) {
-      for (int suggestion_index = 0; suggestion_index < suggested_command_argument.count; suggestion_index++) {
-        // print("%s", suggested_command_argument.suggestions[suggestion_index]);
-        draw_text_utf8(
-            suggested_command_argument.suggestions[suggestion_index],
-            (FPoint){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
-            &render_context.fonts[1]
-        );
+    } else {
+      CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
+      if (suggested_command_argument.count > 0) {
+        for (int suggestion_index = 0; suggestion_index < suggested_command_argument.count; suggestion_index++) {
+          // print("%s", suggested_command_argument.suggestions[suggestion_index]);
+          draw_text_utf8(
+              suggested_command_argument.suggestions[suggestion_index],
+              (FPoint){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
+              &render_context.fonts[1]
+          );
+        }
       }
     }
 
