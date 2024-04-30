@@ -1,7 +1,4 @@
-
-
 #include "headers.h"
-#include "render_batcher.h"
 
 RenderBatcher new_render_batcher(int count, SDL_Renderer *renderer) {
   return (RenderBatcher){
@@ -36,69 +33,75 @@ void render_batcher_copy_vertex_data(RenderBatcher *batcher, SDL_Texture *textur
   batcher->current_texture = texture;
 }
 
-void render_batcher_copy_quad(RenderBatcher *batcher, const void *color, const struct FRect *quad) {
+void render_batcher_copy_quad(RenderBatcher *batcher, const void *color, FRect *quad) {
   assert(batcher->renderer && batcher->capacity > 0);
 
   RGBA *c = (RGBA *)color;
   const SDL_Color vertex_color = (SDL_Color){(u8)(255 * c->r), (u8)(255 * c->g), (u8)(255 * c->b), (u8)(255 * c->a)};
   SDL_Vertex vertex_data[6];
 
-  vertex_data[0].position.x = quad->x;
-  vertex_data[0].position.y = quad->y;
+  float quad_width = frect_width(quad);
+  float quad_height = frect_height(quad);
+
+  vertex_data[0].position.x = quad->position.x;
+  vertex_data[0].position.y = quad->position.y;
   vertex_data[0].color = vertex_color;
 
-  vertex_data[1].position.x = quad->x + quad->w;
-  vertex_data[1].position.y = quad->y;
+  vertex_data[1].position.x = quad->position.x + quad_width;
+  vertex_data[1].position.y = quad->position.y;
   vertex_data[1].color = vertex_color;
 
-  vertex_data[2].position.x = quad->x;
-  vertex_data[2].position.y = quad->y + quad->h;
+  vertex_data[2].position.x = quad->position.x;
+  vertex_data[2].position.y = quad->position.y + quad_height;
   vertex_data[2].color = vertex_color;
 
-  vertex_data[3].position.x = quad->x + quad->w;
-  vertex_data[3].position.y = quad->y;
+  vertex_data[3].position.x = quad->position.x + quad_width;
+  vertex_data[3].position.y = quad->position.y;
   vertex_data[3].color = vertex_color;
 
-  vertex_data[4].position.x = quad->x;
-  vertex_data[4].position.y = quad->y + quad->h;
+  vertex_data[4].position.x = quad->position.x;
+  vertex_data[4].position.y = quad->position.y + quad_height;
   vertex_data[4].color = vertex_color;
 
-  vertex_data[5].position.x = quad->x + quad->w;
-  vertex_data[5].position.y = quad->y + quad->h;
+  vertex_data[5].position.x = quad->position.x + quad_width;
+  vertex_data[5].position.y = quad->position.y + quad_height;
   vertex_data[5].color = vertex_color;
 
   render_batcher_copy_vertex_data(batcher, NULL, vertex_data, 6);
 }
 
-void render_batcher_copy_texture_quad(RenderBatcher *batcher, SDL_Texture *texture, const void *color, const FRect *quad, const FPoint *uvs) {
+void render_batcher_copy_texture_quad(RenderBatcher *batcher, SDL_Texture *texture, const void *color, FRect *quad, const Vec2 *uvs) {
   assert(batcher->renderer && batcher->capacity > 0);
 
   RGBA *c = (RGBA *)color;
   const SDL_Color vertex_color = (SDL_Color){(u8)(255 * c->r), (u8)(255 * c->g), (u8)(255 * c->b), (u8)(255 * c->a)};
   SDL_Vertex vertex_data[6];
 
-  vertex_data[0].position.x = quad->x;
-  vertex_data[0].position.y = quad->y;
+  float quad_width = frect_width(quad);
+  float quad_height = frect_height(quad);
+
+  vertex_data[0].position.x = quad->position.x;
+  vertex_data[0].position.y = quad->position.y;
   vertex_data[0].color = vertex_color;
 
-  vertex_data[1].position.x = quad->x + quad->w;
-  vertex_data[1].position.y = quad->y;
+  vertex_data[1].position.x = quad->position.x + quad_width;
+  vertex_data[1].position.y = quad->position.y;
   vertex_data[1].color = vertex_color;
 
-  vertex_data[2].position.x = quad->x;
-  vertex_data[2].position.y = quad->y + quad->h;
+  vertex_data[2].position.x = quad->position.x;
+  vertex_data[2].position.y = quad->position.y + quad_height;
   vertex_data[2].color = vertex_color;
 
-  vertex_data[3].position.x = quad->x + quad->w;
-  vertex_data[3].position.y = quad->y;
+  vertex_data[3].position.x = quad->position.x + quad_width;
+  vertex_data[3].position.y = quad->position.y;
   vertex_data[3].color = vertex_color;
 
-  vertex_data[4].position.x = quad->x;
-  vertex_data[4].position.y = quad->y + quad->h;
+  vertex_data[4].position.x = quad->position.x;
+  vertex_data[4].position.y = quad->position.y + quad_height;
   vertex_data[4].color = vertex_color;
 
-  vertex_data[5].position.x = quad->x + quad->w;
-  vertex_data[5].position.y = quad->y + quad->h;
+  vertex_data[5].position.x = quad->position.x + quad_width;
+  vertex_data[5].position.y = quad->position.y + quad_height;
   vertex_data[5].color = vertex_color;
 
   if (uvs) {

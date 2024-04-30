@@ -14,7 +14,10 @@
 
 #include "defs.h"
 #include "colors.h"
+#include "render_batcher.h"
 #include "fonts.h"
 #include "render.h"
 #include "personalities.h"
 #include "console.h"
+#include "game.h"
+#include "physics.h"

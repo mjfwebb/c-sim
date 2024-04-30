@@ -14,17 +14,15 @@
 #define entity_loop(index_name) for (int index_name = 0; index_name < game_context.entity_count; index_name++)
 #define reverse_entity_loop(index_name) for (int index_name = game_context.entity_count - 1; index_name >= 0; index_name--)
 
-typedef struct FRect {
+typedef struct Vec2 {
   float x;
   float y;
-  float w;
-  float h;
-} FRect;
+} Vec2;
 
-typedef struct FPoint {
-  float x;
-  float y;
-} FPoint;
+typedef struct {
+  Vec2 position;
+  Vec2 size;
+} FRect;
 
 typedef int8_t s8;
 typedef int16_t s16;
@@ -50,3 +48,7 @@ typedef uint64_t u64;
 #define ath_epsilon 1E-6
 
 bool floats_equal(float a, float b);
+
+float frect_width(FRect *rect);
+
+float frect_height(FRect *rect);

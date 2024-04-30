@@ -16,8 +16,8 @@ typedef struct Spring {
 } Spring;
 
 typedef struct {
-  FPoint current;
-  FPoint target;
+  Vec2 current;
+  Vec2 target;
   float target_zoom;
   float zoom;
   Spring zoom_spring;
@@ -26,8 +26,8 @@ typedef struct {
 } Camera;
 
 typedef struct {
-  FPoint position;
-  FPoint target;
+  Vec2 position;
+  Vec2 target;
   Spring spring_x;
   Spring spring_y;
 } Selection;
@@ -39,10 +39,18 @@ typedef struct {
 } Image;
 
 typedef struct {
-  float speed;
-  float prev_speed;
-  float delta_time;
-  float animated_time;
+  int interval;
+  double accumulated;
+} Timer;
+
+typedef struct {
+  u32 count;
+  SDL_Texture *textures[32];
+  Vec2 size[32];
+} TextureAtlas;
+
+typedef struct {
+  Timer timer[2];
   SDL_Renderer *renderer;
   int window_w;
   int window_h;
@@ -52,21 +60,7 @@ typedef struct {
   float fps;
   Selection selection;
   const u8 *keyboard_state;
-  Image *images;
+  TextureAtlas texture_atlas;
 } RenderContext;
 
-typedef struct {
-  int health[MAX_ENTITIES];
-  char names[MAX_ENTITIES][128];
-  bool selected[MAX_ENTITIES];
-  bool hovered[MAX_ENTITIES];
-  FRect rect[MAX_ENTITIES];
-  int image[MAX_ENTITIES];
-  FPoint direction[MAX_ENTITIES];
-  int personalities[MAX_ENTITIES][Personality_Count];
-  int entity_count;
-  bool game_is_still_running;
-} GameContext;
-
-GameContext game_context = {0};
 RenderContext render_context = {0};

@@ -236,13 +236,13 @@ void draw_console() {
   SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 200);
   SDL_RenderFillRectF(render_context.renderer, &console_input_rect);
 
-  FPoint input_text_size = get_text_size(console.input[console.input_index].value, &render_context.fonts[1], false, true);
+  Vec2 input_text_size = get_text_size(console.input[console.input_index].value, &render_context.fonts[1], false, true);
 
   if (console.input[console.input_index].input_length > 0) {
     // Draw suggested command text
     char* suggested_command = find_command_suggestion();
     if (suggested_command) {
-      draw_text_utf8(suggested_command, (FPoint){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0.5, 0.5, 0.5, 1}, &render_context.fonts[1]);
+      draw_text_utf8(suggested_command, (Vec2){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0.5, 0.5, 0.5, 1}, &render_context.fonts[1]);
     } else {
       CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
       if (suggested_command_argument.count > 0) {
@@ -250,7 +250,7 @@ void draw_console() {
           // print("%s", suggested_command_argument.suggestions[suggestion_index]);
           draw_text_utf8(
               suggested_command_argument.suggestions[suggestion_index],
-              (FPoint){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
+              (Vec2){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
               &render_context.fonts[1]
           );
         }
@@ -258,12 +258,15 @@ void draw_console() {
     }
 
     // Draw current input text
-    draw_text_utf8(console.input[console.input_index].value, (FPoint){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]);
+    draw_text_utf8(console.input[console.input_index].value, (Vec2){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]);
   }
 
   // Draw a blinking cursor at the rightmost point of the text
   SDL_FRect console_input_cursor_rect = {.h = CONSOLE_INPUT_HEIGHT - 20.0f, .w = 12.0f, .x = input_text_size.x + 10.0f, .y = input_y + 10.0f};
-  Uint8 console_input_cursor_rect_opacity = (Uint8)(100 * (1 - sin(6 * M_PI * render_context.animated_time)));
+
+  // This works, don't touch it
+  double curve = sin((M_PI * 3) * render_context.timer[0].accumulated);
+  Uint8 console_input_cursor_rect_opacity = (Uint8)(100 * (1 - curve));
   SDL_SetRenderDrawColor(render_context.renderer, 0, 0, 0, console_input_cursor_rect_opacity);
   SDL_RenderFillRectF(render_context.renderer, &console_input_cursor_rect);
 
@@ -274,7 +277,7 @@ void draw_console() {
     print("message: %.*s", MAX_CONSOLE_OUTPUT_LENGTH, console.output.messages[output_index]);
     draw_text_utf8(
         console.output.messages[output_index],
-        (FPoint){.x = 8.0f, .y = console.y_spring.current - CONSOLE_INPUT_HEIGHT - 50.0f - ((32.0f + 16.0f) * position + 1)},
+        (Vec2){.x = 8.0f, .y = console.y_spring.current - CONSOLE_INPUT_HEIGHT - 50.0f - ((32.0f + 16.0f) * position + 1)},
         (RGBA){0.2f, 0.2f, 0.2f, 1}, &render_context.fonts[1]
     );
   }

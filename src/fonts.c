@@ -141,8 +141,8 @@ static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Fon
     return;
   }
   m->valid = 1;
-  m->source.w = (float)data->glyphs[index]->w;
-  m->source.h = (float)data->glyphs[index]->h;
+  m->source.size.x = (float)data->glyphs[index]->w;
+  m->source.size.y = (float)data->glyphs[index]->h;
   if (data->glyphs[index]->h > data->glyph_max_height) {
     data->glyph_max_height = data->glyphs[index]->h;
   }
@@ -184,18 +184,18 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
     int current_pos = 0;
     for (int i = 0; i < font->glyph_count; i++) {
       if (font->glyph_metrics[i].valid) {
-        font->glyph_metrics[i].source.y = 0;
+        font->glyph_metrics[i].source.position.y = 0;
 
         if ((font->outline_size > 0 && current_pos + data->outline_glyphs[i]->w > data->atlas_width) ||
             current_pos + data->glyphs[i]->w > data->atlas_width) {
-          font->glyph_metrics[i].source.x = 0;
+          font->glyph_metrics[i].source.position.x = 0;
           if (font->outline_size) {
             current_pos = data->outline_glyphs[i]->w + 2;
           } else {
             current_pos = data->glyphs[i]->w + 2;
           }
         } else {
-          font->glyph_metrics[i].source.x = (float)current_pos;
+          font->glyph_metrics[i].source.position.x = (float)current_pos;
           if (font->outline_size) {
             current_pos += data->outline_glyphs[i]->w + 2;
           } else {
@@ -221,8 +221,10 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
     for (; glyph_counter < font->glyph_count; glyph_counter++) {
       if (font->glyph_metrics[glyph_counter].valid) {
         SDL_Rect dst = {
-            (int)font->glyph_metrics[glyph_counter].source.x, (int)font->glyph_metrics[glyph_counter].source.y,
-            (int)font->glyph_metrics[glyph_counter].source.w, (int)font->glyph_metrics[glyph_counter].source.h
+            (int)font->glyph_metrics[glyph_counter].source.position.x,
+            (int)font->glyph_metrics[glyph_counter].source.position.y,
+            (int)frect_width(&font->glyph_metrics[glyph_counter].source),
+            (int)frect_height(&font->glyph_metrics[glyph_counter].source),
         };
 
         if (rendered_glyphs_counter > 0 && dst.x == 0) {  // surface is full, time to create a new atlas
@@ -309,7 +311,7 @@ Font load_font(const char *path, const FontLoadParams loader) {
 }
 
 static void draw_text_internal(
-    const char *text, const FPoint position, const RGBA *color, const RGBA *outline_color, const Font *font, const u8 is_utf8, RenderBatcher *batcher
+    const char *text, const Vec2 position, const RGBA *color, const RGBA *outline_color, const Font *font, const u8 is_utf8, RenderBatcher *batcher
 ) {
   const float height = (float)font->height;
   const float outline = outline_color->a > 0 ? ((float)font->outline_size) : 0;
@@ -327,7 +329,7 @@ static void draw_text_internal(
 
   FRect batcher_quad;
   GlyphMetrics *metrics;
-  FPoint uvs[4];
+  Vec2 uvs[4];
   for (const u8 *c = (u8 *)text; *c; c++) {
     if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
@@ -369,23 +371,28 @@ static void draw_text_internal(
     char_index = get_index_in_font(current_char, font);
     metrics = &font->glyph_metrics[char_index];
 
-    if (metrics->valid && metrics->source.w > 0) {
+    if (metrics->valid && metrics->source.size.x > 0) {
       if (prev_char) {
         const int kern = TTF_GetFontKerningSizeGlyphs32(font->font_handle, prev_char, current_char);
         xc += kern;
       }
 
-      dst = (SDL_FRect){xc, yc, metrics->source.w, metrics->source.h};
+      dst = (SDL_FRect){xc, yc, metrics->source.size.x, metrics->source.size.y};
       dst.x = min(dst.x, dst.x + metrics->min_x);
 
       if (outline > 0 && outline_color->a > 0) {
         source = (SDL_Rect
-        ){(int)font->outline_sources[char_index].x, (int)font->outline_sources[char_index].y, (int)font->outline_sources[char_index].w,
-          (int)font->outline_sources[char_index].h};
+        ){(int)font->outline_sources[char_index].position.x, (int)font->outline_sources[char_index].position.y,
+          (int)font->outline_sources[char_index].size.x, (int)font->outline_sources[char_index].size.y};
         if (batcher) {
-          batcher_quad = (FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
-          batcher_quad.x -= outline * 0.5f;
-          batcher_quad.y -= outline * 0.5f;
+          batcher_quad = (FRect){
+              .position.x = dst.x,
+              .position.y = dst.y,
+              .size.x = dst.x + metrics->source.size.x + outline * 2,
+              .size.y = dst.y + metrics->source.size.y + outline * 2,
+          };
+          batcher_quad.position.x -= outline * 0.5f;
+          batcher_quad.position.y -= outline * 0.5f;
           int atlas_width;
           int atlas_height;
           SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
@@ -399,7 +406,7 @@ static void draw_text_internal(
           uvs[3].y = (float)(source.y + source.h) / (float)atlas_height;
           render_batcher_copy_texture_quad(batcher, font->atlas[metrics->atlas_index], outline_color, &batcher_quad, uvs);
         } else {
-          temp_dst = (SDL_FRect){dst.x, dst.y, metrics->source.w + outline * 2, metrics->source.h + outline * 2};
+          temp_dst = (SDL_FRect){.x = dst.x, .y = dst.y, .w = metrics->source.size.x + outline * 2, .h = metrics->source.size.y + outline * 2};
           temp_dst.x -= outline * 0.5f;
           temp_dst.y -= outline * 0.5f;
 
@@ -411,9 +418,10 @@ static void draw_text_internal(
         }
       }
 
-      source = (SDL_Rect){(int)metrics->source.x, (int)metrics->source.y, (int)metrics->source.w, (int)metrics->source.h};
+      source = (SDL_Rect){(int)metrics->source.position.x, (int)metrics->source.position.y, (int)metrics->source.size.x, (int)metrics->source.size.y};
       if (batcher) {
-        batcher_quad = (FRect){dst.x, dst.y, metrics->source.w, metrics->source.h};
+        batcher_quad =
+            (FRect){.position.x = dst.x, .position.y = dst.y, .size.x = dst.x + metrics->source.size.x, .size.y = dst.y + metrics->source.size.y};
         int atlas_width;
         int atlas_height;
         SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
@@ -438,38 +446,38 @@ static void draw_text_internal(
   }
 }
 
-void draw_text_utf8(const char *text, FPoint position, const RGBA color, const Font *font) {
+void draw_text_utf8(const char *text, Vec2 position, const RGBA color, const Font *font) {
   draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1, NULL);
 }
 
-void draw_text_outlined_utf8(const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font) {
+void draw_text_outlined_utf8(const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font) {
   draw_text_internal(text, position, &color, &outline_color, font, 1, NULL);
 }
 
-void draw_text(const char *text, FPoint position, const RGBA color, const Font *font) {
+void draw_text(const char *text, Vec2 position, const RGBA color, const Font *font) {
   draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0, NULL);
 }
 
-void draw_text_outlined(const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font) {
+void draw_text_outlined(const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font) {
   draw_text_internal(text, position, &color, &outline_color, font, 0, NULL);
 }
 
-void draw_text_utf8_batched(const char *text, FPoint position, const RGBA color, const Font *font, RenderBatcher *batcher) {
+void draw_text_utf8_batched(const char *text, Vec2 position, const RGBA color, const Font *font, RenderBatcher *batcher) {
   draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1, batcher);
 }
 
 void draw_text_outlined_utf8_batched(
-    const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
+    const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
 ) {
   draw_text_internal(text, position, &color, &outline_color, font, 1, batcher);
 }
 
-void draw_text_batched(const char *text, FPoint position, const RGBA color, const Font *font, RenderBatcher *batcher) {
+void draw_text_batched(const char *text, Vec2 position, const RGBA color, const Font *font, RenderBatcher *batcher) {
   draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0, batcher);
 }
 
 void draw_text_outlined_batched(
-    const char *text, FPoint position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
+    const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
 ) {
   draw_text_internal(text, position, &color, &outline_color, font, 0, batcher);
 }
@@ -486,7 +494,7 @@ int free_font(Font *atlas) {
   return 0;
 }
 
-FPoint get_text_size(const char *text, const Font *font, const u8 do_outline, const u8 is_utf8) {
+Vec2 get_text_size(const char *text, const Font *font, const u8 do_outline, const u8 is_utf8) {
   const int outline = do_outline ? font->outline_size : 0;
   const int height = font->height;
 
@@ -497,7 +505,7 @@ FPoint get_text_size(const char *text, const Font *font, const u8 do_outline, co
   u32 prev_char = 0;
   u32 current_char = 0;
 
-  FPoint result = {-1, (float)(height + outline * 2)};
+  Vec2 result = {-1, (float)(height + outline * 2)};
   GlyphMetrics *metric;
 
   for (const u8 *c = (u8 *)text; *c; c++) {
