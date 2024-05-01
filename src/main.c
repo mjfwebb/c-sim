@@ -144,9 +144,11 @@ void create_entity(char *name) {
           },
   };
   game_context.positions[game_context.entity_count].previous_position = game_context.positions[game_context.entity_count].current_position;
-  game_context.speeds[game_context.entity_count] = (SpeedComponent
-  ){.current_direction = {.x = ((float)(rand() % 200) - 100) / 100, .y = ((float)(rand() % 200) - 100) / 100},
-    .current_velocity = (float)random_int_between(40, 55)};
+  game_context.speeds[game_context.entity_count] = (SpeedComponent){
+      .current_direction.x = (((float)(rand() % 400) - 200) / 100),
+      .current_direction.y = (((float)(rand() % 400) - 200) / 100),
+      .current_velocity = (float)random_int_between(40, 55),
+  };
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
@@ -253,8 +255,8 @@ FRect get_camera_rect() {
   FRect camera_rect = {
       .position =
           {
-              .x = 0,
-              .y = 0,
+              .x = -300.0f,
+              .y = -300.0f,
           },
       .size =
           {
@@ -932,7 +934,7 @@ int main(int argc, char *args[]) {
     return EXIT_FAILURE;
   }
 
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
   if (!renderer) {
     fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
