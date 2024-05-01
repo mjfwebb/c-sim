@@ -131,7 +131,7 @@ void create_entity(char *name) {
   float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
   game_context.textures[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
 
-  game_context.health[game_context.entity_count] = 100;
+  game_context.health[game_context.entity_count] = random_int_between(10, 100);
   strcpy(game_context.names[game_context.entity_count], name);  // FIXME: Use the safe version strcpy_s. PRs welcome
 
   game_context.selected[game_context.entity_count] = false;
@@ -393,6 +393,33 @@ float Spring__update(Spring *spring, float target) {
   return spring->current += spring->velocity;
 }
 
+void draw_health_bar(int entity_id, FRect entity_rect) {
+  int health = game_context.health[entity_id];
+
+  const float y = (entity_rect.position.y - 15.0f * min(render_context.camera.zoom, 1.0f));
+  const float h = (10.0f * min(render_context.camera.zoom, 1.0f));
+
+  SDL_SetRenderDrawColor(render_context.renderer, 0, 0, 0, 255);
+  SDL_FRect total_health_rect = {
+      .x = entity_rect.position.x,
+      .y = y,
+      .w = frect_width(&entity_rect),
+      .h = h,
+  };
+
+  SDL_RenderFillRectF(render_context.renderer, &total_health_rect);
+
+  SDL_SetRenderDrawColor(render_context.renderer, 200, 0, 0, 255);
+  SDL_FRect current_health_rect = {
+      .x = entity_rect.position.x,
+      .y = y,
+      .w = (frect_width(&entity_rect) / 100) * health,
+      .h = h,
+  };
+
+  SDL_RenderFillRectF(render_context.renderer, &current_health_rect);
+}
+
 void draw_border(FRect around, float gap_width, float border_width) {
   FRect borders[4];
 
@@ -463,6 +490,8 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   render_batcher_copy_texture_quad(
       batcher, render_context.texture_atlas.textures[game_context.textures[entity_id].texture_id], &color, &entity_screen_rect, NULL
   );
+
+  draw_health_bar(entity_id, entity_screen_rect);
 
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {

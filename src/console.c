@@ -95,6 +95,27 @@ bool follow_entity(char* text) {
   return false;
 }
 
+bool heal_entity(char* text) {
+  int found_entity = -1;
+
+  entity_loop(entity_i) {
+    if (_strcmpi(game_context.names[entity_i], text) == 0) {
+      found_entity = entity_i;
+    }
+  }
+
+  if (found_entity >= 0) {
+    game_context.health[found_entity] = 100;
+
+    return true;
+  } else {
+    char output_message[128];
+    sprintf(output_message, "No entity found with the name %s", text);
+    add_message_to_output(output_message);
+  }
+  return false;
+}
+
 ConsoleCommand console_commands[] = {
     {
         .name = "quit",
@@ -105,6 +126,12 @@ ConsoleCommand console_commands[] = {
     {
         .name = "follow",
         .callback = follow_entity,
+        .close_console_on_success = true,
+        .args_suggestion_callback = get_entity_names,
+    },
+    {
+        .name = "heal",
+        .callback = heal_entity,
         .close_console_on_success = true,
         .args_suggestion_callback = get_entity_names,
     }
