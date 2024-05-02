@@ -41,7 +41,7 @@ RenderBatcher render_batcher = {0};
 MouseState mouse_state = {0};
 int game_is_still_running = 1;
 
-bool Entity__has_personality(int entity_index, Personality personality) {
+bool entity_has_personality(int entity_index, Personality personality) {
   return game_context.personalities[entity_index][personality] > 0;
 }
 
@@ -663,7 +663,7 @@ void init() {
 
 void log_entity_personalities(int entity_id) {
   for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
-    if (Entity__has_personality(entity_id, personality_i)) {
+    if (entity_has_personality(entity_id, personality_i)) {
       print(
           "Entity %s has personality %s with value %d", game_context.names[entity_id], Personality__Strings[personality_i],
           game_context.personalities[entity_id][personality_i]
