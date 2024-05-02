@@ -4,12 +4,13 @@ RenderBatcher new_render_batcher(int count, SDL_Renderer *renderer) {
   return (RenderBatcher){
       .renderer = renderer,
       .current_texture = NULL,
-      .vertex_buffer = (SDL_Vertex *)malloc(sizeof(SDL_Vertex) * 6 * count),  // QUESTION: what is 6
+      .vertex_buffer = (SDL_Vertex *)malloc(sizeof(SDL_Vertex) * 6 * count),
       .count = 0,
       .cursor = 0,
       .capacity = count,
   };
 }
+
 void free_render_batcher(RenderBatcher *batcher) {
   free(batcher->vertex_buffer);
 }
