@@ -282,32 +282,6 @@ FRect get_entity_texture_rect(int entity_id) {
   return texture_rect;
 }
 
-// void draw_entity_name(int entity_id) {
-//   Font *font = &render_context.fonts[0];
-//   RGBA color = (RGBA){1, 1, 1, 1};
-//   // TODO: add alpha value
-//   float y = (game_context.positions[entity_id].current_position.y - render_context.camera.current.y - (45.0f / render_context.camera.zoom)) *
-//                 render_context.camera.zoom +
-//             render_context.window_h / 2;
-
-//   if (game_context.hovered[entity_id]) {
-//     y -= 10.0f;  // move the text up a little when using the bigger font
-//     color = (RGBA){1, 1, 0, 1};
-//     font = &render_context.fonts[1];
-//   }
-
-//   Vec2 text_size = get_text_size(game_context.names[entity_id], font, false, true);
-
-//   FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-//   FRect rendering_rect = frect_world_to_screen(entity_texture_rect);
-
-//   float diff = ((entity_texture_rect.size.x * render_context.camera.zoom) - text_size.x) / 2;
-//   // TODO: add alpha value
-//   float x = (((rendering_rect.position.x - render_context.camera.current.x) * render_context.camera.zoom) + diff) + render_context.window_w / 2;
-
-//   draw_text_outlined_utf8(game_context.names[entity_id], (Vec2){x, y}, color, (RGBA){0, 0, 0, 1}, font);
-// }
-
 void draw_entity_name_batched(int entity_id, RenderBatcher *batcher) {
   Font *font = &render_context.fonts[0];
   RGBA color = (RGBA){1, 1, 1, 1};
