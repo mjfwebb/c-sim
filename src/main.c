@@ -243,14 +243,6 @@ SDL_FRect create_world_to_screen_rect(FRect *world_rect) {
   return rect;
 }
 
-void draw_texture(int texture_id, SDL_FRect *rendering_rect) {
-  int copy_result = SDL_RenderCopyF(render_context.renderer, render_context.texture_atlas.textures[texture_id], NULL, rendering_rect);
-  if (copy_result != 0) {
-    printf("Failed to render copy: %s\n", SDL_GetError());
-    return;
-  }
-}
-
 FRect get_camera_rect() {
   FRect camera_rect = {
       .position =
