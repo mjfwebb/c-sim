@@ -239,29 +239,27 @@ void draw_console() {
     return;
   }
 
-  SDL_SetRenderDrawBlendMode(render_context.renderer, SDL_BLENDMODE_BLEND);
+  gfx_set_blend_mode_blend();
 
   // Draw full console rect
-  SDL_FRect console_rect = {
-      .h = console.y_spring.current,
-      .w = (float)render_context.window_w,
-      .x = 0.0f,
-      .y = 0.0f,
+  FRect console_rect = {
+      .position.x = 0.0f,
+      .position.y = 0.0f,
+      .size.x = (float)render_context.window_w,
+      .size.y = console.y_spring.current,
   };
 
-  SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 200);
-  SDL_RenderFillRectF(render_context.renderer, &console_rect);
+  gfx_draw_frect_filled(&console_rect, &(RGBA){1, 1, 1, 0.9f});
 
   // Draw input rect
   float input_y = console.y_spring.current - CONSOLE_INPUT_HEIGHT;
-  SDL_FRect console_input_rect = {
-      .h = CONSOLE_INPUT_HEIGHT,
-      .w = (float)render_context.window_w,
-      .x = 0.0f,
-      .y = input_y,
+  FRect console_input_rect = {
+      .position.x = 0.0f,
+      .position.y = input_y,
+      .size.x = (float)render_context.window_w,
+      .size.y = input_y + CONSOLE_INPUT_HEIGHT,
   };
-  SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 200);
-  SDL_RenderFillRectF(render_context.renderer, &console_input_rect);
+  gfx_draw_frect_filled(&console_input_rect, &(RGBA){1, 1, 1, 0.9f});
 
   Vec2 input_text_size = get_text_size(console.input[console.input_index].value, &render_context.fonts[1], false, true);
 
@@ -274,7 +272,6 @@ void draw_console() {
       CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
       if (suggested_command_argument.count > 0) {
         for (int suggestion_index = 0; suggestion_index < suggested_command_argument.count; suggestion_index++) {
-          // print("%s", suggested_command_argument.suggestions[suggestion_index]);
           draw_text_utf8(
               suggested_command_argument.suggestions[suggestion_index],
               (Vec2){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
@@ -289,13 +286,18 @@ void draw_console() {
   }
 
   // Draw a blinking cursor at the rightmost point of the text
-  SDL_FRect console_input_cursor_rect = {.h = CONSOLE_INPUT_HEIGHT - 20.0f, .w = 12.0f, .x = input_text_size.x + 10.0f, .y = input_y + 10.0f};
+  FRect console_input_cursor_rect = {
+      .position.x = input_text_size.x + 10.0f,
+      .position.y = input_y + 10.0f,
+      .size.x = input_text_size.x + 22.0f,
+      .size.y = input_y + CONSOLE_INPUT_HEIGHT - 10.0f,
+  };
 
-  // This works, don't touch it
+  // This could probably be made more clean
   double curve = sin((M_PI * 3) * render_context.timer[0].accumulated);
-  Uint8 console_input_cursor_rect_opacity = (Uint8)(100 * (1 - curve));
-  SDL_SetRenderDrawColor(render_context.renderer, 0, 0, 0, console_input_cursor_rect_opacity);
-  SDL_RenderFillRectF(render_context.renderer, &console_input_cursor_rect);
+  float console_input_cursor_rect_opacity = (float)(100 * (1 - curve)) / 255.0f;
+
+  gfx_draw_frect_filled(&console_input_cursor_rect, &(RGBA){0, 0, 0, console_input_cursor_rect_opacity});
 
   // Draw output text
   for (int i = 0; i < console.output.count; i++) {
@@ -309,7 +311,7 @@ void draw_console() {
     );
   }
 
-  SDL_SetRenderDrawBlendMode(render_context.renderer, SDL_BLENDMODE_NONE);
+  gfx_set_blend_mode_none();
 }
 
 void append_console_input(char* new_input) {

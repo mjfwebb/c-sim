@@ -52,6 +52,7 @@ typedef struct {
 typedef struct {
   Timer timer[2];
   SDL_Renderer *renderer;
+  SDL_Window *window;
   int window_w;
   int window_h;
   SDL_Color background_color;

@@ -3,6 +3,7 @@
 #include "headers.h"
 
 #include "defs.c"
+#include "gfx.c"
 #include "fonts.c"
 #include "render_batcher.c"
 #include "personalities.c"
@@ -71,40 +72,6 @@ FRect frect_screen_to_world(FRect rect) {
   translated_frect.position = vec2_screen_to_world(rect.position);
   translated_frect.size = vec2_screen_to_world(rect.size);
   return translated_frect;
-}
-
-SDL_FRect frect_to_sdl_frect(FRect *rect) {
-  SDL_FRect sdl_frect = {
-      .x = rect->position.x,
-      .y = rect->position.y,
-      .w = frect_width(rect),
-      .h = frect_width(rect),
-  };
-
-  return sdl_frect;
-}
-
-bool frect_intersects_frect(FRect *rect_a, FRect *rect_b) {
-  SDL_FRect sdl_frect_a = frect_to_sdl_frect(rect_a);
-  SDL_FRect sdl_frect_b = frect_to_sdl_frect(rect_b);
-
-  return SDL_HasIntersectionF(&sdl_frect_a, &sdl_frect_b);
-}
-
-void load_textures() {
-  // Eventually you could consider dynamically loading files from the assets folder. Implementing this is, however,
-  // unfortunately platform dependent so it would also require some type of platform abstraction to be viable.
-  char texture_paths[][128] = {"assets/stone.bmp", "assets/fish.bmp", "assets/lamb.bmp", "assets/lamb2.bmp"};
-
-  for (u32 i = 0; i < array_count(texture_paths); i++) {
-    SDL_Surface *surface = IMG_Load(texture_paths[i]);
-    render_context.texture_atlas.size[i].x = (float)surface->w;
-    render_context.texture_atlas.size[i].y = (float)surface->h;
-    render_context.texture_atlas.textures[i] = SDL_CreateTextureFromSurface(render_context.renderer, surface);
-    assert(render_context.texture_atlas.textures[i]);
-    ++render_context.texture_atlas.count;
-    SDL_FreeSurface(surface);
-  }
 }
 
 void load_fonts() {
@@ -229,20 +196,6 @@ void create_entities() {
   }
 }
 
-SDL_FRect create_world_to_screen_rect(FRect *world_rect) {
-  float width = frect_width(world_rect);
-  float height = frect_height(world_rect);
-
-  SDL_FRect rect = {
-      .x = (world_rect->position.x - render_context.camera.current.x) * render_context.camera.zoom + render_context.window_w / 2,
-      .y = (world_rect->position.y - render_context.camera.current.y) * render_context.camera.zoom + render_context.window_h / 2,
-      .w = width * render_context.camera.zoom,
-      .h = height * render_context.camera.zoom,
-  };
-
-  return rect;
-}
-
 FRect get_camera_rect() {
   FRect camera_rect = {
       .position =
@@ -308,16 +261,21 @@ void draw_debug_text(int index, char *str, ...) {
 }
 
 FRect get_selection_rect() {
-  return (FRect
-  ){.position =
-        {
-            .x = min(mouse_state.position.x, render_context.selection.position.x),
-            .y = min(mouse_state.position.y, render_context.selection.position.y),
-        },
-    .size = {
-        .x = SDL_fabsf(mouse_state.position.x - render_context.selection.position.x),
-        .y = SDL_fabsf(mouse_state.position.y - render_context.selection.position.y),
-    }};
+  FRect rect =
+      {.position =
+           {
+               .x = min(mouse_state.position.x, render_context.selection.position.x),
+               .y = min(mouse_state.position.y, render_context.selection.position.y),
+           },
+       .size = {
+           .x = fabsf(mouse_state.position.x - render_context.selection.position.x),
+           .y = fabsf(mouse_state.position.y - render_context.selection.position.y),
+       }};
+
+  rect.size.x = rect.position.x + rect.size.x;
+  rect.size.y = rect.position.y + rect.size.y;
+
+  return rect;
 }
 
 void render_debug_info() {
@@ -341,15 +299,7 @@ void render_debug_info() {
 void draw_selection_box() {
   FRect selection_rect = get_selection_rect();
 
-  SDL_FRect selection_rect_f = {
-      .x = selection_rect.position.x,
-      .y = selection_rect.position.y,
-      .w = selection_rect.size.x,
-      .h = selection_rect.size.y,
-  };
-  SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 255);
-  int result = SDL_RenderDrawRectF(render_context.renderer, &selection_rect_f);
-  assert(result == 0);
+  gfx_draw_frect(&selection_rect, &(RGBA){1, 1, 1, 1});
 }
 
 float Spring__update(Spring *spring, float target) {
@@ -360,30 +310,26 @@ float Spring__update(Spring *spring, float target) {
 }
 
 void draw_health_bar(int entity_id, FRect entity_rect) {
-  int health = game_context.health[entity_id];
-
   const float y = (entity_rect.position.y - 15.0f * min(render_context.camera.zoom, 1.0f));
   const float h = (10.0f * min(render_context.camera.zoom, 1.0f));
 
-  SDL_SetRenderDrawColor(render_context.renderer, 0, 0, 0, 255);
-  SDL_FRect total_health_rect = {
-      .x = entity_rect.position.x,
-      .y = y,
-      .w = frect_width(&entity_rect),
-      .h = h,
+  FRect total_health_rect = {
+      .position.x = entity_rect.position.x,
+      .position.y = y,
+      .size.x = entity_rect.size.x,
+      .size.y = y + h,
   };
+  gfx_draw_frect_filled(&total_health_rect, &(RGBA){0, 0, 0, 1});
 
-  SDL_RenderFillRectF(render_context.renderer, &total_health_rect);
-
-  SDL_SetRenderDrawColor(render_context.renderer, 200, 0, 0, 255);
-  SDL_FRect current_health_rect = {
-      .x = entity_rect.position.x,
-      .y = y,
-      .w = (frect_width(&entity_rect) / 100) * health,
-      .h = h,
+  float size_x = frect_width(&entity_rect);
+  float health_width = (100 - game_context.health[entity_id]) * size_x / 100.0f;
+  FRect current_health_rect = {
+      .position.x = entity_rect.position.x,
+      .position.y = y,
+      .size.x = entity_rect.size.x - health_width,
+      .size.y = y + h,
   };
-
-  SDL_RenderFillRectF(render_context.renderer, &current_health_rect);
+  gfx_draw_frect_filled(&current_health_rect, &(RGBA){1, 0, 0, 1});
 }
 
 void draw_border(FRect around, float gap_width, float border_width) {
@@ -403,36 +349,28 @@ void draw_border(FRect around, float gap_width, float border_width) {
     float height = frect_height(&around);
 
     if (i == 0) {  // Left (0)
-      borders[i].size.x = border_width;
-      borders[i].size.y = height + (gap_width + border_width) * 2;
       borders[i].position.x += -(gap_width + border_width);
       borders[i].position.y -= gap_width + border_width;
-    } else if (i == 2) {  // right (2)
-      borders[i].size.x = border_width;
-      borders[i].size.y = height + (gap_width + border_width) * 2;
-      borders[i].position.x = around.position.x + width + gap_width;
-      borders[i].position.y -= gap_width + border_width;
+      borders[i].size.x = borders[i].position.x + border_width;
+      borders[i].size.y = borders[i].position.y + height + (gap_width + border_width) * 2;
     } else if (i == 1) {  // Top (1)
-      borders[i].size.x = width + (gap_width + border_width) * 2;
-      borders[i].size.y = border_width;
       borders[i].position.x -= gap_width + border_width;
       borders[i].position.y += -(gap_width + border_width);
+      borders[i].size.x = borders[i].position.x + width + (gap_width + border_width) * 2;
+      borders[i].size.y = borders[i].position.y + border_width;
+    } else if (i == 2) {  // right (2)
+      borders[i].position.x = around.position.x + width + gap_width;
+      borders[i].position.y -= gap_width + border_width;
+      borders[i].size.x = borders[i].position.x + border_width;
+      borders[i].size.y = borders[i].position.y + height + (gap_width + border_width) * 2;
     } else {  // bottom (3)
-      borders[i].size.x = width + (gap_width + border_width) * 2;
-      borders[i].size.y = border_width;
       borders[i].position.x -= gap_width + border_width;
       borders[i].position.y = around.position.y + height + gap_width;
+      borders[i].size.x = borders[i].position.x + width + (gap_width + border_width) * 2;
+      borders[i].size.y = borders[i].position.y + border_width;
     }
 
-    SDL_SetRenderDrawColor(render_context.renderer, 255, 255, 255, 255);
-    SDL_FRect rect = {
-        .x = borders[i].position.x,
-        .y = borders[i].position.y,
-        .w = borders[i].size.x,
-        .h = borders[i].size.y,
-    };
-
-    SDL_RenderFillRectF(render_context.renderer, &rect);
+    gfx_draw_frect_filled(&borders[i], &(RGBA){1, 1, 1, 1});
   }
 }
 
@@ -466,44 +404,29 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
 }
 
 void draw_grid() {
-  // Draw it blended
-  SDL_SetRenderDrawBlendMode(render_context.renderer, SDL_BLENDMODE_BLEND);
-  SDL_SetRenderDrawColor(render_context.renderer, 0, 0, 0, 25);
+  gfx_set_blend_mode_blend();
   float grid_size = 100.0f;
   float window_w = (float)render_context.window_w;
   float window_h = (float)render_context.window_h;
 
-  SDL_FRect grid_to_screen = create_world_to_screen_rect(&(FRect
-  ){.position =
-        {
-            .x = 0,
-            .y = 0,
-        },
-    .size = {
-        .x = grid_size,
-        .y = grid_size,
-    }});
+  FRect grid = {
+      .position.x = (0 - render_context.camera.current.x) * render_context.camera.zoom + render_context.window_w / 2,
+      .position.y = (0 - render_context.camera.current.y) * render_context.camera.zoom + render_context.window_h / 2,
+      .size.x = grid_size * render_context.camera.zoom,
+      .size.y = grid_size * render_context.camera.zoom,
+  };
 
-  float x_start = grid_to_screen.x - floorf(grid_to_screen.x / grid_to_screen.w) * grid_to_screen.w;
-  for (float x = x_start; x < window_w; x += grid_to_screen.w) {
-    SDL_RenderDrawLineF(render_context.renderer, x, 0, x, window_h);
+  float x_start = grid.position.x - floorf(grid.position.x / grid.size.x) * grid.size.x;
+  for (float x = x_start; x < window_w; x += grid.size.x) {
+    gfx_draw_line(x, 0, x, window_h, &(RGBA){0, 0, 0, 0.25f});
   }
 
-  float y_start = grid_to_screen.y - floorf(grid_to_screen.y / grid_to_screen.h) * grid_to_screen.h;
-  for (float y = y_start; y < window_h; y += grid_to_screen.h) {
-    SDL_RenderDrawLineF(render_context.renderer, 0, y, window_w, y);
+  float y_start = grid.position.y - floorf(grid.position.y / grid.size.y) * grid.size.y;
+  for (float y = y_start; y < window_h; y += grid.size.y) {
+    gfx_draw_line(0, y, window_w, y, &(RGBA){0, 0, 0, 0.25f});
   }
 
-  // Reset the blend mode
-  SDL_SetRenderDrawBlendMode(render_context.renderer, SDL_BLENDMODE_NONE);
-}
-
-void clear_screen() {
-  SDL_SetRenderDrawColor(
-      render_context.renderer, render_context.background_color.r, render_context.background_color.g, render_context.background_color.b,
-      render_context.background_color.a
-  );
-  SDL_RenderClear(render_context.renderer);
+  gfx_set_blend_mode_none();
 }
 
 void mouse_control_camera() {
@@ -568,25 +491,19 @@ void select_entities_within_selection_rect() {
     FRect entity_texture_rect = get_entity_texture_rect(entity_id);
     FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
 
-    SDL_FPoint point_top_left = {
+    Vec2 point_top_left = {
         .x = entity_screen_rect.position.x,
         .y = entity_screen_rect.position.y,
     };
-    SDL_FPoint point_bottom_right = {
+    Vec2 point_bottom_right = {
         .x = entity_screen_rect.size.x,
         .y = entity_screen_rect.size.y,
     };
 
     FRect selection_rect = get_selection_rect();
-    SDL_FRect selection_sdl_frect = {
-        .x = selection_rect.position.x,
-        .y = selection_rect.position.y,
-        .w = selection_rect.size.x,
-        .h = selection_rect.size.y,
-    };
 
     if (selection_rect.size.x > 3.0f) {
-      if (SDL_PointInFRect(&point_top_left, &selection_sdl_frect) && SDL_PointInFRect(&point_bottom_right, &selection_sdl_frect)) {
+      if (gfx_frect_contains_point(&selection_rect, &point_top_left) && gfx_frect_contains_point(&selection_rect, &point_bottom_right)) {
         game_context.selected[entity_id] = true;
       } else {
         if (!render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
@@ -599,32 +516,9 @@ void select_entities_within_selection_rect() {
 
 bool is_entity_under_mouse(int entity_id) {
   FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  SDL_FRect rect = create_world_to_screen_rect(&entity_texture_rect);
+  FRect rect = frect_world_to_screen(entity_texture_rect);
 
-  return SDL_PointInFRect(
-      &(SDL_FPoint){
-          .x = mouse_state.position.x,
-          .y = mouse_state.position.y,
-      },
-      &rect
-  );
-}
-
-void init() {
-  srand(create_seed("ATHANO_THINKS_CHAT_IS_KINDA_CUTE"));
-
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
-    exit(1);
-  }
-
-  if (TTF_Init() == -1) {
-    fprintf(stderr, "could not initialize ttf: %s\n", TTF_GetError());
-    exit(1);
-  }
-
-  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
-  SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
+  return gfx_frect_contains_point(&rect, &mouse_state.position);
 }
 
 void log_entity_personalities(int entity_id) {
@@ -649,7 +543,7 @@ void update() {
   }
 
   if (mouse_primary_pressed(mouse_state)) {
-    select_entities_within_selection_rect(&mouse_state);
+    select_entities_within_selection_rect();
   } else {
     camera_follow_entity();
   }
@@ -876,7 +770,7 @@ void handle_input() {
 }
 
 void render() {
-  clear_screen();
+  gfx_clear_screen();
 
   draw_grid();
 
@@ -885,7 +779,7 @@ void render() {
 
   entity_loop(entity_id) {
     FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-    if (frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
+    if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
       render_entity_batched(entity_id, &render_batcher);
     }
   }
@@ -893,7 +787,7 @@ void render() {
   if (render_context.camera.zoom > 0.5f) {
     entity_loop(entity_id) {
       FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-      if (frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
+      if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
         draw_entity_name_batched(entity_id, &render_batcher);
       }
     }
@@ -919,24 +813,13 @@ void update_timer(Timer *timer, double frame_time) {
 }
 
 int main(int argc, char *args[]) {
-  init();
+  srand(create_seed("ATHANO_THINKS_CHAT_IS_KINDA_CUTE"));
 
-  SDL_Window *window = SDL_CreateWindow(
-      "Cultivation Sim", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
-  );
-  if (!window) {
-    fprintf(stderr, "could not create window: %s\n", SDL_GetError());
+  int gfx_init_result = gfx_init();
+  if (gfx_init_result == 1) {
     return EXIT_FAILURE;
   }
 
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-  if (!renderer) {
-    fprintf(stderr, "could not create renderer: %s\n", SDL_GetError());
-    return EXIT_FAILURE;
-  }
-
-  render_context.renderer = renderer;
   // render_context.animated_time = 0;
   // render_context.speed = 200.0f;
   // render_context.delta_time = 0;
@@ -988,7 +871,7 @@ int main(int argc, char *args[]) {
               },
       },
 
-  load_textures();
+  gfx_load_textures();
 
   load_fonts();
 
@@ -1040,7 +923,7 @@ int main(int argc, char *args[]) {
     // last_update_time = current_time;
     // render_context.animated_time = fmodf(render_context.animated_time + (float)(current_time - last_update_time) / 1000 * 0.5f, 1);
 
-    SDL_GetWindowSizeInPixels(window, &render_context.window_w, &render_context.window_h);
+    gfx_get_window_size(&render_context.window_w, &render_context.window_h);
     render_context.keyboard_state = SDL_GetKeyboardState(NULL);
 
     if (frame_time > max_frame_time_threshold) {
@@ -1061,12 +944,10 @@ int main(int argc, char *args[]) {
 
     render();
 
-    SDL_RenderPresent(render_context.renderer);
+    gfx_render_present();
   }
 
-  SDL_DestroyRenderer(render_context.renderer);
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+  gfx_destroy();
 
   return EXIT_SUCCESS;
 }
