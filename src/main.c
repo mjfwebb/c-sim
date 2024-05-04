@@ -724,9 +724,6 @@ int main(int argc, char *args[]) {
     return EXIT_FAILURE;
   }
 
-  // render_context.animated_time = 0;
-  // render_context.speed = 200.0f;
-  // render_context.delta_time = 0;
   render_context.background_color = (SDL_Color){35, 127, 178, 255};
   render_context.camera = (Camera){
       .target_zoom = 1.0f,
@@ -796,9 +793,7 @@ int main(int argc, char *args[]) {
   physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 1.0};
 
   u32 start_ticks = SDL_GetTicks();
-  // int current_time = 0;
   int frame_count = 0;
-  // int last_update_time = 0;
 
   // Here we keep the frame_time within a reasonable bound. If a frame_time exceeds 250ms, we "give up" and drop simulation frames
   // This is necessary as if our frame_time were to become too large, we would effectively lock ourselves in an update cycle
@@ -822,10 +817,6 @@ int main(int argc, char *args[]) {
       frame_count = 0;
       start_ticks = SDL_GetTicks();
     }
-
-    // current_time = SDL_GetTicks();
-    // last_update_time = current_time;
-    // render_context.animated_time = fmodf(render_context.animated_time + (float)(current_time - last_update_time) / 1000 * 0.5f, 1);
 
     gfx_get_window_size(&render_context.window_w, &render_context.window_h);
     render_context.keyboard_state = SDL_GetKeyboardState(NULL);
