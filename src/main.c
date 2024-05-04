@@ -569,10 +569,6 @@ void update() {
 void handle_input() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
-    if (event.type == SDL_TEXTINPUT && console_is_open) {
-      append_console_input(event.text.text);
-    }
-
     if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
       mouse_state.prev_state = mouse_state.state;
       mouse_state.state = event.button.state;
@@ -603,17 +599,20 @@ void handle_input() {
         render_context.camera.target_zoom = max(render_context.camera.target_zoom - 0.1f, 0.1f);
       }
     }
+    if (event.type == SDL_QUIT) {
+      game_context.game_is_still_running = 0;
+      return;
+    }
+    if (console_is_open) {
+      console_handle_input(&event);
+      return;
+    }
     if (event.type == SDL_KEYDOWN) {
       switch (event.key.keysym.sym) {
         case SDLK_ESCAPE:
-          if (console_is_open) {
-            SDL_StopTextInput();
-            console.target_y = 0.0f;
-            break;
-          }
-
           bool entity_had_selection = false;
 
+          // 1. If anything is selected, then deselect it and break.
           reverse_loop(game_context.entity_count, entity_id) {
             if (game_context.selected[entity_id]) {
               entity_had_selection = true;
@@ -625,57 +624,21 @@ void handle_input() {
             break;
           }
 
-          game_context.game_is_still_running = 0;
-
-          // Maybe the following process:
-          // 1. If anything is selected, then deselect it and break.
           // 2. If nothing was deselected, then open the pause menu.
+          // TBD
+
           // 3. If in the pause menu, then close the pause menu.
+          game_context.game_is_still_running = 0;
           break;
         case SDLK_UP:
-          if (console_is_open) {
-            int new_index = (console.input_index - 1);
-            if (new_index < 0) {
-              new_index = MAX_CONSOLE_INPUT_HISTORY - 1;
-            }
-
-            bool current_index_has_value = console.input[console.input_index].input_length > 0;
-            bool next_index_has_value = console.input[new_index].input_length > 0;
-
-            if (!current_index_has_value && !next_index_has_value) {
-              break;
-            }
-
-            console.input_index = new_index;
-          } else {
-            physics_context.simulation_speed += 0.5;
-            physics_context.simulation_speed = min(physics_context.simulation_speed, 10.0);
-          }
+          physics_context.simulation_speed += 0.5;
+          physics_context.simulation_speed = min(physics_context.simulation_speed, 10.0);
           break;
         case SDLK_DOWN:
-          if (console_is_open) {
-            int new_index = console.input_index + 1;
-            if (new_index == MAX_CONSOLE_INPUT_HISTORY) {
-              new_index = 0;
-            }
-
-            bool current_index_has_value = console.input[console.input_index].input_length > 0;
-            bool next_index_has_value = console.input[new_index].input_length > 0;
-
-            if (!current_index_has_value && !next_index_has_value) {
-              break;
-            }
-
-            console.input_index = new_index;
-          } else {
-            physics_context.simulation_speed -= 0.5;
-            physics_context.simulation_speed = max(physics_context.simulation_speed, 0.0);
-          }
+          physics_context.simulation_speed -= 0.5;
+          physics_context.simulation_speed = max(physics_context.simulation_speed, 0.0);
           break;
         case SDLK_SPACE:
-          if (console_is_open) {
-            break;
-          }
           if (physics_context.prev_simulation_speed > 0) {
             physics_context.simulation_speed = physics_context.prev_simulation_speed;
             physics_context.prev_simulation_speed = 0;
@@ -684,72 +647,13 @@ void handle_input() {
             physics_context.simulation_speed = 0;
           }
           break;
-        case SDLK_TAB:
-          if (console_is_open) {
-            if (console.input[console.input_index].input_length > 0) {
-              char *suggested_command = find_command_suggestion();
-              if (suggested_command) {
-                strcpy(console.input[console.input_index].value, suggested_command);
-                console.input[console.input_index].input_length = (int)strlen(suggested_command);
-                break;
-              }
-
-              CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
-              // Figure out what the current argument is (we can assume 1st for now)
-              // Concat the existing input (removing any arg values) with the accepted suggestion
-
-              if (suggested_command_argument.count > 0) {
-                char *current_command = find_current_command();
-                // print("%s", current_command);
-
-                // print("%s", suggested_command_argument.suggestions[0]);
-
-                strcpy(console.input[console.input_index].value + strlen(current_command) + 1, suggested_command_argument.suggestions[0]);
-                console.input[console.input_index].input_length =
-                    (int)strlen(current_command) + 1 + (int)strlen(suggested_command_argument.suggestions[0]);
-              }
-              break;
-            }
-
-            SDL_StopTextInput();
-            console.target_y = 0.0f;
-          } else {
-            SDL_StartTextInput();
-            console.target_y = (float)render_context.window_h / 2;
-          }
-          break;
-        case SDLK_RETURN: {
-          if (console_is_open) {
-            handle_console_input();
-          };
-          break;
-        }
-        case SDLK_BACKSPACE: {
-          if (console_is_open) {
-            if (console.input[console.input_index].input_length > 0) {
-              console.input[console.input_index].input_length--;
-              console.input[console.input_index].value[console.input[console.input_index].input_length] = 0;
-            }
-          };
+        case SDLK_TAB: {
+          console_open();
           break;
         }
         default:
           break;
       }
-
-      // Handle copy
-      // if (event.key.keysym.sym == SDLK_c && SDL_GetModState() & KMOD_CTRL) {
-      //   SDL_SetClipboardText(inputText.c_str());
-      // }
-      // Handle paste
-      if (event.key.keysym.sym == SDLK_v && SDL_GetModState() & KMOD_CTRL) {
-        char *clipboard_text = SDL_GetClipboardText();
-        append_console_input(clipboard_text);
-        SDL_free(clipboard_text);
-      }
-
-    } else if (event.type == SDL_QUIT) {
-      game_context.game_is_still_running = 0;
     }
 
     // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
@@ -802,7 +706,7 @@ void render() {
 
   render_debug_info(&mouse_state);
 
-  draw_console();
+  console_draw();
 }
 
 void update_timer(Timer *timer, double frame_time) {

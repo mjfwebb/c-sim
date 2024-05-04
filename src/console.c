@@ -1,56 +1,5 @@
 #include "headers.h"
 
-#define CONSOLE_INPUT_HEIGHT 64.0f
-#define MAX_CONSOLE_OUTPUT_LENGTH 128
-#define MAX_CONSOLE_OUTPUT_MESSAGES 16
-#define MAX_CONSOLE_INPUT_HISTORY 16
-#define MAX_ARGS_SUGGESTIONS 8
-
-typedef bool (*CommandCallback)(char*);
-
-typedef struct {
-  int count;
-  char suggestions[MAX_ARGS_SUGGESTIONS][128];
-} CommandArgsSuggestions;
-
-typedef CommandArgsSuggestions (*CommandArgsSuggestionCallback)(char*);
-
-typedef struct {
-  char* name;
-  CommandCallback callback;
-  CommandArgsSuggestionCallback args_suggestion_callback;
-  bool close_console_on_success;
-} ConsoleCommand;
-
-typedef struct {
-  char messages[MAX_CONSOLE_OUTPUT_MESSAGES][MAX_CONSOLE_OUTPUT_LENGTH];
-  int count;
-  int start;
-} ConsoleOutput;
-
-typedef struct {
-  char value[MAX_CONSOLE_INPUT_LENGTH];
-  int input_length;
-} ConsoleInput;
-
-typedef struct {
-  float y;
-  float target_y;
-  Spring y_spring;
-  ConsoleInput input[MAX_CONSOLE_INPUT_HISTORY];
-  int input_index;
-  int input_index_count;
-  int input_index_start;
-  ConsoleOutput output;
-} Console;
-
-void add_message_to_output(char* message);
-
-bool quit(char* text) {
-  game_context.game_is_still_running = 0;
-  return true;
-}
-
 CommandArgsSuggestions get_entity_names(char* text) {
   CommandArgsSuggestions suggestions = {0};
 
@@ -68,7 +17,12 @@ CommandArgsSuggestions get_entity_names(char* text) {
   return suggestions;
 }
 
-bool follow_entity(char* text) {
+static bool quit(char* text) {
+  game_context.game_is_still_running = 0;
+  return true;
+}
+
+static bool follow_entity(char* text) {
   int found_entity = -1;
 
   loop(game_context.entity_count, entity_id) {
@@ -90,12 +44,12 @@ bool follow_entity(char* text) {
   } else {
     char output_message[128];
     sprintf(output_message, "No entity found with the name %s", text);
-    add_message_to_output(output_message);
+    console_append_to_output(output_message);
   }
   return false;
 }
 
-bool heal_entity(char* text) {
+static bool heal_entity(char* text) {
   int found_entity = -1;
 
   loop(game_context.entity_count, entity_id) {
@@ -111,7 +65,7 @@ bool heal_entity(char* text) {
   } else {
     char output_message[128];
     sprintf(output_message, "No entity found with the name %s", text);
-    add_message_to_output(output_message);
+    console_append_to_output(output_message);
   }
   return false;
 }
@@ -139,7 +93,7 @@ ConsoleCommand console_commands[] = {
 
 Console console = {0};
 
-CommandArgsSuggestions find_command_suggestion_argument(void) {
+static CommandArgsSuggestions console_find_command_suggestion_argument(void) {
   for (int i = 0; i < array_count(console_commands); i++) {
     int command_length = (int)strlen(console_commands[i].name);
     if (command_length > console.input[console.input_index].input_length) {
@@ -153,7 +107,7 @@ CommandArgsSuggestions find_command_suggestion_argument(void) {
   return (CommandArgsSuggestions){0};
 }
 
-char* find_command_suggestion(void) {
+static char* console_find_command_suggestion(void) {
   for (int i = 0; i < array_count(console_commands); i++) {
     if (strncmp(console_commands[i].name, console.input[console.input_index].value, console.input[console.input_index].input_length) == 0) {
       return console_commands[i].name;
@@ -163,7 +117,7 @@ char* find_command_suggestion(void) {
   return NULL;
 }
 
-char* find_current_command(void) {
+static char* console_find_current_command(void) {
   for (int i = 0; i < array_count(console_commands); i++) {
     if (strncmp(console_commands[i].name, console.input[console.input_index].value, strlen(console_commands[i].name)) == 0) {
       return console_commands[i].name;
@@ -173,7 +127,7 @@ char* find_current_command(void) {
   return NULL;
 }
 
-void handle_console_input() {
+void console_execute_command() {
   if (console.input[console.input_index].input_length == 0) {
     return;
   }
@@ -197,7 +151,7 @@ void handle_console_input() {
   if (!found_command) {
     char output_message[128];
     sprintf(output_message, "Command \"%.*s\" not found", console.input[console.input_index].input_length, console.input[console.input_index].value);
-    add_message_to_output(output_message);
+    console_append_to_output(output_message);
   }
 
   // Add command to input history
@@ -222,7 +176,7 @@ void handle_console_input() {
   return;
 }
 
-void add_message_to_output(char* message) {
+void console_append_to_output(char* message) {
   int insertion_index = (console.output.start + console.output.count) % MAX_CONSOLE_OUTPUT_MESSAGES;
   strncpy(console.output.messages[insertion_index], message, MAX_CONSOLE_OUTPUT_LENGTH - 1);
   console.output.messages[insertion_index][MAX_CONSOLE_OUTPUT_LENGTH - 1] = '\0';  // Ensure null-termination
@@ -234,7 +188,69 @@ void add_message_to_output(char* message) {
   }
 }
 
-void draw_console() {
+static void console_draw_suggested_command(Vec2* text_size, float y) {
+  if (console.input[console.input_index].input_length == 0) {
+    return;
+  }
+
+  // Draw suggested command text
+  char* suggested_command = console_find_command_suggestion();
+  if (suggested_command) {
+    draw_text_utf8(suggested_command, (Vec2){.x = 8.0f, .y = y + 7.0f}, (RGBA){0.5, 0.5, 0.5, 1}, &render_context.fonts[1]);
+  } else {
+    CommandArgsSuggestions suggested_command_argument = console_find_command_suggestion_argument();
+    if (suggested_command_argument.count > 0) {
+      for (int suggestion_index = 0; suggestion_index < suggested_command_argument.count; suggestion_index++) {
+        draw_text_utf8(
+            suggested_command_argument.suggestions[suggestion_index],
+            (Vec2){.x = text_size->x + 8.0f, .y = y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]
+        );
+      }
+    }
+  }
+}
+
+// Draw a blinking cursor at the rightmost point of the text
+static void console_draw_cursor(Vec2* text_size) {
+  FRect console_input_cursor_rect = {
+      .position.x = text_size->x + 10.0f,
+      .position.y = console.y_spring.current - CONSOLE_INPUT_HEIGHT + 10.0f,
+      .size.x = text_size->x + 22.0f,
+      .size.y = console.y_spring.current - 10.0f,
+  };
+
+  // Calculate the opacity of the cursor based on a sine wave
+  // This could probably be made more clean.
+  double curve = sin((M_PI * 3) * render_context.timer[0].accumulated);
+  float console_input_cursor_rect_opacity = (float)(100 * (1 - curve)) / 255.0f;
+
+  gfx_draw_frect_filled(&console_input_cursor_rect, &(RGBA){0, 0, 0, console_input_cursor_rect_opacity});
+}
+
+static void console_draw_output_text() {
+  for (int i = 0; i < console.output.count; i++) {
+    int output_index = (console.output.start + i) % console.output.count;
+    int position = console.output.count - 1 - i;
+    print("message: %.*s", MAX_CONSOLE_OUTPUT_LENGTH, console.output.messages[output_index]);
+    draw_text_utf8(
+        console.output.messages[output_index],
+        (Vec2){.x = 8.0f, .y = console.y_spring.current - CONSOLE_INPUT_HEIGHT - 50.0f - ((32.0f + 16.0f) * position + 1)},
+        (RGBA){0.2f, 0.2f, 0.2f, 1}, &render_context.fonts[1]
+    );
+  }
+}
+
+static void console_draw_input_rect(float y) {
+  FRect console_input_rect = {
+      .position.x = 0.0f,
+      .position.y = y,
+      .size.x = (float)render_context.window_w,
+      .size.y = y + CONSOLE_INPUT_HEIGHT,
+  };
+  gfx_draw_frect_filled(&console_input_rect, &(RGBA){1, 1, 1, 0.9f});
+}
+
+void console_draw() {
   if (!console_is_open) {
     return;
   }
@@ -248,68 +264,20 @@ void draw_console() {
       .size.x = (float)render_context.window_w,
       .size.y = console.y_spring.current,
   };
-
   gfx_draw_frect_filled(&console_rect, &(RGBA){1, 1, 1, 0.9f});
 
-  // Draw input rect
   float input_y = console.y_spring.current - CONSOLE_INPUT_HEIGHT;
-  FRect console_input_rect = {
-      .position.x = 0.0f,
-      .position.y = input_y,
-      .size.x = (float)render_context.window_w,
-      .size.y = input_y + CONSOLE_INPUT_HEIGHT,
-  };
-  gfx_draw_frect_filled(&console_input_rect, &(RGBA){1, 1, 1, 0.9f});
+
+  console_draw_input_rect(input_y);
 
   Vec2 input_text_size = get_text_size(console.input[console.input_index].value, &render_context.fonts[1], false, true);
 
-  if (console.input[console.input_index].input_length > 0) {
-    // Draw suggested command text
-    char* suggested_command = find_command_suggestion();
-    if (suggested_command) {
-      draw_text_utf8(suggested_command, (Vec2){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0.5, 0.5, 0.5, 1}, &render_context.fonts[1]);
-    } else {
-      CommandArgsSuggestions suggested_command_argument = find_command_suggestion_argument();
-      if (suggested_command_argument.count > 0) {
-        for (int suggestion_index = 0; suggestion_index < suggested_command_argument.count; suggestion_index++) {
-          draw_text_utf8(
-              suggested_command_argument.suggestions[suggestion_index],
-              (Vec2){.x = input_text_size.x + 8.0f, .y = input_y - 40.0f - (suggestion_index * 32.0f) + 7.0f}, (RGBA){0, 0, 0, 1},
-              &render_context.fonts[1]
-          );
-        }
-      }
-    }
+  console_draw_suggested_command(&input_text_size, input_y);
+  // Draw current input text
+  draw_text_utf8(console.input[console.input_index].value, (Vec2){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]);
 
-    // Draw current input text
-    draw_text_utf8(console.input[console.input_index].value, (Vec2){.x = 8.0f, .y = input_y + 7.0f}, (RGBA){0, 0, 0, 1}, &render_context.fonts[1]);
-  }
-
-  // Draw a blinking cursor at the rightmost point of the text
-  FRect console_input_cursor_rect = {
-      .position.x = input_text_size.x + 10.0f,
-      .position.y = input_y + 10.0f,
-      .size.x = input_text_size.x + 22.0f,
-      .size.y = input_y + CONSOLE_INPUT_HEIGHT - 10.0f,
-  };
-
-  // This could probably be made more clean
-  double curve = sin((M_PI * 3) * render_context.timer[0].accumulated);
-  float console_input_cursor_rect_opacity = (float)(100 * (1 - curve)) / 255.0f;
-
-  gfx_draw_frect_filled(&console_input_cursor_rect, &(RGBA){0, 0, 0, console_input_cursor_rect_opacity});
-
-  // Draw output text
-  for (int i = 0; i < console.output.count; i++) {
-    int output_index = (console.output.start + i) % console.output.count;
-    int position = console.output.count - 1 - i;
-    print("message: %.*s", MAX_CONSOLE_OUTPUT_LENGTH, console.output.messages[output_index]);
-    draw_text_utf8(
-        console.output.messages[output_index],
-        (Vec2){.x = 8.0f, .y = console.y_spring.current - CONSOLE_INPUT_HEIGHT - 50.0f - ((32.0f + 16.0f) * position + 1)},
-        (RGBA){0.2f, 0.2f, 0.2f, 1}, &render_context.fonts[1]
-    );
-  }
+  console_draw_cursor(&input_text_size);
+  console_draw_output_text();
 
   gfx_set_blend_mode_none();
 }
@@ -323,4 +291,83 @@ void append_console_input(char* new_input) {
   }
 
   console.input[console.input_index].value[console.input[console.input_index].input_length] = 0;
+}
+
+void console_open() {
+  console.target_y = console.target_y = (float)render_context.window_h / 2;
+  SDL_StartTextInput();
+}
+
+void console_handle_input(SDL_Event* event) {
+  switch (event->type) {
+    case SDL_TEXTINPUT: {
+      append_console_input(event->text.text);
+    } break;
+    case SDL_KEYDOWN: {
+      switch (event->key.keysym.sym) {
+        // Backspace
+        case SDLK_BACKSPACE: {
+          if (console.input[console.input_index].input_length > 0) {
+            console.input[console.input_index].value[console.input[console.input_index].input_length - 1] = 0;
+            console.input[console.input_index].input_length--;
+          }
+        } break;
+        // Execute command
+        case SDLK_RETURN: {
+          console_execute_command();
+        } break;
+        // Move up in input history
+        case SDLK_UP: {
+          if (console.input_index_count > 0) {
+            console.input_index = (console.input_index - 1 + MAX_CONSOLE_INPUT_HISTORY) % MAX_CONSOLE_INPUT_HISTORY;
+          }
+        } break;
+        // Move down in input history
+        case SDLK_DOWN: {
+          if (console.input_index_count > 0) {
+            console.input_index = (console.input_index + 1) % MAX_CONSOLE_INPUT_HISTORY;
+          }
+        } break;
+        // Close console
+        case SDLK_ESCAPE: {
+          SDL_StopTextInput();
+          console.target_y = 0.0f;
+        } break;
+        // Tab completion
+        case SDLK_TAB: {
+          char* suggested_command = console_find_command_suggestion();
+          if (suggested_command) {
+            strcpy(console.input[console.input_index].value, suggested_command);
+            console.input[console.input_index].input_length = (int)strlen(suggested_command);
+            break;
+          } else {
+            CommandArgsSuggestions suggested_command_argument = console_find_command_suggestion_argument();
+            if (suggested_command_argument.count > 0) {
+              char* current_command = console_find_current_command();
+              strcpy(console.input[console.input_index].value + strlen(current_command) + 1, suggested_command_argument.suggestions[0]);
+              console.input[console.input_index].input_length =
+                  (int)strlen(current_command) + 1 + (int)strlen(suggested_command_argument.suggestions[0]);
+              break;
+            }
+          }
+
+          // Implicit else, if no command or argument suggestions are found, close the console
+          SDL_StopTextInput();
+          console.target_y = 0.0f;
+        } break;
+      }
+
+      // Handle copy (not implemented)
+      // if (event.key.keysym.sym == SDLK_c && SDL_GetModState() & KMOD_CTRL) {
+      //   SDL_SetClipboardText(inputText.c_str());
+      // }
+
+      // Handle paste
+      if (event->key.keysym.sym == SDLK_v && SDL_GetModState() & KMOD_CTRL) {
+        char* clipboard_text = SDL_GetClipboardText();
+        append_console_input(clipboard_text);
+        SDL_free(clipboard_text);
+      }
+    } break;
+  }
 }
