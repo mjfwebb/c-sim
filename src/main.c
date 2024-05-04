@@ -467,10 +467,10 @@ void keyboard_control_camera() {
 int get_entity_to_follow() {
   int result = INVALID_ENTITY;
   int selected_count = 0;
-  entity_loop(entity_i) {
-    if (game_context.selected[entity_i]) {
+  loop(game_context.entity_count, entity_id) {
+    if (game_context.selected[entity_id]) {
       selected_count += 1;
-      result = entity_i;
+      result = entity_id;
     }
   }
   return selected_count == 1 ? result : INVALID_ENTITY;
@@ -487,7 +487,7 @@ void camera_follow_entity() {
 
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect() {
-  entity_loop(entity_id) {
+  loop(game_context.entity_count, entity_id) {
     FRect entity_texture_rect = get_entity_texture_rect(entity_id);
     FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
 
@@ -560,8 +560,8 @@ void update() {
   console.y = Spring__update(&console.y_spring, console.target_y);
 
   if (physics_context.simulation_speed > 0.0) {
-    entity_loop(entity_i) {
-      move_entity(entity_i);
+    loop(game_context.entity_count, entity_id) {
+      move_entity(entity_id);
     }
   }
 }
@@ -614,10 +614,10 @@ void handle_input() {
 
           bool entity_had_selection = false;
 
-          reverse_entity_loop(entity_i) {
-            if (game_context.selected[entity_i]) {
+          reverse_loop(game_context.entity_count, entity_id) {
+            if (game_context.selected[entity_id]) {
               entity_had_selection = true;
-              game_context.selected[entity_i] = false;
+              game_context.selected[entity_id] = false;
             }
           }
 
@@ -753,15 +753,15 @@ void handle_input() {
     }
 
     // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
-    reverse_entity_loop(entity_i) {
-      game_context.hovered[entity_i] = is_entity_under_mouse(entity_i);
+    reverse_loop(game_context.entity_count, entity_id) {
+      game_context.hovered[entity_id] = is_entity_under_mouse(entity_id);
     }
 
-    reverse_entity_loop(entity_i) {
-      if (is_entity_under_mouse(entity_i)) {
+    reverse_loop(game_context.entity_count, entity_id) {
+      if (is_entity_under_mouse(entity_id)) {
         if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
-          game_context.selected[entity_i] = !game_context.selected[entity_i];
-          log_entity_personalities(entity_i);
+          game_context.selected[entity_id] = !game_context.selected[entity_id];
+          log_entity_personalities(entity_id);
           break;
         }
       }
@@ -777,7 +777,7 @@ void render() {
   FRect camera_rect = get_camera_rect();
   FRect translated_rect = frect_screen_to_world(camera_rect);
 
-  entity_loop(entity_id) {
+  loop(game_context.entity_count, entity_id) {
     FRect entity_texture_rect = get_entity_texture_rect(entity_id);
     if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
       render_entity_batched(entity_id, &render_batcher);
@@ -785,7 +785,7 @@ void render() {
   }
 
   if (render_context.camera.zoom > 0.5f) {
-    entity_loop(entity_id) {
+    loop(game_context.entity_count, entity_id) {
       FRect entity_texture_rect = get_entity_texture_rect(entity_id);
       if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
         draw_entity_name_batched(entity_id, &render_batcher);

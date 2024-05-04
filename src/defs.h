@@ -11,8 +11,8 @@
   printf(format "\n", ##__VA_ARGS__); \
   fflush(stdout)
 
-#define entity_loop(index_name) for (int index_name = 0; index_name < game_context.entity_count; index_name++)
-#define reverse_entity_loop(index_name) for (int index_name = game_context.entity_count - 1; index_name >= 0; index_name--)
+#define loop(upper_bound, index_name) for (int index_name = 0; index_name < upper_bound; index_name++)
+#define reverse_loop(lower_bound, index_name) for (int index_name = lower_bound - 1; index_name >= 0; index_name--)
 
 typedef struct Vec2 {
   float x;

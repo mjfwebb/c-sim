@@ -54,9 +54,9 @@ bool quit(char* text) {
 CommandArgsSuggestions get_entity_names(char* text) {
   CommandArgsSuggestions suggestions = {0};
 
-  entity_loop(entity_i) {
-    if (_strnicmp(game_context.names[entity_i], text, strlen(text)) == 0) {
-      strcpy(suggestions.suggestions[suggestions.count], game_context.names[entity_i]);
+  loop(game_context.entity_count, entity_id) {
+    if (_strnicmp(game_context.names[entity_id], text, strlen(text)) == 0) {
+      strcpy(suggestions.suggestions[suggestions.count], game_context.names[entity_id]);
       suggestions.count++;
 
       if (suggestions.count == MAX_ARGS_SUGGESTIONS) {
@@ -71,17 +71,17 @@ CommandArgsSuggestions get_entity_names(char* text) {
 bool follow_entity(char* text) {
   int found_entity = -1;
 
-  entity_loop(entity_i) {
-    if (_strcmpi(game_context.names[entity_i], text) == 0) {
-      found_entity = entity_i;
+  loop(game_context.entity_count, entity_id) {
+    if (_strcmpi(game_context.names[entity_id], text) == 0) {
+      found_entity = entity_id;
     }
   }
 
   if (found_entity >= 0) {
     print("Found entity with name %s", game_context.names[found_entity]);
 
-    entity_loop(entity_i) {
-      game_context.selected[entity_i] = false;
+    loop(game_context.entity_count, entity_id) {
+      game_context.selected[entity_id] = false;
     };
 
     game_context.selected[found_entity] = true;
@@ -98,9 +98,9 @@ bool follow_entity(char* text) {
 bool heal_entity(char* text) {
   int found_entity = -1;
 
-  entity_loop(entity_i) {
-    if (_strcmpi(game_context.names[entity_i], text) == 0) {
-      found_entity = entity_i;
+  loop(game_context.entity_count, entity_id) {
+    if (_strcmpi(game_context.names[entity_id], text) == 0) {
+      found_entity = entity_id;
     }
   }
 
