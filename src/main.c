@@ -707,6 +707,8 @@ void render() {
   render_debug_info(&mouse_state);
 
   console_draw();
+
+  gfx_render_present();
 }
 
 void update_timer(Timer *timer, double frame_time) {
@@ -838,8 +840,6 @@ int main(int argc, char *args[]) {
     physics_context.alpha = fmin(accumulator / physics_context.delta_time, 1.0);
 
     render();
-
-    gfx_render_present();
   }
 
   gfx_destroy();
