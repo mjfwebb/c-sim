@@ -20,11 +20,26 @@ typedef struct {
 typedef CommandArgsSuggestions (*CommandArgsSuggestionCallback)(char*);
 
 typedef struct {
+  CommandArgsSuggestionCallback suggestion_callback;
+} ConsoleCommandArgument;
+
+typedef struct {
   char* name;
   CommandCallback callback;
-  CommandArgsSuggestionCallback args_suggestion_callback;
+  ConsoleCommandArgument args[7];
   bool close_console_on_success;
 } ConsoleCommand;
+
+typedef struct {
+  int start;
+  int end;
+  char value[128];
+} ConsoleCommandPart;
+
+typedef struct {
+  ConsoleCommandPart part[8];
+  int length;
+} ConsoleCommandParts;
 
 typedef struct {
   char messages[MAX_CONSOLE_OUTPUT_MESSAGES][MAX_CONSOLE_OUTPUT_LENGTH];
@@ -47,10 +62,6 @@ typedef struct {
   int input_index_start;
   ConsoleOutput output;
 } Console;
-
-char* find_command_suggestion(void);
-
-char* find_current_command(void);
 
 void console_append_to_output(char* message);
 
