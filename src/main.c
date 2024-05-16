@@ -707,7 +707,7 @@ void render() {
 
   if (mouse_primary_pressed(mouse_state)) {
     // Draw the selection box
-    draw_selection_box(&mouse_state);
+    draw_selection_box();
   }
 
   render_debug_info(&mouse_state);
