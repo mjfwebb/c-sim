@@ -190,7 +190,8 @@ void create_entities() {
       "Kataemoi",
       "AgentulSRI",
       "Pushtoy",
-      "Neron0010"
+      "Neron0010",
+      "exodus_uk"
   };
 
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
