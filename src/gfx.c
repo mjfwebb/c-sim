@@ -83,7 +83,8 @@ void gfx_draw_frect_filled(FRect *rect, RGBA *color) {
 void gfx_load_textures() {
   // Eventually you could consider dynamically loading files from the assets folder. Implementing this is, however,
   // unfortunately platform dependent so it would also require some type of platform abstraction to be viable.
-  char texture_paths[][128] = {"assets/stone.bmp", "assets/fish.bmp", "assets/lamb.bmp", "assets/lamb2.bmp"};
+  char texture_paths[][128] = {"assets/Courage_Talisman.png", "assets/Death_Pot.png", "assets/Health_Pot.png", "assets/Love_Pot.png",
+                               "assets/Luck_Talisman.png",    "assets/Sleep_Pot.png", "assets/Truth_Pot.png",  "assets/Waterbreathing_Pot.png"};
 
   for (u32 i = 0; i < array_count(texture_paths); i++) {
     SDL_Surface *surface = IMG_Load(texture_paths[i]);
