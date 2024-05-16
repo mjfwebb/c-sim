@@ -302,6 +302,21 @@ void draw_selection_box() {
   gfx_draw_frect(&selection_rect, &(RGBA){1, 1, 1, 1});
 }
 
+void draw_personalities(int entity_id, FRect around) {
+  char text_buffer[128];
+  int i = 0;
+  for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
+    if (entity_has_personality(entity_id, personality_i)) {
+      sprintf(text_buffer, "%d: %s", game_context.personalities[entity_id][personality_i], Personality__Strings[personality_i]);
+      draw_text_outlined_utf8(
+          text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * i))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+          &render_context.fonts[0]
+      );
+      i++;
+    }
+  }
+}
+
 float Spring__update(Spring *spring, float target) {
   spring->target = target;
   spring->velocity += (target - spring->current) * spring->acceleration;
@@ -400,6 +415,9 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {
     draw_border(entity_screen_rect, 5.0f, 4.0f);
+
+    // Draw the personalities list
+    draw_personalities(entity_id, entity_screen_rect);
   }
 }
 
@@ -519,17 +537,6 @@ bool is_entity_under_mouse(int entity_id) {
   FRect rect = frect_world_to_screen(entity_texture_rect);
 
   return gfx_frect_contains_point(&rect, &mouse_state.position);
-}
-
-void log_entity_personalities(int entity_id) {
-  for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
-    if (entity_has_personality(entity_id, personality_i)) {
-      print(
-          "Entity %s has personality %s with value %d", game_context.names[entity_id], Personality__Strings[personality_i],
-          game_context.personalities[entity_id][personality_i]
-      );
-    }
-  }
 }
 
 void update() {
@@ -665,7 +672,6 @@ void handle_input() {
       if (is_entity_under_mouse(entity_id)) {
         if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
           game_context.selected[entity_id] = !game_context.selected[entity_id];
-          log_entity_personalities(entity_id);
           break;
         }
       }
