@@ -306,17 +306,47 @@ void draw_selection_box() {
 }
 
 void draw_personalities(int entity_id, FRect around) {
-  char text_buffer[128];
-  int i = 0;
+  // TODO: This should probably be sorted on creation, so we don't need to do it on every render
+  int sorted_personality_ids[16] = {0};
+  int length = 0;
+
   for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
     if (entity_has_personality(entity_id, personality_i)) {
-      sprintf(text_buffer, "%d: %s", game_context.personalities[entity_id][personality_i], Personality__Strings[personality_i]);
-      draw_text_outlined_utf8(
-          text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * i))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-          &render_context.fonts[0]
-      );
-      i++;
+      int score = game_context.personalities[entity_id][personality_i];
+
+      if (length == 0) {
+        sorted_personality_ids[0] = personality_i;
+        length++;
+        continue;
+      }
+
+      for (int i = 0; i < length; i++) {
+        if (score > game_context.personalities[entity_id][sorted_personality_ids[i]]) {
+          memmove(sorted_personality_ids + i + 1, sorted_personality_ids + i, (length - i) * sizeof(int));
+          sorted_personality_ids[i] = personality_i;
+          length++;
+          break;
+        }
+
+        if (i == length - 1) {
+          sorted_personality_ids[length] = personality_i;
+          length++;
+          break;
+        }
+      }
     }
+  }
+
+  char text_buffer[128];
+  for (int index = 0; index < length; index++) {
+    sprintf(
+        text_buffer, "%d: %s", game_context.personalities[entity_id][sorted_personality_ids[index]],
+        Personality__Strings[sorted_personality_ids[index]]
+    );
+    draw_text_outlined_utf8(
+        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+        &render_context.fonts[0]
+    );
   }
 }
 
