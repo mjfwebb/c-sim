@@ -542,10 +542,6 @@ void console_handle_input(SDL_Event* event) {
               break;
             }
           }
-
-          // Implicit else, if no command or argument suggestions are found, close the console
-          SDL_StopTextInput();
-          console.target_y = 0.0f;
         } break;
       }
 
