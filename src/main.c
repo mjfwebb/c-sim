@@ -812,11 +812,6 @@ int main(int argc, char *args[]) {
                   .friction = 0.1f,
               },
       },
-
-  gfx_load_textures();
-
-  load_fonts();
-
   console.y_spring = (Spring){
       .target = 0.0f,
       .current = 0.0f,
@@ -824,14 +819,17 @@ int main(int argc, char *args[]) {
       .acceleration = 0.5f,
       .friction = 0.1f,
   };
-
   game_context.game_is_still_running = 1;
+  physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 1.0};
+  render_batcher = new_render_batcher(1000000, render_context.renderer);
+  render_context.timer[0] = (Timer){.interval = 100};  // Second timer
+  render_context.timer[1] = (Timer){.interval = 60000};  // Minute timer
+
+  gfx_load_textures();
+
+  load_fonts();
 
   create_entities();
-
-  render_batcher = new_render_batcher(1000000, render_context.renderer);
-
-  physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 1.0};
 
   u32 start_ticks = SDL_GetTicks();
   int frame_count = 0;
@@ -842,9 +840,6 @@ int main(int argc, char *args[]) {
   float max_frame_time_threshold = 0.25;
   double accumulator = 0.0;
   double current_time = SDL_GetTicks64() / 1000.0;
-
-  render_context.timer[0] = (Timer){.interval = 100};  // Second timer
-  render_context.timer[1] = (Timer){.interval = 60000};  // Minute timer
 
   while (game_context.game_is_still_running) {
     double new_time = SDL_GetTicks64() / 1000.0;
