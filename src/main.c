@@ -873,6 +873,11 @@ int main(int argc, char *args[]) {
 
     physics_context.alpha = fmin(accumulator / physics_context.delta_time, 1.0);
 
+    // Set the alpha to 1.0 so that rendering is consistent when the simulation speed is 0.
+    if (physics_context.simulation_speed == 0) {
+      physics_context.alpha = 1.0;
+    }
+
     render();
   }
 
