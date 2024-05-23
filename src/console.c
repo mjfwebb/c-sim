@@ -427,10 +427,6 @@ static void console_draw_input_rect(float y) {
 }
 
 void console_draw() {
-  if (!console_is_open) {
-    return;
-  }
-
   gfx_set_blend_mode_blend();
 
   // Draw full console rect
