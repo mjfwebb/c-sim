@@ -9,37 +9,15 @@
 #include "personalities.c"
 #include "seed.c"
 #include "console.c"
+#include "pause_menu.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
-#define mouse_primary_pressed(mouse_state) \
-  (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
-
-typedef struct {
-  int prev_state;
-  int state;
-  int button;
-  Vec2 position;
-  Vec2 prev_position;
-  int clicks;
-} MouseState;
 
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
 }
 
-int Entity__get_personality_count(int entity_index) {
-  int result = 0;
-  for (int i = 0; i < Personality_Count; i++) {
-    if (game_context.personalities[i] > 0) {
-      result += 1;
-    }
-  }
-
-  return result;
-}
-
 RenderBatcher render_batcher = {0};
-MouseState mouse_state = {0};
 int game_is_still_running = 1;
 
 bool entity_has_personality(int entity_index, Personality personality) {
@@ -88,6 +66,8 @@ void load_fonts() {
   render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
   font_parameters.size = 32;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+  font_parameters.size = 64;
+  render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
 void create_entity(char *name) {
@@ -191,7 +171,10 @@ void create_entities() {
       "AgentulSRI",
       "Pushtoy",
       "Neron0010",
-      "exodus_uk"
+      "exodus_uk",
+      "Coopert1n0",
+      "mantra4aa",
+      "Keikzz"
   };
 
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
@@ -300,6 +283,10 @@ void render_debug_info() {
 }
 
 void draw_selection_box() {
+  if (!mouse_primary_pressed(mouse_state) || game_context.in_pause_menu) {
+    return;
+  }
+
   FRect selection_rect = get_selection_rect();
 
   gfx_draw_frect(&selection_rect, &(RGBA){1, 1, 1, 1});
@@ -576,7 +563,14 @@ void update() {
   // Spring the camera zoom
   render_context.camera.zoom = Spring__update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
 
+  // Spring the console position
+  console.y = Spring__update(&console.y_spring, console.target_y);
+
   mouse_control_camera(&mouse_state);
+
+  if (game_context.in_pause_menu) {
+    return;
+  }
 
   if (!console_is_open) {
     keyboard_control_camera();
@@ -595,9 +589,6 @@ void update() {
   // Spring the camera position
   render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
   render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
-
-  // Spring the console position
-  console.y = Spring__update(&console.y_spring, console.target_y);
 
   if (physics_context.simulation_speed > 0.0) {
     loop(game_context.entity_count, entity_id) {
@@ -630,21 +621,16 @@ void handle_input() {
       mouse_state.position.x = (float)event.motion.x;
       mouse_state.position.y = (float)event.motion.y;
     }
-    if (event.type == SDL_MOUSEWHEEL) {
-      if (event.wheel.y > 0) {
-        // zoom in
-        render_context.camera.target_zoom = min(render_context.camera.target_zoom + 0.1f, 2.0f);
-      } else if (event.wheel.y < 0) {
-        // zoom out
-        render_context.camera.target_zoom = max(render_context.camera.target_zoom - 0.1f, 0.1f);
-      }
-    }
     if (event.type == SDL_QUIT) {
       game_context.game_is_still_running = 0;
       return;
     }
     if (console_is_open) {
       console_handle_input(&event);
+      return;
+    }
+    if (game_context.in_pause_menu) {
+      pause_menu_handle_input(&event);
       return;
     }
     if (event.type == SDL_KEYDOWN) {
@@ -665,10 +651,14 @@ void handle_input() {
           }
 
           // 2. If nothing was deselected, then open the pause menu.
-          // TBD
+          game_context.in_pause_menu = true;
+          pause_menu.current_screen = PAUSE_MENU_MAIN;
 
-          // 3. If in the pause menu, then close the pause menu.
-          game_context.game_is_still_running = 0;
+          if (physics_context.simulation_speed > 0) {
+            physics_context.prev_simulation_speed = physics_context.simulation_speed;
+            physics_context.simulation_speed = 0;
+          }
+
           break;
         case SDLK_UP:
           physics_context.simulation_speed += 0.5;
@@ -693,6 +683,15 @@ void handle_input() {
         }
         default:
           break;
+      }
+    }
+    if (event.type == SDL_MOUSEWHEEL) {
+      if (event.wheel.y > 0) {
+        // zoom in
+        render_context.camera.target_zoom = min(render_context.camera.target_zoom + 0.1f, 2.0f);
+      } else if (event.wheel.y < 0) {
+        // zoom out
+        render_context.camera.target_zoom = max(render_context.camera.target_zoom - 0.1f, 0.1f);
       }
     }
 
@@ -745,6 +744,8 @@ void render() {
 
   render_debug_info(&mouse_state);
 
+  pause_menu_draw();
+
   console_draw();
 
   gfx_render_present();
@@ -773,16 +774,16 @@ int main(int argc, char *args[]) {
               .target = 1.0f,
               .current = 1.0f,
               .velocity = 0.0f,
-              .acceleration = 0.5f,
-              .friction = 0.1f,
+              .acceleration = 2.0f,
+              .friction = 0.05f,
           },
       .pan_spring_y =
           {
               .target = 1.0f,
               .current = 1.0f,
               .velocity = 0.0f,
-              .acceleration = 0.5f,
-              .friction = 0.1f,
+              .acceleration = 2.0f,
+              .friction = 0.05f,
           },
       .zoom_spring =
           {

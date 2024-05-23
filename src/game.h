@@ -33,6 +33,7 @@ typedef struct {
   PositionComponent positions[MAX_ENTITIES];
   TextureComponent textures[MAX_ENTITIES];
   bool game_is_still_running;
+  bool in_pause_menu;
 } GameContext;
 
 GameContext game_context = {0};

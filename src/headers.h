@@ -20,4 +20,6 @@
 #include "personalities.h"
 #include "console.h"
 #include "game.h"
+#include "mouse_state.h"
 #include "physics.h"
+#include "pause_menu.h"
