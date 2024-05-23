@@ -555,3 +555,7 @@ void console_handle_input(SDL_Event* event) {
     } break;
   }
 }
+
+bool console_is_open() {
+  return console.y_spring.target > 0.0f;
+}

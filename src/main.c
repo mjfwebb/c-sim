@@ -572,7 +572,7 @@ void update() {
     return;
   }
 
-  if (!console_is_open) {
+  if (!console_is_open()) {
     keyboard_control_camera();
   }
 
@@ -625,7 +625,7 @@ void handle_input() {
       game_context.game_is_still_running = 0;
       return;
     }
-    if (console_is_open) {
+    if (console_is_open()) {
       console_handle_input(&event);
       return;
     }

@@ -2,8 +2,6 @@
 
 #include "headers.h"
 
-#define console_is_open (console.y_spring.target > 0.0f)
-
 #define CONSOLE_INPUT_HEIGHT 64.0f
 #define MAX_CONSOLE_OUTPUT_LENGTH 128
 #define MAX_CONSOLE_OUTPUT_MESSAGES 16
