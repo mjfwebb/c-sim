@@ -5,6 +5,7 @@
 #define PERSONALITY_LIST \
   X(Adventurous)         \
   X(Aggressive)          \
+  X(Aloof)               \
   X(Altruistic)          \
   X(Ambitious)           \
   X(Analytical)          \
