@@ -139,7 +139,7 @@ static bool heal_entity(char* text) {
   }
 
   if (found_entity >= 0) {
-    game_context.health[found_entity] = 100;
+    game_context.health_current[found_entity] = game_context.health_max[found_entity];
 
     return true;
   } else {
@@ -222,7 +222,7 @@ ConsoleCommand console_commands[] = {
         .name = "commands",
         .callback = display_command_names,
         .close_console_on_success = false,
-    }
+    },
 };
 
 static bool display_command_names(char* _unused) {
