@@ -262,7 +262,7 @@ FRect get_camera_rect() {
   return camera_rect;
 }
 
-FRect get_entity_texture_rect(int entity_id) {
+FRect get_entity_render_rect(int entity_id) {
   FRect texture_rect = {
       .position =
           {.x = game_context.positions[entity_id].current_position.x * (float)physics_context.alpha +
@@ -279,8 +279,8 @@ FRect get_entity_texture_rect(int entity_id) {
 void draw_entity_name_batched(int entity_id, RenderBatcher *batcher) {
   Font *font = &render_context.fonts[0];
   RGBA color = (RGBA){1, 1, 1, 1};
-  FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
 
   float y = (entity_screen_rect.position.y - (45.0f));
 
@@ -485,8 +485,8 @@ void move_entity(int entity_id) {
 }
 
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
-  FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
   FRect entity_shadow_rect = entity_screen_rect;
 
   float entity_shadow_height = entity_shadow_rect.size.y - entity_shadow_rect.position.y;
@@ -577,57 +577,22 @@ void generate_grass_textures() {
   }
 }
 
-// void draw_terrain(RenderBatcher *batcher) {
-//   gfx_set_blend_mode_blend();
-
-//   RGBA color = {1, 1, 1, 1};
-//   // GFX_TEXTURE_ID grass_texture_id = GFX_TEXTURE_GRASS_LONG_CENTER;
-
-//   // Vertical array length is window_h / grid.size.y
-//   // Horizontal array length is window_w / grid.size.x
-
-//   int column = 0;
-
-//   int row = 0;
-
-//   for (int y = 0; y < 16; y++) {
-//     for (int x = 0; x < 16; x++) {
-//       float x_float = (float)x * 128;
-//       float y_float = (float)y * 128;
-
-//       render_batcher_copy_texture_quad(
-//           batcher, render_context.texture_atlas.textures[terrains[column][row]], &color,
-//           &(FRect){
-//               .position.x = x_float,
-//               .position.y = y_float,
-//               .size.x = x_float + 128.0f,
-//               .size.y = y_float + 128.0f,
-//           },
-//           NULL
-//       );
-//       row++;
-//     }
-//     row = 0;
-//     column++;
-//   }
-//   gfx_set_blend_mode_none();
-// }
-
 void draw_terrain(RenderBatcher *batcher) {
   gfx_set_blend_mode_blend();
-  float grid_size = 100.0f;
-  float window_w = (float)render_context.window_w;
-  float window_h = (float)render_context.window_h;
+  float grid_size = 256.0f * render_context.camera.zoom;
 
-  FRect grid = {
-      .position.x = (0 - render_context.camera.current.x) * render_context.camera.zoom + render_context.window_w / 2,
-      .position.y = (0 - render_context.camera.current.y) * render_context.camera.zoom + render_context.window_h / 2,
-      .size.x = grid_size * render_context.camera.zoom,
-      .size.y = grid_size * render_context.camera.zoom,
-  };
+  // FRect terrain = {
+  //     .position.x = (0 + render_context.camera.current.x),
+  //     .position.y = (0 + render_context.camera.current.y),
+  //     .size.x = grid_size,
+  //     .size.y = grid_size,
+  // };
 
-  float x_start = (grid.position.x - floorf(grid.position.x / grid.size.x) * grid.size.x) - grid.size.x;
-  float y_start = (grid.position.y - floorf(grid.position.y / grid.size.y) * grid.size.y) - grid.size.y;
+  // float x_start = max(0, floorf((terrain.position.x - (render_context.window_w / 2)) / grid_size));
+  // float y_start = max(0, floorf((terrain.position.y - (render_context.window_h / 2)) / grid_size));
+
+  // float x_start = (grid.position.x - floorf(grid.position.x / grid.size.x) * grid.size.x) - grid.size.x;
+  // float y_start = (grid.position.y - floorf(grid.position.y / grid.size.y) * grid.size.y) - grid.size.y;
 
   RGBA color = {1, 1, 1, 1};
   // GFX_TEXTURE_ID grass_texture_id = GFX_TEXTURE_GRASS_LONG_CENTER;
@@ -635,25 +600,24 @@ void draw_terrain(RenderBatcher *batcher) {
   // Vertical array length is window_h / grid.size.y
   // Horizontal array length is window_w / grid.size.x
 
-  int column = 0;
-  int row = 0;
+  for (float y = 0; y < (render_context.window_h / grid_size); y += 1) {
+    for (float x = 0; x < (render_context.window_w / grid_size); x += 1) {
+      Vec2 grid_screen_position = (Vec2){
+          .x = (x + render_context.camera.current.x),
+          .y = (y + render_context.camera.current.y),
+      };
 
-  for (float y = y_start; y < window_h; y += grid.size.y) {
-    for (float x = x_start; x < window_w; x += grid.size.x) {
       render_batcher_copy_texture_quad(
-          batcher, render_context.texture_atlas.textures[terrains[column][row]], &color,
+          batcher, render_context.texture_atlas.textures[terrains[(int)grid_screen_position.y][(int)grid_screen_position.x]], &color,
           &(FRect){
-              .position.x = x,
-              .position.y = y,
-              .size.x = x + grid_size * render_context.camera.zoom,
-              .size.y = y + grid_size * render_context.camera.zoom,
+              .position.x = grid_screen_position.x,
+              .position.y = grid_screen_position.y,
+              .size.x = grid_screen_position.x + grid_size,
+              .size.y = grid_screen_position.y + grid_size,
           },
           NULL
       );
-      row++;
     }
-    row = 0;
-    column++;
   }
   gfx_set_blend_mode_none();
 }
@@ -672,22 +636,32 @@ void mouse_control_camera() {
   }
 }
 
+void deselect_all_entities() {
+  loop(game_context.entity_count, entity_id) {
+    game_context.selected[entity_id] = false;
+  }
+}
+
 // Camera movement and selection rect movement
 void keyboard_control_camera() {
   float camera_keyboard_movement_speed = 15.0f;
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_w)]) {
+    deselect_all_entities();
     render_context.camera.target.y -= camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.y += camera_keyboard_movement_speed;
   }
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_s)]) {
+    deselect_all_entities();
     render_context.camera.target.y += camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.y -= camera_keyboard_movement_speed;
   }
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_a)]) {
+    deselect_all_entities();
     render_context.camera.target.x -= camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.x += camera_keyboard_movement_speed;
   }
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_d)]) {
+    deselect_all_entities();
     render_context.camera.target.x += camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.x -= camera_keyboard_movement_speed;
   }
@@ -708,8 +682,8 @@ int get_entity_to_follow() {
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect() {
   loop(game_context.entity_count, entity_id) {
-    FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-    FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
+    FRect entity_render_rect = get_entity_render_rect(entity_id);
+    FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
 
     Vec2 point_top_left = {
         .x = entity_screen_rect.position.x,
@@ -735,8 +709,8 @@ void select_entities_within_selection_rect() {
 }
 
 bool is_entity_under_mouse(int entity_id) {
-  FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  FRect rect = frect_world_to_screen(entity_texture_rect);
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect rect = frect_world_to_screen(entity_render_rect);
 
   return gfx_frect_contains_point(&rect, &mouse_state.position);
 }
@@ -896,16 +870,16 @@ void render() {
   FRect translated_rect = frect_screen_to_world(camera_rect);
 
   loop(game_context.entity_count, entity_id) {
-    FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-    if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
+    FRect entity_render_rect = get_entity_render_rect(entity_id);
+    if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
       render_entity_batched(entity_id, &render_batcher);
     }
   }
 
   if (render_context.camera.zoom > 0.5f) {
     loop(game_context.entity_count, entity_id) {
-      FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-      if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
+      FRect entity_render_rect = get_entity_render_rect(entity_id);
+      if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
         draw_entity_name_batched(entity_id, &render_batcher);
       }
     }
@@ -944,6 +918,7 @@ int main(int argc, char *args[]) {
 
   render_context.background_color = (SDL_Color){35, 127, 178, 255};
   render_context.camera = (Camera){
+      .zoom = 1.0f,
       .target_zoom = 1.0f,
       .pan_spring_x =
           {
@@ -1062,19 +1037,19 @@ int main(int argc, char *args[]) {
         .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
     };
 
-    int to_follow = get_entity_to_follow();
+    int entity_to_follow = get_entity_to_follow();
 
     if (mouse_primary_pressed(mouse_state)) {
       select_entities_within_selection_rect();
     } else {
-      if (to_follow != INVALID_ENTITY) {
-        FRect entity_texture_rect = get_entity_texture_rect(to_follow);
-        render_context.camera.target.x = entity_texture_rect.position.x + ((entity_texture_rect.size.x - entity_texture_rect.position.x) / 2);
-        render_context.camera.target.y = entity_texture_rect.position.y + ((entity_texture_rect.size.y - entity_texture_rect.position.y) / 2);
+      if (entity_to_follow != INVALID_ENTITY) {
+        FRect entity_render_rect = get_entity_render_rect(entity_to_follow);
+        render_context.camera.target.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
+        render_context.camera.target.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
 
         if (camera_spring_distance.x < 0.5f && camera_spring_distance.y < 0.5f) {
-          render_context.camera.current.x = entity_texture_rect.position.x + ((entity_texture_rect.size.x - entity_texture_rect.position.x) / 2);
-          render_context.camera.current.y = entity_texture_rect.position.y + ((entity_texture_rect.size.y - entity_texture_rect.position.y) / 2);
+          render_context.camera.current.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
+          render_context.camera.current.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
         }
       }
     }
