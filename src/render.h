@@ -45,7 +45,7 @@ typedef struct {
 
 typedef struct {
   u32 count;
-  SDL_Texture *textures[32];
+  SDL_Texture *textures[64];
   Vec2 size[32];
 } TextureAtlas;
 

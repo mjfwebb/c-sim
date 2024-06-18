@@ -20,7 +20,8 @@ typedef struct {
 } TextureComponent;
 
 typedef struct {
-  int health[MAX_ENTITIES];
+  int health_current[MAX_ENTITIES];
+  int health_max[MAX_ENTITIES];
   char names[MAX_ENTITIES][128];
   bool selected[MAX_ENTITIES];
   bool hovered[MAX_ENTITIES];

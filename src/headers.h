@@ -23,3 +23,4 @@
 #include "mouse_state.h"
 #include "physics.h"
 #include "pause_menu.h"
+#include "terrain.h"

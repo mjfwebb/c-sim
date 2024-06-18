@@ -13,9 +13,13 @@
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 
+// FIXME: This can only produce numbers up to RAND_MAX which is at least 32767
 int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
 }
+
+#define MAX_TERRAIN 1000
+GFX_TEXTURE_ID terrains[MAX_TERRAIN][MAX_TERRAIN];
 
 RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
@@ -70,15 +74,44 @@ void load_fonts() {
   render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
-void create_entity(char *name) {
+void create_tree() {
   float entity_width = 100.0f;
-  int texture_id = random_int_between(0, render_context.texture_atlas.count);
+  int texture_id = 8;
   game_context.textures[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
 
   float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
   game_context.textures[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
 
-  game_context.health[game_context.entity_count] = random_int_between(10, 100);
+  game_context.health_current[game_context.entity_count] = 1000;
+  game_context.health_max[game_context.entity_count] = 1000;
+
+  strcpy(game_context.names[game_context.entity_count], "tree");  // FIXME: Use the safe version strcpy_s. PRs welcome
+
+  game_context.selected[game_context.entity_count] = false;
+  game_context.hovered[game_context.entity_count] = false;
+  game_context.positions[game_context.entity_count] = (PositionComponent){
+      .current_position =
+          {
+              .x = (float)random_int_between(-400, 400) * 100,
+              .y = (float)random_int_between(-400, 400) * 100,
+          },
+  };
+  game_context.positions[game_context.entity_count].previous_position = game_context.positions[game_context.entity_count].current_position;
+
+  game_context.entity_count++;
+}
+
+void create_human(char *name) {
+  float entity_width = 100.0f;
+  int texture_id = random_int_between(0, 7);
+  game_context.textures[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
+
+  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
+  game_context.textures[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
+
+  game_context.health_current[game_context.entity_count] = random_int_between(10, 100);
+  game_context.health_max[game_context.entity_count] = 100;
+
   strcpy(game_context.names[game_context.entity_count], name);  // FIXME: Use the safe version strcpy_s. PRs welcome
 
   game_context.selected[game_context.entity_count] = false;
@@ -174,11 +207,42 @@ void create_entities() {
       "exodus_uk",
       "Coopert1n0",
       "mantra4aa",
-      "Keikzz"
+      "Keikzz",
+      "sreetunks",
+      "noisycat3",
+      "ca2software",
+      "GyrosGeier",
+      "GloriousSir",
+      "kuviman",
+      "nigelwithrow",
+      "pgorley",
+      "Kasie_SoftThorn",
+      "tapir2342",
+      "Protonmat",
+      "davexmachina_",
+      "seek1337",
+      "godmode0071",
+      "cakez77",
+      "TravisVroman",
+      "Deharma",
+      "Rogue_Wolf_Dev",
+      "Tuhkamjuhkam",
+      "lolDayzo",
+      "retromaximusplays",
+      "nickely",
+      "MaGetzUb",
+      "capuche_man",
+      "MrElmida",
+      "Zanarias",
+      "dasraizer",
   };
 
   for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
-    create_entity(entity_names[name_index]);
+    create_human(entity_names[name_index]);
+  }
+
+  for (int i = 0; i < 9999; i++) {
+    create_tree();
   }
 }
 
@@ -199,7 +263,7 @@ FRect get_camera_rect() {
   return camera_rect;
 }
 
-FRect get_entity_texture_rect(int entity_id) {
+FRect get_entity_render_rect(int entity_id) {
   FRect texture_rect = {
       .position =
           {.x = game_context.positions[entity_id].current_position.x * (float)physics_context.alpha +
@@ -216,8 +280,8 @@ FRect get_entity_texture_rect(int entity_id) {
 void draw_entity_name_batched(int entity_id, RenderBatcher *batcher) {
   Font *font = &render_context.fonts[0];
   RGBA color = (RGBA){1, 1, 1, 1};
-  FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
 
   float y = (entity_screen_rect.position.y - (45.0f));
 
@@ -357,7 +421,7 @@ void draw_health_bar(int entity_id, FRect entity_rect) {
   gfx_draw_frect_filled(&total_health_rect, &(RGBA){0, 0, 0, 1});
 
   float size_x = frect_width(&entity_rect);
-  float health_width = (100 - game_context.health[entity_id]) * size_x / 100.0f;
+  float health_width = (game_context.health_max[entity_id] - game_context.health_current[entity_id]) * size_x / game_context.health_max[entity_id];
   FRect current_health_rect = {
       .position.x = entity_rect.position.x,
       .position.y = y,
@@ -422,15 +486,25 @@ void move_entity(int entity_id) {
 }
 
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
-  FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
+  FRect entity_shadow_rect = entity_screen_rect;
 
-  RGBA color = {1, 1, 1, 1};
+  float entity_shadow_height = entity_shadow_rect.size.y - entity_shadow_rect.position.y;
+  entity_shadow_rect.position.y += (entity_shadow_height * 0.8f);
+  entity_shadow_rect.size.y += (entity_shadow_height * 0.2f);
+
   render_batcher_copy_texture_quad(
-      batcher, render_context.texture_atlas.textures[game_context.textures[entity_id].texture_id], &color, &entity_screen_rect, NULL
+      batcher, render_context.texture_atlas.textures[GFX_TEXTURE_SHADOW], &(RGBA){1, 1, 1, 0.25}, &entity_shadow_rect, NULL
   );
 
-  draw_health_bar(entity_id, entity_screen_rect);
+  render_batcher_copy_texture_quad(
+      batcher, render_context.texture_atlas.textures[game_context.textures[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
+  );
+
+  if (render_context.camera.zoom > 0.5f) {
+    draw_health_bar(entity_id, entity_screen_rect);
+  }
 
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {
@@ -443,7 +517,7 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
 
 void draw_grid() {
   gfx_set_blend_mode_blend();
-  float grid_size = 100.0f;
+  float grid_size = 256.0f;
   float window_w = (float)render_context.window_w;
   float window_h = (float)render_context.window_h;
 
@@ -456,14 +530,91 @@ void draw_grid() {
 
   float x_start = grid.position.x - floorf(grid.position.x / grid.size.x) * grid.size.x;
   for (float x = x_start; x < window_w; x += grid.size.x) {
-    gfx_draw_line(x, 0, x, window_h, &(RGBA){0, 0, 0, 0.25f});
+    gfx_draw_line(x, 0, x, window_h, &(RGBA){0, 0, 0, 0.15f});
   }
 
   float y_start = grid.position.y - floorf(grid.position.y / grid.size.y) * grid.size.y;
   for (float y = y_start; y < window_h; y += grid.size.y) {
-    gfx_draw_line(0, y, window_w, y, &(RGBA){0, 0, 0, 0.25f});
+    gfx_draw_line(0, y, window_w, y, &(RGBA){0, 0, 0, 0.15f});
   }
 
+  gfx_set_blend_mode_none();
+}
+
+void generate_grass_textures() {
+  // GFX_TEXTURE_ID assigned_textures[16][16];
+  // int column = 0;
+  // int row = 0;
+
+  for (int y = 0; y < MAX_TERRAIN; y++) {
+    for (int x = 0; x < MAX_TERRAIN; x++) {
+      // Now get the next possible texture_id based on the current one. Loop over the textures.
+      int previous_right_grass_type = (LONG_GRASS_RIGHT | OVERGROWN_GRASS_RIGHT | SHORT_GRASS_RIGHT);
+      if (x > 0) {
+        // We're on the top column, we don't care about what was above us.
+        previous_right_grass_type = grass_textures[terrains[y][x - 1]] & (LONG_GRASS_RIGHT | OVERGROWN_GRASS_RIGHT | SHORT_GRASS_RIGHT);
+      }
+
+      int previous_bottom_grass_type = (LONG_GRASS_BOTTOM | OVERGROWN_GRASS_BOTTOM | SHORT_GRASS_BOTTOM);
+      if (y > 0) {
+        // We're no longer on the top, we need to consider what was above.
+        previous_bottom_grass_type = grass_textures[terrains[y - 1][x]] & (LONG_GRASS_BOTTOM | OVERGROWN_GRASS_BOTTOM | SHORT_GRASS_BOTTOM);
+      }
+
+      int possible_textures[64] = {0};
+      int possible_textures_count = 0;
+      for (int texture_id = GFX_TEXTURE_GRASS_LONG_CENTER; texture_id <= GFX_TEXTURE_GRASS_SHORT_OVERGROWN_TOP; texture_id++) {
+        // { return tile.type & rightType != 0 && tile.type & topType != 0;});
+        if ((grass_textures[texture_id] & (previous_right_grass_type << 2)) != 0 &&
+            (grass_textures[texture_id] & (previous_bottom_grass_type >> 2)) != 0) {
+          possible_textures[possible_textures_count] = texture_id;
+          possible_textures_count++;
+        }
+      }
+
+      int chosen_texture_id = possible_textures[random_int_between(0, possible_textures_count)];
+      terrains[y][x] = chosen_texture_id;
+    }
+  }
+}
+
+void draw_terrain(RenderBatcher *batcher) {
+  gfx_set_blend_mode_blend();
+  float original_grid_size = 256.0f;
+  float zoom = render_context.camera.zoom;
+  Vec2 camera = render_context.camera.current;
+  float grid_size = original_grid_size * zoom;
+  int window_w = render_context.window_w;
+  int window_h = render_context.window_h;
+
+  int x_start = (int)((camera.x * zoom - window_w / 2) / grid_size);
+  int y_start = (int)((camera.y * zoom - window_h / 2) / grid_size);
+
+  // The amount of tiles that can fit in the whole screen
+  int screen_tiles_x = (int)(window_w / grid_size);
+  int screen_tiles_y = (int)(window_h / grid_size);
+
+  // The amount of tiles that is drawn beyond the calculated screen tiles
+  int padding = 2;
+  RGBA color = {1, 1, 1, 1};
+
+  for (int y = y_start - padding; y < y_start + screen_tiles_y + padding; y++) {
+    for (int x = x_start - padding; x < x_start + screen_tiles_x + padding; x++) {
+      float grid_pos_x = x * grid_size;
+      float grid_pos_y = y * grid_size;
+      render_batcher_copy_texture_quad(
+          batcher, render_context.texture_atlas.textures[terrains[(MAX_TERRAIN / 2) + y][(MAX_TERRAIN / 2) + x]], &color,
+          &(FRect){
+              // Use top left position for drawing
+              .position.x = grid_pos_x - (camera.x * zoom - window_w / 2),
+              .position.y = grid_pos_y - (camera.y * zoom - window_h / 2),
+              .size.x = grid_size + grid_pos_x - (camera.x * zoom - window_w / 2),
+              .size.y = grid_size + grid_pos_y - (camera.y * zoom - window_h / 2),
+          },
+          NULL
+      );
+    }
+  }
   gfx_set_blend_mode_none();
 }
 
@@ -481,22 +632,32 @@ void mouse_control_camera() {
   }
 }
 
+void deselect_all_entities() {
+  loop(game_context.entity_count, entity_id) {
+    game_context.selected[entity_id] = false;
+  }
+}
+
 // Camera movement and selection rect movement
 void keyboard_control_camera() {
   float camera_keyboard_movement_speed = 15.0f;
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_w)]) {
+    deselect_all_entities();
     render_context.camera.target.y -= camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.y += camera_keyboard_movement_speed;
   }
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_s)]) {
+    deselect_all_entities();
     render_context.camera.target.y += camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.y -= camera_keyboard_movement_speed;
   }
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_a)]) {
+    deselect_all_entities();
     render_context.camera.target.x -= camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.x += camera_keyboard_movement_speed;
   }
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_d)]) {
+    deselect_all_entities();
     render_context.camera.target.x += camera_keyboard_movement_speed / render_context.camera.zoom;
     render_context.selection.target.x -= camera_keyboard_movement_speed;
   }
@@ -514,20 +675,11 @@ int get_entity_to_follow() {
   return selected_count == 1 ? result : INVALID_ENTITY;
 }
 
-// Set the camera to follow an entity, if only one entity is selected
-void camera_follow_entity() {
-  int to_follow = get_entity_to_follow();
-  if (to_follow != INVALID_ENTITY) {
-    render_context.camera.target.x = game_context.positions[to_follow].current_position.x + (game_context.textures[to_follow].size.x / 2);
-    render_context.camera.target.y = game_context.positions[to_follow].current_position.y + (game_context.textures[to_follow].size.y / 2);
-  }
-}
-
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect() {
   loop(game_context.entity_count, entity_id) {
-    FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-    FRect entity_screen_rect = frect_world_to_screen(entity_texture_rect);
+    FRect entity_render_rect = get_entity_render_rect(entity_id);
+    FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
 
     Vec2 point_top_left = {
         .x = entity_screen_rect.position.x,
@@ -553,8 +705,8 @@ void select_entities_within_selection_rect() {
 }
 
 bool is_entity_under_mouse(int entity_id) {
-  FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-  FRect rect = frect_world_to_screen(entity_texture_rect);
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect rect = frect_world_to_screen(entity_render_rect);
 
   return gfx_frect_contains_point(&rect, &mouse_state.position);
 }
@@ -572,29 +724,19 @@ void update() {
     return;
   }
 
-  if (!console_is_open) {
+  if (!console_is_open()) {
     keyboard_control_camera();
   }
-
-  if (mouse_primary_pressed(mouse_state)) {
-    select_entities_within_selection_rect();
-  } else {
-    camera_follow_entity();
-  }
-
-  // Spring the selection box
-  render_context.selection.position.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target.x);
-  render_context.selection.position.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target.y);
-
-  // Spring the camera position
-  render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
-  render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
 
   if (physics_context.simulation_speed > 0.0) {
     loop(game_context.entity_count, entity_id) {
       move_entity(entity_id);
     }
   }
+
+  // Spring the selection box
+  render_context.selection.position.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target.x);
+  render_context.selection.position.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target.y);
 }
 
 void handle_input() {
@@ -625,7 +767,7 @@ void handle_input() {
       game_context.game_is_still_running = 0;
       return;
     }
-    if (console_is_open) {
+    if (console_is_open()) {
       console_handle_input(&event);
       return;
     }
@@ -714,22 +856,26 @@ void handle_input() {
 void render() {
   gfx_clear_screen();
 
+  draw_terrain(&render_batcher);
+
+  flush_render_batcher(&render_batcher);
+
   draw_grid();
 
   FRect camera_rect = get_camera_rect();
   FRect translated_rect = frect_screen_to_world(camera_rect);
 
   loop(game_context.entity_count, entity_id) {
-    FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-    if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
+    FRect entity_render_rect = get_entity_render_rect(entity_id);
+    if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
       render_entity_batched(entity_id, &render_batcher);
     }
   }
 
   if (render_context.camera.zoom > 0.5f) {
     loop(game_context.entity_count, entity_id) {
-      FRect entity_texture_rect = get_entity_texture_rect(entity_id);
-      if (gfx_frect_intersects_frect(&entity_texture_rect, &translated_rect)) {
+      FRect entity_render_rect = get_entity_render_rect(entity_id);
+      if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
         draw_entity_name_batched(entity_id, &render_batcher);
       }
     }
@@ -759,7 +905,7 @@ void update_timer(Timer *timer, double frame_time) {
 }
 
 int main(int argc, char *args[]) {
-  srand(create_seed("ATHANO_THINKS_CHAT_IS_KINDA_CUTE"));
+  srand(create_seed("FOLLOWING_IS_KIND_OF_HARD"));
 
   int gfx_init_result = gfx_init();
   if (gfx_init_result == 1) {
@@ -768,6 +914,7 @@ int main(int argc, char *args[]) {
 
   render_context.background_color = (SDL_Color){35, 127, 178, 255};
   render_context.camera = (Camera){
+      .zoom = 1.0f,
       .target_zoom = 1.0f,
       .pan_spring_x =
           {
@@ -822,7 +969,7 @@ int main(int argc, char *args[]) {
   };
   game_context.game_is_still_running = 1;
   physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 1.0};
-  render_batcher = new_render_batcher(1000000, render_context.renderer);
+  render_batcher = new_render_batcher(100000, render_context.renderer);
   render_context.timer[0] = (Timer){.interval = 100};  // Second timer
   render_context.timer[1] = (Timer){.interval = 60000};  // Minute timer
 
@@ -831,6 +978,7 @@ int main(int argc, char *args[]) {
   load_fonts();
 
   create_entities();
+  generate_grass_textures();
 
   u32 start_ticks = SDL_GetTicks();
   int frame_count = 0;
@@ -872,11 +1020,40 @@ int main(int argc, char *args[]) {
       accumulator -= physics_context.delta_time;
     }
 
-    physics_context.alpha = fmin(accumulator / physics_context.delta_time, 1.0);
+    physics_context.alpha = min(accumulator / physics_context.delta_time, 1.0);
 
     // Set the alpha to 1.0 so that rendering is consistent when the simulation speed is 0.
     if (physics_context.simulation_speed == 0) {
       physics_context.alpha = 1.0;
+    }
+
+    // bool spring_camera = true;
+    Vec2 camera_spring_distance = {
+        .x = fabsf(render_context.camera.target.x - render_context.camera.current.x),
+        .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
+    };
+
+    int entity_to_follow = get_entity_to_follow();
+
+    if (mouse_primary_pressed(mouse_state)) {
+      select_entities_within_selection_rect();
+    } else {
+      if (entity_to_follow != INVALID_ENTITY) {
+        FRect entity_render_rect = get_entity_render_rect(entity_to_follow);
+        render_context.camera.target.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
+        render_context.camera.target.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
+
+        if (camera_spring_distance.x < 0.5f && camera_spring_distance.y < 0.5f) {
+          render_context.camera.current.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
+          render_context.camera.current.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
+        }
+      }
+    }
+
+    if (camera_spring_distance.x > 0.5f || camera_spring_distance.y > 0.5f) {
+      // Spring the camera position
+      render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
+      render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
     }
 
     render();

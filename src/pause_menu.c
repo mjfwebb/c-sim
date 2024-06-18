@@ -15,7 +15,19 @@ typedef struct {
   int id;
   FRect rect;
   char text[32];
+} PauseMenuDropdown;
+
+typedef struct {
+  int id;
+  FRect rect;
+  char text[32];
 } PauseMenuButton;
+
+typedef struct {
+  int id;
+  FRect rect;
+  char text[32];
+} PauseMenuTitle;
 
 typedef struct {
   int hovered_id;
@@ -25,10 +37,44 @@ typedef struct {
   PauseMenuScreen current_screen;
 } PauseMenu;
 
-int button_id_start = 9999;
-int number_of_buttons = 5;
+int element_id_start = 9999;
+int number_of_elements = 0;
+
+float element_height = 60.0f;
+float element_gap = 30.0f;
 
 PauseMenu pause_menu = {.current_screen = PAUSE_MENU_MAIN};
+
+FRect get_container(float* element_sizes, int element_count) {
+  float container_height = 0;
+  float container_width = 300.0f;
+  for (int i = 0; i < element_count; i++) {
+    container_height += (element_sizes[i] + element_gap);
+  }
+  container_height -= element_gap;
+
+  float middle_of_screen_container_x = ((float)render_context.window_w / 2) - (container_width / 2);
+  float y = ((float)render_context.window_h / 2) - (container_height / 2);
+
+  FRect container = {
+      .position.x = middle_of_screen_container_x,
+      .position.y = y,
+      .size.x = middle_of_screen_container_x + container_width,
+      .size.y = y + container_height,
+  };
+
+  return container;
+}
+
+float current_element_position_y(float* element_heights, int current_element) {
+  float y_position = 0.0f;
+
+  for (int i = 0; i < current_element; i++) {
+    y_position += element_heights[i] + element_gap;
+  }
+
+  return y_position;
+}
 
 void toggle_pause_menu() {
   game_context.in_pause_menu = !game_context.in_pause_menu;
@@ -42,6 +88,73 @@ void toggle_pause_menu() {
     physics_context.simulation_speed = physics_context.prev_simulation_speed;
     physics_context.prev_simulation_speed = 0;
   }
+}
+
+bool pause_menu_title(PauseMenuTitle title) {
+  Vec2 text_size = get_text_size(title.text, &render_context.fonts[2], false, false);
+  float container_width = title.rect.size.x - title.rect.position.x;
+  Vec2 text_centered = {
+      .x = title.rect.position.x + (container_width / 2) - (text_size.x / 2),
+      .y = title.rect.position.y,
+  };
+
+  draw_text_utf8(title.text, (Vec2){.x = text_centered.x, .y = text_centered.y}, (RGBA){1, 1, 1, 1}, &render_context.fonts[2]);
+
+  return true;
+}
+
+bool pause_menu_dropdown(PauseMenuDropdown dropdown) {
+  // Then draw text on top
+  Vec2 dropdown_dimensions = {
+      .x = dropdown.rect.size.x - dropdown.rect.position.x,
+      .y = dropdown.rect.size.y - dropdown.rect.position.y,
+  };
+
+  bool dropdown_is_hovered = pause_menu.input_mode == PAUSE_MENU_MOUSE_MODE && gfx_frect_contains_point(&dropdown.rect, &mouse_state.position);
+  bool dropdown_is_focused = pause_menu.input_mode == PAUSE_MENU_KEYBOARD_MODE && pause_menu.focused_id == dropdown.id;
+  if (dropdown_is_hovered) {
+    pause_menu.focused_id = dropdown.id;
+  }
+
+  bool dropdown_is_hot = dropdown_is_hovered || dropdown_is_focused;
+
+  // double current_time = SDL_GetTicks64() / 500.0;
+
+  if (pause_menu.hovered_id == dropdown.id) {
+    if (!dropdown_is_hovered) {
+      pause_menu.hovered_id = 0;
+      pause_menu.hover_start_time = 0.0;
+    }
+  } else {
+    if (dropdown_is_hovered) {
+      pause_menu.hovered_id = dropdown.id;
+      pause_menu.hover_start_time = SDL_GetTicks64() / 500.0;
+    }
+  }
+
+  // float hovered_time = (float)current_time - (float)pause_menu.hover_start_time;
+
+  gfx_draw_frect_filled(&dropdown.rect, &(RGBA){1, 1, 1, 1});
+
+  Vec2 text_size = get_text_size(dropdown.text, &render_context.fonts[1], false, false);
+  Vec2 text_centered = {
+      .x = (dropdown_dimensions.x / 2) - (text_size.x / 2),
+      .y = (dropdown_dimensions.y / 2) - (text_size.y / 2),
+  };
+  draw_text_utf8(
+      dropdown.text, (Vec2){.x = dropdown.rect.position.x + 30.0f, .y = dropdown.rect.position.y + text_centered.y},
+      dropdown_is_hot ? (RGBA){0.5f, 0.5f, 0.8f, 1} : (RGBA){0, 0, 0, 1}, &render_context.fonts[1]
+  );
+
+  if (dropdown_is_hovered && mouse_primary_down(mouse_state)) {
+    return true;
+  }
+
+  if (dropdown_is_hot && render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_RETURN)]) {
+    return true;
+  }
+
+  return false;
 }
 
 bool pause_menu_button(PauseMenuButton button) {
@@ -107,99 +220,120 @@ bool pause_menu_button(PauseMenuButton button) {
 }
 
 void pause_menu_draw_main() {
-  float button_height = 60.0f;
-  float button_width = 300.0f;
-  float button_gap = 30.0f;
+  number_of_elements = 5;
+  int element_count = 0;
 
-  int button_num = 0;
-  float button_container_height = (number_of_buttons * (button_height + button_gap)) - button_gap;
-  float middle_of_screen_button_x = ((float)render_context.window_w / 2) - 150.0f;
-  Vec2 button_container_position = {
-      .x = middle_of_screen_button_x,
-      .y = ((float)render_context.window_h / 2) - (button_container_height / 2),
-  };
+  float element_heights[] = {element_height, element_height, element_height, element_height, element_height};
+  FRect container = get_container(element_heights, array_count(element_heights));
 
   if (pause_menu_button((PauseMenuButton){
-          .id = button_id_start + button_num,
+          .id = element_id_start + element_count,
           .rect =
-              {.position.x = button_container_position.x,
-               .position.y = button_container_position.y,
-               .size.x = button_container_position.x + button_width,
-               .size.y = button_container_position.y + button_height},
+              {.position.x = container.position.x,
+               .position.y = container.position.y,
+               .size.x = container.size.x,
+               .size.y = container.position.y + element_height},
           .text = "Continue",
       })) {
     // Then we have clicked continue
     toggle_pause_menu();
   }
 
-  button_num++;
-  if (pause_menu_button((PauseMenuButton){
-          .id = button_id_start + button_num,
-          .rect =
-              {.position.x = button_container_position.x,
-               .position.y = button_container_position.y + (button_num * (button_height + button_gap)),
-               .size.x = button_container_position.x + button_width,
-               .size.y = button_container_position.y + (button_num * (button_height + button_gap)) + button_height},
-          .text = "Video",
-      })) {
-    pause_menu.current_screen = PAUSE_MENU_VIDEO;
+  element_count++;
+  {
+    float current_element_y = current_element_position_y(element_heights, element_count);
+    if (pause_menu_button((PauseMenuButton){
+            .id = element_id_start + element_count,
+            .rect =
+                {.position.x = container.position.x,
+                 .position.y = container.position.y + current_element_y,
+                 .size.x = container.size.x,
+                 .size.y = container.position.y + current_element_y + element_height},
+            .text = "Video",
+        })) {
+      pause_menu.current_screen = PAUSE_MENU_VIDEO;
+    }
   }
 
-  button_num++;
-  if (pause_menu_button((PauseMenuButton){
-          .id = button_id_start + button_num,
-          .rect =
-              {.position.x = button_container_position.x,
-               .position.y = button_container_position.y + (button_num * (button_height + button_gap)),
-               .size.x = button_container_position.x + button_width,
-               .size.y = button_container_position.y + (button_num * (button_height + button_gap)) + button_height},
-          .text = "Audio",
-      })) {
-    // Then we have clicked continue
-    game_context.game_is_still_running = 0;
+  element_count++;
+  {
+    float current_element_y = current_element_position_y(element_heights, element_count);
+    if (pause_menu_button((PauseMenuButton){
+            .id = element_id_start + element_count,
+            .rect =
+                {.position.x = container.position.x,
+                 .position.y = container.position.y + current_element_y,
+                 .size.x = container.size.x,
+                 .size.y = container.position.y + current_element_y + element_height},
+            .text = "Audio",
+        })) {
+      // Then we have clicked continue
+      game_context.game_is_still_running = 0;
+    }
   }
 
-  button_num++;
-  if (pause_menu_button((PauseMenuButton){
-          .id = button_id_start + button_num,
-          .rect =
-              {.position.x = button_container_position.x,
-               .position.y = button_container_position.y + (button_num * (button_height + button_gap)),
-               .size.x = button_container_position.x + button_width,
-               .size.y = button_container_position.y + (button_num * (button_height + button_gap)) + button_height},
-          .text = "Controls",
-      })) {
-    // Then we have clicked continue
-    game_context.game_is_still_running = 0;
+  element_count++;
+  {
+    float current_element_y = current_element_position_y(element_heights, element_count);
+    if (pause_menu_button((PauseMenuButton){
+            .id = element_id_start + element_count,
+            .rect =
+                {.position.x = container.position.x,
+                 .position.y = container.position.y + current_element_y,
+                 .size.x = container.size.x,
+                 .size.y = container.position.y + current_element_y + element_height},
+            .text = "Controls",
+        })) {
+      // Then we have clicked continue
+      game_context.game_is_still_running = 0;
+    }
   }
 
-  button_num++;
-  if (pause_menu_button((PauseMenuButton){
-          .id = button_id_start + button_num,
-          .rect =
-              {.position.x = button_container_position.x,
-               .position.y = button_container_position.y + (button_num * (button_height + button_gap)),
-               .size.x = button_container_position.x + button_width,
-               .size.y = button_container_position.y + (button_num * (button_height + button_gap)) + button_height},
-          .text = "Quit",
-      })) {
-    // Then we have clicked continue
-    game_context.game_is_still_running = 0;
+  element_count++;
+  {
+    float current_element_y = current_element_position_y(element_heights, element_count);
+    if (pause_menu_button((PauseMenuButton){
+            .id = element_id_start + element_count,
+            .rect =
+                {.position.x = container.position.x,
+                 .position.y = container.position.y + current_element_y,
+                 .size.x = container.size.x,
+                 .size.y = container.position.y + current_element_y + element_height},
+            .text = "Quit",
+        })) {
+      // Then we have clicked continue
+      game_context.game_is_still_running = 0;
+    }
   }
 }
+
 void pause_menu_draw_video() {
-  Vec2 middle_of_screen = {
-      .x = ((float)render_context.window_w / 2),
-      .y = ((float)render_context.window_h / 2),
-  };
+  number_of_elements = 2;
+  int element_count = 0;
+  float element_heights[] = {64.0f, element_height};
+  FRect container = get_container(element_heights, array_count(element_heights));
 
-  Vec2 text_size = get_text_size("Video", &render_context.fonts[2], false, false);
-  Vec2 text_centered = {
-      .x = middle_of_screen.x - (text_size.x / 2),
-      .y = middle_of_screen.y - (text_size.y / 2),
-  };
+  pause_menu_title((PauseMenuTitle){
+      .id = 0,
+      .text = "Video",
+      .rect = (FRect
+      ){.position.x = container.position.x, .position.y = container.position.y, .size.x = container.size.x, .size.y = container.position.y + 64.0f},
+  });
 
-  draw_text_utf8("Video", (Vec2){.x = text_centered.x, .y = text_centered.y}, (RGBA){1, 1, 1, 1}, &render_context.fonts[2]);
+  element_count++;
+  float current_element_y = current_element_position_y(element_heights, element_count);
+  if (pause_menu_dropdown((PauseMenuDropdown){
+          .id = element_id_start + element_count,
+          .rect =
+              {.position.x = container.position.x,
+               .position.y = container.position.y + current_element_y,
+               .size.x = container.size.x,
+               .size.y = container.position.y + current_element_y + element_height},
+          .text = "Resolution",
+      })) {
+    // Then we have clicked continue
+    toggle_pause_menu();
+  }
 }
 
 void pause_menu_draw() {
@@ -250,23 +384,23 @@ void pause_menu_handle_input(SDL_Event* event) {
         break;
       case SDLK_UP:
         pause_menu.hover_start_time = SDL_GetTicks64() / 500.0;
-        if (pause_menu.focused_id > button_id_start) {
+        if (pause_menu.focused_id > element_id_start) {
           pause_menu.focused_id--;
           break;
         }
-        pause_menu.focused_id = button_id_start + number_of_buttons - 1;
+        pause_menu.focused_id = element_id_start + number_of_elements - 1;
         break;
       case SDLK_DOWN:
         pause_menu.hover_start_time = SDL_GetTicks64() / 500.0;
-        if (pause_menu.focused_id > button_id_start + number_of_buttons - 1) {
-          pause_menu.focused_id = button_id_start;
+        if (pause_menu.focused_id > element_id_start + number_of_elements - 1) {
+          pause_menu.focused_id = element_id_start;
           break;
         }
-        if (pause_menu.focused_id >= button_id_start) {
+        if (pause_menu.focused_id >= element_id_start) {
           pause_menu.focused_id++;
           break;
         }
-        pause_menu.focused_id = button_id_start;
+        pause_menu.focused_id = element_id_start;
         break;
       case SDLK_TAB: {
         console_open();
