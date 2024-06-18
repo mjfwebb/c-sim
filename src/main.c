@@ -18,7 +18,8 @@ int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
 }
 
-GFX_TEXTURE_ID terrains[1000][1000];
+#define MAX_TERRAIN 1000
+GFX_TEXTURE_ID terrains[MAX_TERRAIN][MAX_TERRAIN];
 
 RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
@@ -545,8 +546,8 @@ void generate_grass_textures() {
   // int column = 0;
   // int row = 0;
 
-  for (int y = 0; y < 1000; y++) {
-    for (int x = 0; x < 1000; x++) {
+  for (int y = 0; y < MAX_TERRAIN; y++) {
+    for (int x = 0; x < MAX_TERRAIN; x++) {
       // Now get the next possible texture_id based on the current one. Loop over the textures.
       int previous_right_grass_type = (LONG_GRASS_RIGHT | OVERGROWN_GRASS_RIGHT | SHORT_GRASS_RIGHT);
       if (x > 0) {
@@ -583,48 +584,32 @@ void draw_terrain(RenderBatcher *batcher) {
   float zoom = render_context.camera.zoom;
   Vec2 camera = render_context.camera.current;
   float grid_size = original_grid_size * zoom;
+  int window_w = render_context.window_w;
+  int window_h = render_context.window_h;
 
-  // FRect terrain = {
-  //     .position.x = (0 + render_context.camera.current.x),
-  //     .position.y = (0 + render_context.camera.current.y),
-  //     .size.x = grid_size,
-  //     .size.y = grid_size,
-  // };
+  int x_start = (int)((camera.x * zoom - window_w / 2) / grid_size);
+  int y_start = (int)((camera.y * zoom - window_h / 2) / grid_size);
 
-  // there is a lot of casting to int, idk if thats bad 
+  // The amount of tiles that can fit in the whole screen
+  int screen_tiles_x = (int)(window_w / grid_size);
+  int screen_tiles_y = (int)(window_h / grid_size);
 
-  int x_start = (int)max(0, (camera.x*zoom - render_context.window_w / 2) / grid_size);
-  int y_start = (int)max(0, (camera.y*zoom - render_context.window_h / 2) / grid_size);
-
-  // float x_start = (grid.position.x - floorf(grid.position.x / grid.size.x) * grid.size.x) - grid.size.x;
-  // float y_start = (grid.position.y - floorf(grid.position.y / grid.size.y) * grid.size.y) - grid.size.y;
-
+  // The amount of tiles that is drawn beyond the calculated screen tiles
+  int padding = 2;
   RGBA color = {1, 1, 1, 1};
-  // GFX_TEXTURE_ID grass_texture_id = GFX_TEXTURE_GRASS_LONG_CENTER;
 
-  // Vertical array length is window_h / grid.size.y
-  // Horizontal array length is window_w / grid.size.x
-
-  // how many tiles can fit in the whole screen?
-  int screen_tiles_x = (int)(render_context.window_w / grid_size);
-  int screen_tiles_y = (int)(render_context.window_h / grid_size);
-
-  // the ammout of tiles that is drawn beyond the calculated screen tiles
-  int padding = 2; // padding in tiles
-
-  // if you want to see that this is actualy working you can go from y = y_start+1; and set padding(var above) to 0, same for x   
-  for (int y = y_start; y < y_start + screen_tiles_y+padding; y++) {
-    for (int x = x_start; x < x_start +screen_tiles_x+padding; x++) {
+  for (int y = y_start - padding; y < y_start + screen_tiles_y + padding; y++) {
+    for (int x = x_start - padding; x < x_start + screen_tiles_x + padding; x++) {
       float grid_pos_x = x * grid_size;
       float grid_pos_y = y * grid_size;
       render_batcher_copy_texture_quad(
-          batcher, render_context.texture_atlas.textures[terrains[y][x]], &color,
+          batcher, render_context.texture_atlas.textures[terrains[(MAX_TERRAIN / 2) + y][(MAX_TERRAIN / 2) + x]], &color,
           &(FRect){
-              // use top left position for drawing
-              .position.x = grid_pos_x - (camera.x*zoom - render_context.window_w / 2),
-              .position.y = grid_pos_y - (camera.y*zoom - render_context.window_h / 2),
-              .size.x = grid_size + grid_pos_x  - (camera.x*zoom - render_context.window_w / 2),
-              .size.y = grid_size + grid_pos_y - (camera.y*zoom - render_context.window_h / 2),
+              // Use top left position for drawing
+              .position.x = grid_pos_x - (camera.x * zoom - window_w / 2),
+              .position.y = grid_pos_y - (camera.y * zoom - window_h / 2),
+              .size.x = grid_size + grid_pos_x - (camera.x * zoom - window_w / 2),
+              .size.y = grid_size + grid_pos_y - (camera.y * zoom - window_h / 2),
           },
           NULL
       );
