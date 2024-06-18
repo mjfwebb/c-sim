@@ -579,7 +579,10 @@ void generate_grass_textures() {
 
 void draw_terrain(RenderBatcher *batcher) {
   gfx_set_blend_mode_blend();
-  float grid_size = 256.0f * render_context.camera.zoom;
+  float original_grid_size = 256.0f;
+  float zoom = render_context.camera.zoom;
+  Vec2 camera = render_context.camera.current;
+  float grid_size = original_grid_size * zoom;
 
   // FRect terrain = {
   //     .position.x = (0 + render_context.camera.current.x),
@@ -588,8 +591,10 @@ void draw_terrain(RenderBatcher *batcher) {
   //     .size.y = grid_size,
   // };
 
-  // float x_start = max(0, floorf((terrain.position.x - (render_context.window_w / 2)) / grid_size));
-  // float y_start = max(0, floorf((terrain.position.y - (render_context.window_h / 2)) / grid_size));
+  // there is a lot of casting to int, idk if thats bad 
+
+  int x_start = (int)max(0, (camera.x*zoom - render_context.window_w / 2) / grid_size);
+  int y_start = (int)max(0, (camera.y*zoom - render_context.window_h / 2) / grid_size);
 
   // float x_start = (grid.position.x - floorf(grid.position.x / grid.size.x) * grid.size.x) - grid.size.x;
   // float y_start = (grid.position.y - floorf(grid.position.y / grid.size.y) * grid.size.y) - grid.size.y;
@@ -600,20 +605,26 @@ void draw_terrain(RenderBatcher *batcher) {
   // Vertical array length is window_h / grid.size.y
   // Horizontal array length is window_w / grid.size.x
 
-  for (float y = 0; y < (render_context.window_h / grid_size); y += 1) {
-    for (float x = 0; x < (render_context.window_w / grid_size); x += 1) {
-      Vec2 grid_screen_position = (Vec2){
-          .x = (x + render_context.camera.current.x),
-          .y = (y + render_context.camera.current.y),
-      };
+  // how many tiles can fit in the whole screen?
+  int screen_tiles_x = (int)(render_context.window_w / grid_size);
+  int screen_tiles_y = (int)(render_context.window_h / grid_size);
 
+  // the ammout of tiles that is drawn beyond the calculated screen tiles
+  int padding = 2; // padding in tiles
+
+  // if you want to see that this is actualy working you can go from y = y_start+1; and set padding(var above) to 0, same for x   
+  for (int y = y_start; y < y_start + screen_tiles_y+padding; y++) {
+    for (int x = x_start; x < x_start +screen_tiles_x+padding; x++) {
+      float grid_pos_x = x * grid_size;
+      float grid_pos_y = y * grid_size;
       render_batcher_copy_texture_quad(
-          batcher, render_context.texture_atlas.textures[terrains[(int)grid_screen_position.y][(int)grid_screen_position.x]], &color,
+          batcher, render_context.texture_atlas.textures[terrains[y][x]], &color,
           &(FRect){
-              .position.x = grid_screen_position.x,
-              .position.y = grid_screen_position.y,
-              .size.x = grid_screen_position.x + grid_size,
-              .size.y = grid_screen_position.y + grid_size,
+              // use top left position for drawing
+              .position.x = grid_pos_x - (camera.x*zoom - render_context.window_w / 2),
+              .position.y = grid_pos_y - (camera.y*zoom - render_context.window_h / 2),
+              .size.x = grid_size + grid_pos_x  - (camera.x*zoom - render_context.window_w / 2),
+              .size.y = grid_size + grid_pos_y - (camera.y*zoom - render_context.window_h / 2),
           },
           NULL
       );
