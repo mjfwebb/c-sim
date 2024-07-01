@@ -18,8 +18,8 @@ int random_int_between(int min, int max) {
   return min + (rand() % (max - min));
 }
 
-#define MAX_TERRAIN 1000
-GFX_TEXTURE_ID terrains[MAX_TERRAIN][MAX_TERRAIN];
+#define MAX_TILES 1000
+GFX_TEXTURE_ID terrains[MAX_TILES][MAX_TILES];
 
 RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
@@ -546,8 +546,8 @@ void generate_grass_textures() {
   // int column = 0;
   // int row = 0;
 
-  for (int y = 0; y < MAX_TERRAIN; y++) {
-    for (int x = 0; x < MAX_TERRAIN; x++) {
+  for (int y = 0; y < MAX_TILES; y++) {
+    for (int x = 0; x < MAX_TILES; x++) {
       // Now get the next possible texture_id based on the current one. Loop over the textures.
       int previous_right_grass_type = (LONG_GRASS_RIGHT | OVERGROWN_GRASS_RIGHT | SHORT_GRASS_RIGHT);
       if (x > 0) {
@@ -602,8 +602,14 @@ void draw_terrain(RenderBatcher *batcher) {
     for (int x = x_start - padding; x < x_start + screen_tiles_x + padding; x++) {
       float grid_pos_x = x * grid_size;
       float grid_pos_y = y * grid_size;
+      int terrain_y = (MAX_TILES / 2) + y;
+      int terrain_x = (MAX_TILES / 2) + x;
+      if (terrain_y < 0 || terrain_y >= MAX_TILES || terrain_x < 0 || terrain_x >= MAX_TILES) {
+        continue;
+      }
+      int terrain_id = terrains[terrain_y][terrain_x];
       render_batcher_copy_texture_quad(
-          batcher, render_context.texture_atlas.textures[terrains[(MAX_TERRAIN / 2) + y][(MAX_TERRAIN / 2) + x]], &color,
+          batcher, render_context.texture_atlas.textures[terrain_id], &color,
           &(FRect){
               // Use top left position for drawing
               .position.x = grid_pos_x - (camera.x * zoom - window_w / 2),
