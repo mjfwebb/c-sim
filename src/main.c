@@ -633,6 +633,10 @@ void mouse_control_camera() {
 }
 
 void deselect_all_entities() {
+  // reset spring position
+  render_context.camera.pan_spring_x.current = render_context.camera.current.x;
+  render_context.camera.pan_spring_y.current = render_context.camera.current.y;
+
   loop(game_context.entity_count, entity_id) {
     game_context.selected[entity_id] = false;
   }
