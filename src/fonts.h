@@ -60,7 +60,7 @@ typedef struct {
   u32 character_sets;
 } FontLoadParams;
 
-void init_emoji_set();
+void init_emoji_set(void);
 
 void init_japanese_character_sets(const u32 bits);
 

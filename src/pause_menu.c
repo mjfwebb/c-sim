@@ -76,7 +76,7 @@ float current_element_position_y(float* element_heights, int current_element) {
   return y_position;
 }
 
-void toggle_pause_menu() {
+void toggle_pause_menu(void) {
   game_context.in_pause_menu = !game_context.in_pause_menu;
 
   if (game_context.in_pause_menu && physics_context.simulation_speed > 0) {
@@ -219,7 +219,7 @@ bool pause_menu_button(PauseMenuButton button) {
   return false;
 }
 
-void pause_menu_draw_main() {
+void pause_menu_draw_main(void) {
   number_of_elements = 5;
   int element_count = 0;
 
@@ -307,7 +307,7 @@ void pause_menu_draw_main() {
   }
 }
 
-void pause_menu_draw_video() {
+void pause_menu_draw_video(void) {
   number_of_elements = 2;
   int element_count = 0;
   float element_heights[] = {64.0f, element_height};
@@ -336,7 +336,7 @@ void pause_menu_draw_video() {
   }
 }
 
-void pause_menu_draw() {
+void pause_menu_draw(void) {
   if (!game_context.in_pause_menu) {
     return;
   }
@@ -360,9 +360,9 @@ void pause_menu_draw() {
     case PAUSE_MENU_VIDEO:
       pause_menu_draw_video();
       break;
-    // case PAUSE_MENU_AUDIO:
-    //   pause_menu_draw_audio();
-    //   break;
+    case PAUSE_MENU_AUDIO:
+      printf("TODO: add audio pause menu\n");
+      break;
     default:
       pause_menu_draw_main();
       break;

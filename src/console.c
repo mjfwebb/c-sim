@@ -284,7 +284,7 @@ static ConsoleCommandPart console_get_current_command(void) {
   return console_command_part;
 };
 
-void console_execute_command() {
+void console_execute_command(void) {
   if (console.input[console.input_index].input_length == 0) {
     return;
   }
@@ -404,7 +404,7 @@ static void console_draw_cursor(Vec2* text_size) {
   gfx_draw_frect_filled(&console_input_cursor_rect, &(RGBA){0, 0, 0, console_input_cursor_rect_opacity});
 }
 
-static void console_draw_output_text() {
+static void console_draw_output_text(void) {
   for (int i = 0; i < console.output.count; i++) {
     int output_index = (console.output.start + i) % console.output.count;
     int position = console.output.count - 1 - i;
@@ -426,7 +426,7 @@ static void console_draw_input_rect(float y) {
   gfx_draw_frect_filled(&console_input_rect, &(RGBA){1, 1, 1, 0.9f});
 }
 
-void console_draw() {
+void console_draw(void) {
   gfx_set_blend_mode_blend();
 
   // Draw full console rect
@@ -465,7 +465,7 @@ void append_console_input(char* new_input) {
   console.input[console.input_index].value[console.input[console.input_index].input_length] = 0;
 }
 
-void console_open() {
+void console_open(void) {
   console.target_y = console.target_y = (float)render_context.window_h / 2;
   SDL_StartTextInput();
 }
@@ -556,6 +556,6 @@ void console_handle_input(SDL_Event* event) {
   }
 }
 
-bool console_is_open() {
+bool console_is_open(void) {
   return console.y_spring.target > 0.0f;
 }

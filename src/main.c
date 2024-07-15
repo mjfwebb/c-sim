@@ -56,7 +56,7 @@ FRect frect_screen_to_world(FRect rect) {
   return translated_frect;
 }
 
-void load_fonts() {
+void load_fonts(void) {
   init_japanese_character_sets(HIRAGANA_BIT | KATAKANA_BIT);
 
   init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
@@ -74,7 +74,7 @@ void load_fonts() {
   render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
-void create_tree() {
+void create_tree(void) {
   float entity_width = 100.0f;
   int texture_id = 8;
   game_context.textures[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
@@ -139,7 +139,7 @@ void create_human(char *name) {
   game_context.entity_count++;
 }
 
-void create_entities() {
+void create_entities(void) {
   char entity_names[][32] = {
       "pushqrdx",
       "Athano",
@@ -246,7 +246,7 @@ void create_entities() {
   }
 }
 
-FRect get_camera_rect() {
+FRect get_camera_rect(void) {
   FRect camera_rect = {
       .position =
           {
@@ -310,7 +310,7 @@ void draw_debug_text(int index, char *str, ...) {
   draw_text_outlined_utf8(text_buffer, (Vec2){10.0f, (32.0f * index)}, (RGBA){0, 1, 0, 1}, (RGBA){0, 0, 0, 1}, &render_context.fonts[0]);
 }
 
-FRect get_selection_rect() {
+FRect get_selection_rect(void) {
   FRect rect =
       {.position =
            {
@@ -328,7 +328,7 @@ FRect get_selection_rect() {
   return rect;
 }
 
-void render_debug_info() {
+void render_debug_info(void) {
   int index = 0;
   draw_debug_text(index++, "fps: %.2f", render_context.fps);
   draw_debug_text(index++, "mouse state: %d, button: %d, clicks: %d", mouse_state.state, mouse_state.button, mouse_state.clicks);
@@ -346,7 +346,7 @@ void render_debug_info() {
   );
 }
 
-void draw_selection_box() {
+void draw_selection_box(void) {
   if (!mouse_primary_pressed(mouse_state) || game_context.in_pause_menu) {
     return;
   }
@@ -515,7 +515,7 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   }
 }
 
-void draw_grid() {
+void draw_grid(void) {
   gfx_set_blend_mode_blend();
   float grid_size = 256.0f;
   float window_w = (float)render_context.window_w;
@@ -541,7 +541,7 @@ void draw_grid() {
   gfx_set_blend_mode_none();
 }
 
-void generate_grass_textures() {
+void generate_grass_textures(void) {
   // GFX_TEXTURE_ID assigned_textures[16][16];
   // int column = 0;
   // int row = 0;
@@ -624,7 +624,7 @@ void draw_terrain(RenderBatcher *batcher) {
   gfx_set_blend_mode_none();
 }
 
-void mouse_control_camera() {
+void mouse_control_camera(void) {
   if (mouse_state.button == SDL_BUTTON_RIGHT && mouse_state.state == SDL_PRESSED) {
     if (mouse_state.prev_position.x != mouse_state.position.x || mouse_state.prev_position.y != mouse_state.position.y) {
       float delta_x = mouse_state.position.x - mouse_state.prev_position.x;
@@ -638,7 +638,7 @@ void mouse_control_camera() {
   }
 }
 
-void deselect_all_entities() {
+void deselect_all_entities(void) {
   // reset spring position
   render_context.camera.pan_spring_x.current = render_context.camera.current.x;
   render_context.camera.pan_spring_y.current = render_context.camera.current.y;
@@ -649,7 +649,7 @@ void deselect_all_entities() {
 }
 
 // Camera movement and selection rect movement
-void keyboard_control_camera() {
+void keyboard_control_camera(void) {
   float camera_keyboard_movement_speed = 15.0f;
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_w)]) {
     deselect_all_entities();
@@ -673,7 +673,7 @@ void keyboard_control_camera() {
   }
 }
 
-int get_entity_to_follow() {
+int get_entity_to_follow(void) {
   int result = INVALID_ENTITY;
   int selected_count = 0;
   loop(game_context.entity_count, entity_id) {
@@ -686,7 +686,7 @@ int get_entity_to_follow() {
 }
 
 // Set selected on any entity within the selection_rect
-void select_entities_within_selection_rect() {
+void select_entities_within_selection_rect(void) {
   loop(game_context.entity_count, entity_id) {
     FRect entity_render_rect = get_entity_render_rect(entity_id);
     FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
@@ -721,14 +721,14 @@ bool is_entity_under_mouse(int entity_id) {
   return gfx_frect_contains_point(&rect, &mouse_state.position);
 }
 
-void update() {
+void update(void) {
   // Spring the camera zoom
   render_context.camera.zoom = Spring__update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
 
   // Spring the console position
   console.y = Spring__update(&console.y_spring, console.target_y);
 
-  mouse_control_camera(&mouse_state);
+  mouse_control_camera();
 
   if (game_context.in_pause_menu) {
     return;
@@ -749,7 +749,7 @@ void update() {
   render_context.selection.position.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target.y);
 }
 
-void handle_input() {
+void handle_input(void) {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
@@ -863,7 +863,7 @@ void handle_input() {
   }
 }
 
-void render() {
+void render(void) {
   gfx_clear_screen();
 
   draw_terrain(&render_batcher);
@@ -898,7 +898,7 @@ void render() {
     draw_selection_box();
   }
 
-  render_debug_info(&mouse_state);
+  render_debug_info();
 
   pause_menu_draw();
 

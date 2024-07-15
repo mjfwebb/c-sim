@@ -65,4 +65,4 @@ void console_append_to_output(char* message);
 
 void console_handle_input(SDL_Event* event);
 
-void console_open();
+void console_open(void);

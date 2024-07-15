@@ -1,7 +1,7 @@
 #include "headers.h"
 
 // Initialize the graphics context, including SDL and SDL_image, and create a window and renderer
-int gfx_init() {
+int gfx_init(void) {
   // Initialize SDL
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "Could not initialize sdl2: %s\n", SDL_GetError());
@@ -42,7 +42,7 @@ int gfx_init() {
 }
 
 // Update the screen with the current render context since the last call to gfx_render_present
-void gfx_render_present() {
+void gfx_render_present(void) {
   SDL_RenderPresent(render_context.renderer);
 }
 
@@ -166,7 +166,7 @@ int grass_textures[] = {
 };
 
 // Load textures from the assets folder
-void gfx_load_textures() {
+void gfx_load_textures(void) {
   // Eventually you could consider dynamically loading files from the assets folder. Implementing this is, however,
   // unfortunately platform dependent so it would also require some type of platform abstraction to be viable.
   char texture_paths[][128] = {
@@ -221,17 +221,17 @@ void gfx_load_textures() {
 }
 
 // Sets the blend mode to blend. This means that the alpha channel of the texture will be used to blend
-void gfx_set_blend_mode_blend() {
+void gfx_set_blend_mode_blend(void) {
   SDL_SetRenderDrawBlendMode(render_context.renderer, SDL_BLENDMODE_BLEND);
 }
 
 // Sets the blend mode to none. This means that the alpha channel of the texture will be ignored
-void gfx_set_blend_mode_none() {
+void gfx_set_blend_mode_none(void) {
   SDL_SetRenderDrawBlendMode(render_context.renderer, SDL_BLENDMODE_NONE);
 }
 
 // Clean up all resources
-void gfx_destroy() {
+void gfx_destroy(void) {
   for (u32 i = 0; i < render_context.texture_atlas.count; i++) {
     SDL_DestroyTexture(render_context.texture_atlas.textures[i]);
   }
@@ -249,7 +249,7 @@ void gfx_draw_line(float x1, float y1, float x2, float y2, RGBA *color) {
 }
 
 // Clear the screen with the background color from the render context
-void gfx_clear_screen() {
+void gfx_clear_screen(void) {
   SDL_SetRenderDrawColor(
       render_context.renderer, render_context.background_color.r, render_context.background_color.g, render_context.background_color.b,
       render_context.background_color.a

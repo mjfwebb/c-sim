@@ -74,7 +74,7 @@ static u32 get_index_in_font(const u32 character, const Font *font) {
   return INVALID_CHARACTER_INDEX;
 }
 
-void init_emoji_set() {
+void init_emoji_set(void) {
   for (int i = 0; i < EMOJI_SET_COUNT; i++) {
     EMOJI_SET[i] = i + 128512;
   }
