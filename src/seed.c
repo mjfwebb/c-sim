@@ -7,7 +7,7 @@ unsigned int hash(unsigned int x) {
 
 int create_seed(char *seed_string) {
   int seed = 0;
-  size_t length_of_seed = strlen(seed_string);
+  int length_of_seed = (int)strlen(seed_string);
   for (int i = 0; i < length_of_seed; i++) {
     char character = seed_string[i];
     seed ^= character;
