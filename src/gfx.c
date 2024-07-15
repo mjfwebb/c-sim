@@ -259,14 +259,11 @@ void gfx_clear_screen(void) {
 
 // Check if two rectangles intersect
 bool gfx_frect_intersects_frect(FRect *rect_a, FRect *rect_b) {
-  SDL_FRect sdl_frect_a = frect_to_sdl_frect(rect_a);
-  SDL_FRect sdl_frect_b = frect_to_sdl_frect(rect_b);
-
-  return SDL_HasIntersectionF(&sdl_frect_a, &sdl_frect_b);
+  return rect_a->position.x > rect_b->position.x && rect_a->position.x < rect_b->size.x ||
+         rect_a->position.y > rect_b->position.y && rect_a->position.y < rect_b->size.y;
 }
 
 // Check if a rectangle contains a point
 bool gfx_frect_contains_point(FRect *rect, Vec2 *point) {
-  return ((point->x >= rect->position.x) && (point->x < (rect->size.x)) && (point->y >= rect->position.y) && (point->y < (rect->size.y))) ? true
-                                                                                                                                          : false;
+  return ((point->x >= rect->position.x) && (point->x < (rect->size.x)) && (point->y >= rect->position.y) && (point->y < (rect->size.y)));
 }
