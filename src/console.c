@@ -398,7 +398,7 @@ static void console_draw_cursor(Vec2* text_size) {
 
   // Calculate the opacity of the cursor based on a sine wave
   // This could probably be made more clean.
-  double curve = sin((M_PI * 3) * render_context.timer[0].accumulated);
+  double curve = sin((ATH_PI * 3) * render_context.timer[0].accumulated);
   float console_input_cursor_rect_opacity = (float)(100 * (1 - curve)) / 255.0f;
 
   gfx_draw_frect_filled(&console_input_cursor_rect, &(RGBA){0, 0, 0, console_input_cursor_rect_opacity});

@@ -6,7 +6,7 @@ fi
 
 OUT="cultivation"
 SRC="src/main.c"
-CFLAGS="-Wall -std=c2x"
+CFLAGS="-w -std=c2x"
 LDFLAGS="-lm -ldl"
 
-cc -o $OUT $CFLAGS $LDFLAGS $DEBUGFLAGS $SRC $(pkg-config --cflags --libs sdl2 SDL2_ttf SDL2_image)
+cc -o $OUT $CFLAGS $DEBUGFLAGS $SRC $(pkg-config --cflags --libs sdl2 SDL2_ttf SDL2_image) $LDFLAGS
