@@ -237,7 +237,7 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
           dst.y += dst.h + 2;
           dst.w = data->outline_glyphs[glyph_counter]->w;
           dst.h = data->outline_glyphs[glyph_counter]->h;
-          font->outline_sources[glyph_counter] = (FRect){(float)dst.x, (float)dst.y, (float)dst.w, (float)dst.h};
+          font->outline_sources[glyph_counter] = (FRect){{(float)dst.x, (float)dst.y}, {(float)dst.w, (float)dst.h}};
           SDL_BlitSurface(data->outline_glyphs[glyph_counter], NULL, glyph_cache, &dst);
         }
         rendered_glyphs_counter++;

@@ -26,7 +26,7 @@ void flush_render_batcher(RenderBatcher *batcher) {
 
 void render_batcher_copy_vertex_data(RenderBatcher *batcher, SDL_Texture *texture, const SDL_Vertex *data, const int vertex_count) {
   assert(batcher->renderer && batcher->capacity > 0);
-  if (batcher->current_texture && batcher->current_texture != texture || batcher->cursor * 6 == batcher->capacity) {
+  if ((batcher->current_texture && batcher->current_texture != texture) || batcher->cursor * 6 == batcher->capacity) {
     flush_render_batcher(batcher);
   }
   memcpy(batcher->vertex_buffer + batcher->cursor, data, vertex_count * sizeof(SDL_Vertex));

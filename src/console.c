@@ -277,13 +277,6 @@ static ConsoleCommand console_find_current_command(void) {
   return (ConsoleCommand){0};
 }
 
-static ConsoleCommandPart console_get_current_command(void) {
-  ConsoleCommandParts console_command_parts = parse_command(console.input[console.input_index].value);
-  int current_part_index = part_index(console_command_parts, console.input[console.input_index].input_length);
-  ConsoleCommandPart console_command_part = console_command_parts.part[current_part_index];
-  return console_command_part;
-};
-
 void console_execute_command(void) {
   if (console.input[console.input_index].input_length == 0) {
     return;
@@ -466,7 +459,7 @@ void append_console_input(char* new_input) {
 }
 
 void console_open(void) {
-  console.target_y = console.target_y = (float)render_context.window_h / 2;
+  console.target_y = (float)render_context.window_h / 2;
   SDL_StartTextInput();
 }
 
@@ -525,7 +518,6 @@ void console_handle_input(SDL_Event* event) {
           } else {
             CommandArgsSuggestions suggested_command_argument = console_find_command_suggestion_argument();
             if (suggested_command_argument.count > 0) {
-              // ConsoleCommandPart current_command_part = console_get_current_command();
               ConsoleCommandParts console_command_parts = parse_command(console.input[console.input_index].value);
               int current_part_index = part_index(console_command_parts, console.input[console.input_index].input_length);
 
