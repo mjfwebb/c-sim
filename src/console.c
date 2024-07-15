@@ -106,7 +106,7 @@ static bool follow_entity(char* text) {
   int found_entity = -1;
 
   loop(game_context.entity_count, entity_id) {
-    if (_strcmpi(game_context.names[entity_id], text) == 0) {
+    if (string_compare_insensitive(game_context.names[entity_id], text) == 0) {
       found_entity = entity_id;
     }
   }
@@ -133,7 +133,7 @@ static bool heal_entity(char* text) {
   int found_entity = -1;
 
   loop(game_context.entity_count, entity_id) {
-    if (_strcmpi(game_context.names[entity_id], text) == 0) {
+    if (string_compare_insensitive(game_context.names[entity_id], text) == 0) {
       found_entity = entity_id;
     }
   }
@@ -153,7 +153,7 @@ static bool heal_entity(char* text) {
 static bool calculate_distance_between_entities(char* arguments_text) {
   ConsoleCommandParts console_command_parts = parse_command(console.input[console.input_index].value);
 
-  if (strcmpi(console_command_parts.part[1].value, console_command_parts.part[2].value) == 0) {
+  if (string_compare_insensitive(console_command_parts.part[1].value, console_command_parts.part[2].value) == 0) {
     console_append_to_output("They're the same name you idiot");
     return false;
   }
@@ -161,10 +161,10 @@ static bool calculate_distance_between_entities(char* arguments_text) {
   int found_entity_a = -1;
   int found_entity_b = -1;
   loop(game_context.entity_count, entity_id) {
-    if (found_entity_a == -1 && _strcmpi(game_context.names[entity_id], console_command_parts.part[1].value) == 0) {
+    if (found_entity_a == -1 && string_compare_insensitive(game_context.names[entity_id], console_command_parts.part[1].value) == 0) {
       found_entity_a = entity_id;
     }
-    if (found_entity_b == -1 && _strcmpi(game_context.names[entity_id], console_command_parts.part[2].value) == 0) {
+    if (found_entity_b == -1 && string_compare_insensitive(game_context.names[entity_id], console_command_parts.part[2].value) == 0) {
       found_entity_b = entity_id;
     }
   }

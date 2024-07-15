@@ -11,3 +11,11 @@ float frect_width(FRect *rect) {
 float frect_height(FRect *rect) {
   return rect->size.y - rect->position.y;
 }
+
+#ifdef _WIN32
+#define string_compare_insensitive _stricmp
+#define strnicmp _strnicmp
+#elif __linux__
+#define string_compare_insensitive strcasecmp
+#define strnicmp strncasecmp
+#endif
