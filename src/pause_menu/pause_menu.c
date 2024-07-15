@@ -1,41 +1,8 @@
 #include "headers.h"
 
-typedef enum {
-  PAUSE_MENU_MAIN,
-  PAUSE_MENU_VIDEO,
-  PAUSE_MENU_AUDIO,
-} PauseMenuScreen;
-
-typedef enum {
-  PAUSE_MENU_MOUSE_MODE,
-  PAUSE_MENU_KEYBOARD_MODE,
-} PauseMenuInputMode;
-
-typedef struct {
-  int id;
-  FRect rect;
-  char text[32];
-} PauseMenuDropdown;
-
-typedef struct {
-  int id;
-  FRect rect;
-  char text[32];
-} PauseMenuButton;
-
-typedef struct {
-  int id;
-  FRect rect;
-  char text[32];
-} PauseMenuTitle;
-
-typedef struct {
-  int hovered_id;
-  int focused_id;
-  double hover_start_time;
-  PauseMenuInputMode input_mode;
-  PauseMenuScreen current_screen;
-} PauseMenu;
+#include "pause_menu_video.c"
+// #include "pause_menu_audio.c"
+#include "pause_menu_controls.c"
 
 int element_id_start = 9999;
 int number_of_elements = 0;
@@ -103,7 +70,7 @@ bool pause_menu_title(PauseMenuTitle title) {
   return true;
 }
 
-bool pause_menu_dropdown(PauseMenuDropdown dropdown) {
+bool draw_pause_menu_dropdown(PauseMenuDropdown dropdown) {
   // Then draw text on top
   Vec2 dropdown_dimensions = {
       .x = dropdown.rect.size.x - dropdown.rect.position.x,
@@ -268,7 +235,7 @@ void pause_menu_draw_main(void) {
             .text = "Audio",
         })) {
       // Then we have clicked continue
-      game_context.game_is_still_running = 0;
+      print("TODO: implement audio screen");
     }
   }
 
@@ -285,7 +252,7 @@ void pause_menu_draw_main(void) {
             .text = "Controls",
         })) {
       // Then we have clicked continue
-      game_context.game_is_still_running = 0;
+      pause_menu.current_screen = PAUSE_MENU_CONTROLS;
     }
   }
 
@@ -304,35 +271,6 @@ void pause_menu_draw_main(void) {
       // Then we have clicked continue
       game_context.game_is_still_running = 0;
     }
-  }
-}
-
-void pause_menu_draw_video(void) {
-  number_of_elements = 2;
-  int element_count = 0;
-  float element_heights[] = {64.0f, element_height};
-  FRect container = get_container(element_heights, array_count(element_heights));
-
-  pause_menu_title((PauseMenuTitle){
-      .id = 0,
-      .text = "Video",
-      .rect = (FRect
-      ){.position.x = container.position.x, .position.y = container.position.y, .size.x = container.size.x, .size.y = container.position.y + 64.0f},
-  });
-
-  element_count++;
-  float current_element_y = current_element_position_y(element_heights, element_count);
-  if (pause_menu_dropdown((PauseMenuDropdown){
-          .id = element_id_start + element_count,
-          .rect =
-              {.position.x = container.position.x,
-               .position.y = container.position.y + current_element_y,
-               .size.x = container.size.x,
-               .size.y = container.position.y + current_element_y + element_height},
-          .text = "Resolution",
-      })) {
-    // Then we have clicked continue
-    toggle_pause_menu();
   }
 }
 
@@ -358,10 +296,13 @@ void pause_menu_draw(void) {
       pause_menu_draw_main();
       break;
     case PAUSE_MENU_VIDEO:
-      pause_menu_draw_video();
+      pause_menu_draw_video(number_of_elements, element_id_start, element_height);
       break;
     case PAUSE_MENU_AUDIO:
       printf("TODO: add audio pause menu\n");
+      break;
+    case PAUSE_MENU_CONTROLS:
+      pause_menu_draw_controls(number_of_elements, element_id_start, element_height);
       break;
     default:
       pause_menu_draw_main();

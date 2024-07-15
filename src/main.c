@@ -9,8 +9,8 @@
 #include "personalities.c"
 #include "seed.c"
 #include "console.c"
-#include "pause_menu.c"
 #include "entities.c"
+#include "pause_menu/pause_menu.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 
