@@ -24,8 +24,8 @@ setlocal ENABLEDELAYEDEXPANSION
     )
 
     set "exeName=cultivation.exe"
-    set "compilerFlags=-W4 -WX -Od -nologo -Zc:strictStrings -GR- -favor:INTEL64 -cgthreads8 -MP /EHsc"
-    set "ignoreWarnings=-wd4100 -wd4996"
+    set "compilerFlags=-Wall -WX -Od -nologo -Zc:strictStrings -GR- -favor:INTEL64 -cgthreads8 -MP /EHsc"
+    set "ignoreWarnings=-wd4100 -wd4996 -wd4820 -wd5045"
     set "includeDirs=..\include"
     set "linkerFlags=-INCREMENTAL:NO"
 
