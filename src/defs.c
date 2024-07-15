@@ -14,8 +14,8 @@ float frect_height(FRect *rect) {
 
 #ifdef _WIN32
 #define string_compare_insensitive _stricmp
-#define strnicmp _strnicmp
+#define string_compare_insensitive_n _strnicmp
 #elif __linux__
 #define string_compare_insensitive strcasecmp
-#define strnicmp strncasecmp
+#define string_compare_insensitive_n strncasecmp
 #endif

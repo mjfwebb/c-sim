@@ -80,7 +80,7 @@ CommandArgsSuggestions get_entity_names(char* text) {
 
   if (console_command_parts.part[current_part_index].value) {
     loop(game_context.entity_count, entity_id) {
-      if (_strnicmp(
+      if (string_compare_insensitive_n(
               game_context.names[entity_id], console_command_parts.part[current_part_index].value,
               strlen(console_command_parts.part[current_part_index].value)
           ) == 0) {
