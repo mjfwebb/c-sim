@@ -191,7 +191,7 @@ float draw_cultivation_stats(int entity_id, FRect around) {
       &render_context.fonts[0]
   );
 
-  return 64.0f;
+  return 32.0f * (index + 1);
 }
 
 void draw_personalities(int entity_id, FRect around, float y_start) {
