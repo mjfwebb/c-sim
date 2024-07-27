@@ -158,10 +158,27 @@ void draw_selection_box(void) {
   gfx_draw_frect(&selection_rect, &(RGBA){1, 1, 1, 1});
 }
 
+char *cultivation_realm_name(int cultivation_realm) {
+  switch (cultivation_realm) {
+    case 0:
+      return "Mortal";
+    case 1:
+      return "Qi Condensation";
+    case 2:
+      return "Foundation Establishment";
+    case 3:
+      return "Core Formation";
+    case 4:
+      return "Nascent Soul";
+    default:
+      return "Your mumma";
+  }
+}
+
 float draw_cultivation_stats(int entity_id, FRect around) {
   char text_buffer[128];
   int index = 0;
-  sprintf(text_buffer, "Realm: %d", game_context.realm[entity_id]);
+  sprintf(text_buffer, "Realm: %s", cultivation_realm_name(game_context.realm[entity_id]));
   draw_text_outlined_utf8(
       text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
       &render_context.fonts[0]
