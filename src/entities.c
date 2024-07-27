@@ -152,10 +152,13 @@ void create_human(char *name) {
           },
   };
   game_context.position[game_context.entity_count].previous_position = game_context.position[game_context.entity_count].current_position;
+
+  float angle = (float)(random_int_between(0, 360) * ATH_PI / 180);
+
   game_context.speed[game_context.entity_count] = (SpeedComponent){
-      .current_direction.x = (((float)(rand() % 400) - 200) / 100),
-      .current_direction.y = (((float)(rand() % 400) - 200) / 100),
-      .current_velocity = (float)random_int_between(40, 55),
+      .current_direction.x = cosf(angle),
+      .current_direction.y = sinf(angle),
+      .current_velocity = 55,
   };
 
   int random_amount_of_personalities = random_int_between(5, 10);
