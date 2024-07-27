@@ -10,13 +10,9 @@
 #include "seed.c"
 #include "console.c"
 #include "pause_menu.c"
+#include "entities.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
-
-// FIXME: This can only produce numbers up to RAND_MAX which is at least 32767
-int random_int_between(int min, int max) {
-  return min + (rand() % (max - min));
-}
 
 #define MAX_TILES 1000
 GFX_TEXTURE_ID terrains[MAX_TILES][MAX_TILES];
@@ -74,178 +70,6 @@ void load_fonts(void) {
   render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
-void create_tree(void) {
-  float entity_width = 100.0f;
-  int texture_id = 8;
-  game_context.textures[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
-
-  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
-  game_context.textures[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
-
-  game_context.health_current[game_context.entity_count] = 1000;
-  game_context.health_max[game_context.entity_count] = 1000;
-
-  strcpy(game_context.names[game_context.entity_count], "tree");  // FIXME: Use the safe version strcpy_s. PRs welcome
-
-  game_context.selected[game_context.entity_count] = false;
-  game_context.hovered[game_context.entity_count] = false;
-  game_context.positions[game_context.entity_count] = (PositionComponent){
-      .current_position =
-          {
-              .x = (float)random_int_between(-400, 400) * 100,
-              .y = (float)random_int_between(-400, 400) * 100,
-          },
-  };
-  game_context.positions[game_context.entity_count].previous_position = game_context.positions[game_context.entity_count].current_position;
-
-  game_context.entity_count++;
-}
-
-void create_human(char *name) {
-  float entity_width = 100.0f;
-  int texture_id = random_int_between(0, 7);
-  game_context.textures[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
-
-  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
-  game_context.textures[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
-
-  game_context.health_current[game_context.entity_count] = random_int_between(10, 100);
-  game_context.health_max[game_context.entity_count] = 100;
-
-  strcpy(game_context.names[game_context.entity_count], name);  // FIXME: Use the safe version strcpy_s. PRs welcome
-
-  game_context.selected[game_context.entity_count] = false;
-  game_context.hovered[game_context.entity_count] = false;
-  game_context.positions[game_context.entity_count] = (PositionComponent){
-      .current_position =
-          {
-              .x = (float)random_int_between(-1000, 1000),
-              .y = (float)random_int_between(-1000, 1000),
-          },
-  };
-  game_context.positions[game_context.entity_count].previous_position = game_context.positions[game_context.entity_count].current_position;
-  game_context.speeds[game_context.entity_count] = (SpeedComponent){
-      .current_direction.x = (((float)(rand() % 400) - 200) / 100),
-      .current_direction.y = (((float)(rand() % 400) - 200) / 100),
-      .current_velocity = (float)random_int_between(40, 55),
-  };
-
-  int random_amount_of_personalities = random_int_between(5, 10);
-  for (int i = 0; i < random_amount_of_personalities; i++) {
-    int personality = random_int_between(0, Personality_Count);
-    game_context.personalities[game_context.entity_count][personality] = random_int_between(0, 100);
-  }
-
-  game_context.entity_count++;
-}
-
-void create_entities(void) {
-  char entity_names[][32] = {
-      "pushqrdx",
-      "Athano",
-      "AshenHobs",
-      "adrian_learns",
-      "RVerite",
-      "Orshy",
-      "ruggs888",
-      "Xent12",
-      "nuke_bird",
-      "kasper_573",
-      "SturdyPose",
-      "coffee_lava",
-      "goudacheeseburgers",
-      "ikiwixz",
-      "NixAurvandil",
-      "smilingbig",
-      "tk_dev",
-      "realSuperku",
-      "Hoby2000",
-      "CuteMath",
-      "forodor",
-      "Azenris",
-      "collector_of_stuff",
-      "EvanMMO",
-      "thechaosbean",
-      "Lutf1sk",
-      "BauBas9883",
-      "physbuzz",
-      "rizoma0x00",
-      "Tkap1",
-      "GavinsAwfulStream",
-      "Resist_0",
-      "b1k4sh",
-      "nhancodes",
-      "qcircuit1",
-      "fruloo",
-      "programmer_jeff",
-      "BluePinStudio",
-      "Pierito95RsNg",
-      "jumpylionnn",
-      "Aruseus",
-      "lastmiles",
-      "soulfoam",
-      "AQtun81",
-      "jess_forrealz",
-      "RAFi18",
-      "Delvoid",
-      "Lolboy_30",
-      "VevenVelour",
-      "Kisamius",
-      "tobias_bms",
-      "spectral_ray1",
-      "Toasty",  // AKA CarbonCollins
-      "Roilisi",
-      "MickyMaven",
-      "Katsuida",
-      "YogiEisbar",
-      "WaryOfDairy",
-      "BauBas9883",
-      "Kataemoi",
-      "AgentulSRI",
-      "Pushtoy",
-      "Neron0010",
-      "exodus_uk",
-      "Coopert1n0",
-      "mantra4aa",
-      "Keikzz",
-      "sreetunks",
-      "noisycat3",
-      "ca2software",
-      "GyrosGeier",
-      "GloriousSir",
-      "kuviman",
-      "nigelwithrow",
-      "pgorley",
-      "Kasie_SoftThorn",
-      "tapir2342",
-      "Protonmat",
-      "davexmachina_",
-      "seek1337",
-      "godmode0071",
-      "cakez77",
-      "TravisVroman",
-      "Deharma",
-      "Rogue_Wolf_Dev",
-      "Tuhkamjuhkam",
-      "lolDayzo",
-      "retromaximusplays",
-      "nickely",
-      "MaGetzUb",
-      "capuche_man",
-      "MrElmida",
-      "Zanarias",
-      "dasraizer",
-  };
-
-  for (int name_index = 0; name_index < array_count(entity_names); name_index++) {
-    create_human(entity_names[name_index]);
-  }
-
-  for (int i = 0; i < 9999; i++) {
-    create_tree();
-  }
-}
-
 FRect get_camera_rect(void) {
   FRect camera_rect = {
       .position =
@@ -266,37 +90,15 @@ FRect get_camera_rect(void) {
 FRect get_entity_render_rect(int entity_id) {
   FRect texture_rect = {
       .position =
-          {.x = game_context.positions[entity_id].current_position.x * (float)physics_context.alpha +
-                game_context.positions[entity_id].previous_position.x * (float)(1.0 - physics_context.alpha),
-           .y = game_context.positions[entity_id].current_position.y * (float)physics_context.alpha +
-                game_context.positions[entity_id].previous_position.y * (float)(1.0 - physics_context.alpha)}
+          {.x = game_context.position[entity_id].current_position.x * (float)physics_context.alpha +
+                game_context.position[entity_id].previous_position.x * (float)(1.0 - physics_context.alpha),
+           .y = game_context.position[entity_id].current_position.y * (float)physics_context.alpha +
+                game_context.position[entity_id].previous_position.y * (float)(1.0 - physics_context.alpha)}
   };
-  texture_rect.size.x = texture_rect.position.x + game_context.textures[entity_id].size.x;
-  texture_rect.size.y = texture_rect.position.y + game_context.textures[entity_id].size.y;
+  texture_rect.size.x = texture_rect.position.x + game_context.texture[entity_id].size.x;
+  texture_rect.size.y = texture_rect.position.y + game_context.texture[entity_id].size.y;
 
   return texture_rect;
-}
-
-void draw_entity_name_batched(int entity_id, RenderBatcher *batcher) {
-  Font *font = &render_context.fonts[0];
-  RGBA color = (RGBA){1, 1, 1, 1};
-  FRect entity_render_rect = get_entity_render_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
-
-  float y = (entity_screen_rect.position.y - (45.0f));
-
-  if (game_context.hovered[entity_id]) {
-    y -= 10.0f;  // move the text up a little when using the bigger font
-    color = (RGBA){1, 1, 0, 1};
-    font = &render_context.fonts[1];
-  }
-
-  Vec2 text_size = get_text_size(game_context.names[entity_id], font, false, true);
-
-  float diff = ((entity_screen_rect.size.x - entity_screen_rect.position.x) / 2) - (text_size.x / 2);
-  float x = entity_screen_rect.position.x + diff;
-
-  draw_text_outlined_utf8_batched(game_context.names[entity_id], (Vec2){x, y}, color, (RGBA){0, 0, 0, 1}, font, batcher);
 }
 
 void draw_debug_text(int index, char *str, ...) {
@@ -356,7 +158,26 @@ void draw_selection_box(void) {
   gfx_draw_frect(&selection_rect, &(RGBA){1, 1, 1, 1});
 }
 
-void draw_personalities(int entity_id, FRect around) {
+float draw_cultivation_stats(int entity_id, FRect around) {
+  char text_buffer[128];
+  int index = 0;
+  sprintf(text_buffer, "Realm: %d", game_context.realm[entity_id]);
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      &render_context.fonts[0]
+  );
+
+  index++;
+  sprintf(text_buffer, "Experience: %d", game_context.experience[entity_id]);
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      &render_context.fonts[0]
+  );
+
+  return 64.0f;
+}
+
+void draw_personalities(int entity_id, FRect around, float y_start) {
   // TODO: This should probably be sorted on creation, so we don't need to do it on every render
   int sorted_personality_ids[16] = {0};
   int length = 0;
@@ -390,14 +211,48 @@ void draw_personalities(int entity_id, FRect around) {
 
   char text_buffer[128];
   for (int index = 0; index < length; index++) {
+    // sprintf(
+    //     text_buffer, "%d: %s", game_context.personalities[entity_id][sorted_personality_ids[index]],
+    //     Personality__Strings[sorted_personality_ids[index]]
+    // );
     sprintf(
-        text_buffer, "%d: %s", game_context.personalities[entity_id][sorted_personality_ids[index]],
-        Personality__Strings[sorted_personality_ids[index]]
+        text_buffer, "%s: %d", Personality__Strings[sorted_personality_ids[index]],
+        game_context.personalities[entity_id][sorted_personality_ids[index]]
     );
     draw_text_outlined_utf8(
-        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
         &render_context.fonts[0]
     );
+  }
+}
+
+void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
+  Font *font = &render_context.fonts[0];
+  RGBA color = (RGBA){1, 1, 1, 1};
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
+
+  float y = (entity_screen_rect.position.y - (45.0f));
+
+  if (game_context.hovered[entity_id]) {
+    y -= 10.0f;  // move the text up a little when using the bigger font
+    color = (RGBA){1, 1, 0, 1};
+    font = &render_context.fonts[1];
+  }
+
+  Vec2 text_size = get_text_size(game_context.name[entity_id], font, false, true);
+
+  float diff = ((entity_screen_rect.size.x - entity_screen_rect.position.x) / 2) - (text_size.x / 2);
+  float x = entity_screen_rect.position.x + diff;
+
+  draw_text_outlined_utf8_batched(game_context.name[entity_id], (Vec2){x, y}, color, (RGBA){0, 0, 0, 1}, font, batcher);
+
+  // FIXME: Make this faster using the render batcher
+  if (game_context.selected[entity_id]) {
+    // Draw the personalities list
+    float bottom_of_cultivation_stats = draw_cultivation_stats(entity_id, entity_screen_rect);
+
+    draw_personalities(entity_id, entity_screen_rect, bottom_of_cultivation_stats);
   }
 }
 
@@ -409,6 +264,10 @@ float Spring__update(Spring *spring, float target) {
 }
 
 void draw_health_bar(int entity_id, FRect entity_rect) {
+  if (game_context.health_current[entity_id] == game_context.health_max[entity_id]) {
+    return;
+  }
+
   const float y = (entity_rect.position.y - 15.0f * min(render_context.camera.zoom, 1.0f));
   const float h = (10.0f * min(render_context.camera.zoom, 1.0f));
 
@@ -474,15 +333,15 @@ void draw_border(FRect around, float gap_width, float border_width) {
 }
 
 void move_entity(int entity_id) {
-  game_context.positions[entity_id].previous_position = game_context.positions[entity_id].current_position;
-  game_context.speeds[entity_id].previous_direction = game_context.speeds[entity_id].current_direction;
-  game_context.speeds[entity_id].previous_velocity = game_context.speeds[entity_id].current_velocity;
-  game_context.positions[entity_id].current_position.x += game_context.speeds[entity_id].current_direction.x *
-                                                          game_context.speeds[entity_id].current_velocity *
-                                                          (float)(physics_context.delta_time * physics_context.simulation_speed);
-  game_context.positions[entity_id].current_position.y += game_context.speeds[entity_id].current_direction.y *
-                                                          game_context.speeds[entity_id].current_velocity *
-                                                          (float)(physics_context.delta_time * physics_context.simulation_speed);
+  game_context.position[entity_id].previous_position = game_context.position[entity_id].current_position;
+  game_context.speed[entity_id].previous_direction = game_context.speed[entity_id].current_direction;
+  game_context.speed[entity_id].previous_velocity = game_context.speed[entity_id].current_velocity;
+  game_context.position[entity_id].current_position.x += game_context.speed[entity_id].current_direction.x *
+                                                         game_context.speed[entity_id].current_velocity *
+                                                         (float)(physics_context.delta_time * physics_context.simulation_speed);
+  game_context.position[entity_id].current_position.y += game_context.speed[entity_id].current_direction.y *
+                                                         game_context.speed[entity_id].current_velocity *
+                                                         (float)(physics_context.delta_time * physics_context.simulation_speed);
 }
 
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
@@ -499,7 +358,7 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   );
 
   render_batcher_copy_texture_quad(
-      batcher, render_context.texture_atlas.textures[game_context.textures[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
+      batcher, render_context.texture_atlas.textures[game_context.texture[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
   );
 
   if (render_context.camera.zoom > 0.5f) {
@@ -509,9 +368,6 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {
     draw_border(entity_screen_rect, 5.0f, 4.0f);
-
-    // Draw the personalities list
-    draw_personalities(entity_id, entity_screen_rect);
   }
 }
 
@@ -680,6 +536,9 @@ int get_entity_to_follow(void) {
     if (game_context.selected[entity_id]) {
       selected_count += 1;
       result = entity_id;
+      if (selected_count > 1) {
+        break;
+      }
     }
   }
   return selected_count == 1 ? result : INVALID_ENTITY;
@@ -799,6 +658,7 @@ void handle_input(void) {
           }
 
           if (entity_had_selection) {
+            game_context.single_entity_selected = false;
             break;
           }
 
@@ -852,14 +712,48 @@ void handle_input(void) {
       game_context.hovered[entity_id] = is_entity_under_mouse(entity_id);
     }
 
+    bool any_entity_selected = false;
     reverse_loop(game_context.entity_count, entity_id) {
       if (is_entity_under_mouse(entity_id)) {
         if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
           game_context.selected[entity_id] = !game_context.selected[entity_id];
+          any_entity_selected = true;
           break;
         }
       }
     }
+    game_context.single_entity_selected = any_entity_selected;
+  }
+}
+
+void move_camera(void) {
+  // bool spring_camera = true;
+  Vec2 camera_spring_distance = {
+      .x = fabsf(render_context.camera.target.x - render_context.camera.current.x),
+      .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
+  };
+
+  int entity_to_follow = get_entity_to_follow();
+
+  if (!game_context.single_entity_selected && mouse_primary_pressed(mouse_state)) {
+    select_entities_within_selection_rect();
+  } else {
+    if (entity_to_follow != INVALID_ENTITY) {
+      FRect entity_render_rect = get_entity_render_rect(entity_to_follow);
+      render_context.camera.target.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
+      render_context.camera.target.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
+
+      if (camera_spring_distance.x < 0.5f && camera_spring_distance.y < 0.5f) {
+        render_context.camera.current.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
+        render_context.camera.current.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
+      }
+    }
+  }
+
+  if (camera_spring_distance.x > 0.5f || camera_spring_distance.y > 0.5f) {
+    // Spring the camera position
+    render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
+    render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
   }
 }
 
@@ -886,7 +780,7 @@ void render(void) {
     loop(game_context.entity_count, entity_id) {
       FRect entity_render_rect = get_entity_render_rect(entity_id);
       if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
-        draw_entity_name_batched(entity_id, &render_batcher);
+        draw_entity_info_batched(entity_id, &render_batcher);
       }
     }
   }
@@ -915,7 +809,7 @@ void update_timer(Timer *timer, double frame_time) {
 }
 
 int main(int argc, char *args[]) {
-  srand(create_seed("FOLLOWING_IS_KIND_OF_HARD"));
+  srand(create_seed("who is the smelliest?"));
 
   int gfx_init_result = gfx_init();
   if (gfx_init_result == 1) {
@@ -1037,34 +931,7 @@ int main(int argc, char *args[]) {
       physics_context.alpha = 1.0;
     }
 
-    // bool spring_camera = true;
-    Vec2 camera_spring_distance = {
-        .x = fabsf(render_context.camera.target.x - render_context.camera.current.x),
-        .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
-    };
-
-    int entity_to_follow = get_entity_to_follow();
-
-    if (mouse_primary_pressed(mouse_state)) {
-      select_entities_within_selection_rect();
-    } else {
-      if (entity_to_follow != INVALID_ENTITY) {
-        FRect entity_render_rect = get_entity_render_rect(entity_to_follow);
-        render_context.camera.target.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
-        render_context.camera.target.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
-
-        if (camera_spring_distance.x < 0.5f && camera_spring_distance.y < 0.5f) {
-          render_context.camera.current.x = entity_render_rect.position.x + ((entity_render_rect.size.x - entity_render_rect.position.x) / 2);
-          render_context.camera.current.y = entity_render_rect.position.y + ((entity_render_rect.size.y - entity_render_rect.position.y) / 2);
-        }
-      }
-    }
-
-    if (camera_spring_distance.x > 0.5f || camera_spring_distance.y > 0.5f) {
-      // Spring the camera position
-      render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
-      render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
-    }
+    move_camera();
 
     render();
   }

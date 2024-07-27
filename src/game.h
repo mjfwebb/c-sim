@@ -22,17 +22,20 @@ typedef struct {
 typedef struct {
   int health_current[MAX_ENTITIES];
   int health_max[MAX_ENTITIES];
-  char names[MAX_ENTITIES][128];
+  char name[MAX_ENTITIES][128];
   bool selected[MAX_ENTITIES];
+  bool single_entity_selected;
   bool hovered[MAX_ENTITIES];
   // FRect rect[MAX_ENTITIES];
   // int image[MAX_ENTITIES];
   Vec2 direction[MAX_ENTITIES];
   int personalities[MAX_ENTITIES][Personality_Count];
+  int experience[MAX_ENTITIES];
+  int realm[MAX_ENTITIES];
   int entity_count;
-  SpeedComponent speeds[MAX_ENTITIES];
-  PositionComponent positions[MAX_ENTITIES];
-  TextureComponent textures[MAX_ENTITIES];
+  SpeedComponent speed[MAX_ENTITIES];
+  PositionComponent position[MAX_ENTITIES];
+  TextureComponent texture[MAX_ENTITIES];
   bool game_is_still_running;
   bool in_pause_menu;
 } GameContext;

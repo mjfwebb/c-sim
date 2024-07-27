@@ -81,10 +81,10 @@ CommandArgsSuggestions get_entity_names(char* text) {
   if (console_command_parts.part[current_part_index].value) {
     loop(game_context.entity_count, entity_id) {
       if (string_compare_insensitive_n(
-              game_context.names[entity_id], console_command_parts.part[current_part_index].value,
+              game_context.name[entity_id], console_command_parts.part[current_part_index].value,
               strlen(console_command_parts.part[current_part_index].value)
           ) == 0) {
-        strcpy(suggestions.suggestions[suggestions.count], game_context.names[entity_id]);
+        strcpy(suggestions.suggestions[suggestions.count], game_context.name[entity_id]);
         suggestions.count++;
 
         if (suggestions.count == MAX_ARGS_SUGGESTIONS) {
@@ -106,13 +106,13 @@ static bool follow_entity(char* text) {
   int found_entity = -1;
 
   loop(game_context.entity_count, entity_id) {
-    if (string_compare_insensitive(game_context.names[entity_id], text) == 0) {
+    if (string_compare_insensitive(game_context.name[entity_id], text) == 0) {
       found_entity = entity_id;
     }
   }
 
   if (found_entity >= 0) {
-    print("Found entity with name %s", game_context.names[found_entity]);
+    print("Found entity with name %s", game_context.name[found_entity]);
 
     loop(game_context.entity_count, entity_id) {
       game_context.selected[entity_id] = false;
@@ -133,7 +133,7 @@ static bool heal_entity(char* text) {
   int found_entity = -1;
 
   loop(game_context.entity_count, entity_id) {
-    if (string_compare_insensitive(game_context.names[entity_id], text) == 0) {
+    if (string_compare_insensitive(game_context.name[entity_id], text) == 0) {
       found_entity = entity_id;
     }
   }
@@ -161,10 +161,10 @@ static bool calculate_distance_between_entities(char* arguments_text) {
   int found_entity_a = -1;
   int found_entity_b = -1;
   loop(game_context.entity_count, entity_id) {
-    if (found_entity_a == -1 && string_compare_insensitive(game_context.names[entity_id], console_command_parts.part[1].value) == 0) {
+    if (found_entity_a == -1 && string_compare_insensitive(game_context.name[entity_id], console_command_parts.part[1].value) == 0) {
       found_entity_a = entity_id;
     }
-    if (found_entity_b == -1 && string_compare_insensitive(game_context.names[entity_id], console_command_parts.part[2].value) == 0) {
+    if (found_entity_b == -1 && string_compare_insensitive(game_context.name[entity_id], console_command_parts.part[2].value) == 0) {
       found_entity_b = entity_id;
     }
   }
@@ -182,8 +182,8 @@ static bool calculate_distance_between_entities(char* arguments_text) {
     return false;
   }
 
-  Vec2 entity_a_position = game_context.positions[found_entity_a].current_position;
-  Vec2 entity_b_position = game_context.positions[found_entity_b].current_position;
+  Vec2 entity_a_position = game_context.position[found_entity_a].current_position;
+  Vec2 entity_b_position = game_context.position[found_entity_b].current_position;
 
   sprintf(
       output_message, "The distance between %s and %s, is %.2f", console_command_parts.part[1].value, console_command_parts.part[2].value,
