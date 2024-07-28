@@ -11,6 +11,7 @@
 #include "entities.c"
 #include "pause_menu/pause_menu.c"
 #include "decisions.c"
+#include "spring.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 
@@ -289,13 +290,6 @@ void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
 
     draw_personalities(entity_id, entity_screen_rect, bottom_of_stats);
   }
-}
-
-float Spring__update(Spring *spring, float target) {
-  spring->target = target;
-  spring->velocity += (target - spring->current) * spring->acceleration;
-  spring->velocity *= spring->friction;
-  return spring->current += spring->velocity;
 }
 
 void draw_health_bar(int entity_id, FRect entity_rect) {
@@ -621,10 +615,10 @@ bool is_entity_under_mouse(int entity_id) {
 
 void update(void) {
   // Spring the camera zoom
-  render_context.camera.zoom = Spring__update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
+  render_context.camera.zoom = spring_update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
 
   // Spring the console position
-  console.y = Spring__update(&console.y_spring, console.target_y);
+  console.y = spring_update(&console.y_spring, console.target_y);
 
   mouse_control_camera();
 
@@ -645,8 +639,8 @@ void update(void) {
   }
 
   // Spring the selection box
-  render_context.selection.position.x = Spring__update(&render_context.selection.spring_x, render_context.selection.target.x);
-  render_context.selection.position.y = Spring__update(&render_context.selection.spring_y, render_context.selection.target.y);
+  render_context.selection.position.x = spring_update(&render_context.selection.spring_x, render_context.selection.target.x);
+  render_context.selection.position.y = spring_update(&render_context.selection.spring_y, render_context.selection.target.y);
 }
 
 void handle_input(void) {
@@ -803,8 +797,8 @@ void move_camera(void) {
 
   if (camera_spring_distance.x > 0.5f || camera_spring_distance.y > 0.5f) {
     // Spring the camera position
-    render_context.camera.current.x = Spring__update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
-    render_context.camera.current.y = Spring__update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
+    render_context.camera.current.x = spring_update(&render_context.camera.pan_spring_x, render_context.camera.target.x);
+    render_context.camera.current.y = spring_update(&render_context.camera.pan_spring_y, render_context.camera.target.y);
   }
 }
 
