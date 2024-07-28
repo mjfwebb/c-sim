@@ -24,5 +24,3 @@ float frect_height(FRect *rect) {
 #define string_compare_insensitive strcasecmp
 #define string_compare_insensitive_n strncasecmp
 #endif
-
-#define ATH_PI 3.14159265358979323846264338327950288
