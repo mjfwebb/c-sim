@@ -26,11 +26,11 @@ typedef struct {
 } Camera;
 
 typedef struct {
-  Vec2 position;
+  Vec2 current;
   Vec2 target;
   Spring spring_x;
   Spring spring_y;
-} Selection;
+} Position;
 
 typedef struct {
   int w;
@@ -59,7 +59,7 @@ typedef struct {
   Camera camera;
   Font fonts[NUM_OF_FONTS];
   float fps;
-  Selection selection;
+  Position selection;
   const u8 *keyboard_state;
   TextureAtlas texture_atlas;
 } RenderContext;

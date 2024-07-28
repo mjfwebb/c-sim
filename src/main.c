@@ -118,12 +118,12 @@ FRect get_selection_rect(void) {
   FRect rect =
       {.position =
            {
-               .x = min(mouse_state.position.x, render_context.selection.position.x),
-               .y = min(mouse_state.position.y, render_context.selection.position.y),
+               .x = min(mouse_state.position.x, render_context.selection.current.x),
+               .y = min(mouse_state.position.y, render_context.selection.current.y),
            },
        .size = {
-           .x = fabsf(mouse_state.position.x - render_context.selection.position.x),
-           .y = fabsf(mouse_state.position.y - render_context.selection.position.y),
+           .x = fabsf(mouse_state.position.x - render_context.selection.current.x),
+           .y = fabsf(mouse_state.position.y - render_context.selection.current.y),
        }};
 
   rect.size.x = rect.position.x + rect.size.x;
@@ -639,8 +639,8 @@ void update(void) {
   }
 
   // Spring the selection box
-  render_context.selection.position.x = spring_update(&render_context.selection.spring_x, render_context.selection.target.x);
-  render_context.selection.position.y = spring_update(&render_context.selection.spring_y, render_context.selection.target.y);
+  render_context.selection.current.x = spring_update(&render_context.selection.spring_x, render_context.selection.target.x);
+  render_context.selection.current.y = spring_update(&render_context.selection.spring_y, render_context.selection.target.y);
 }
 
 void handle_input(void) {
@@ -891,7 +891,7 @@ int main(int argc, char *args[]) {
           },
   };
   render_context.selection =
-      (Selection){
+      (Position){
           .spring_x =
               {
                   .target = 1.0f,
