@@ -208,6 +208,13 @@ void gfx_load_textures(void) {
       "assets/grass/short-overgrown-right-top.png",
       "assets/grass/short-overgrown-top.png",
       "assets/rock.png",
+      "assets/tombstone.png",
+      "assets/tree/1.png",
+      "assets/tree/2.png",
+      "assets/tree/3.png",
+      "assets/tree/4.png",
+      "assets/tree/5.png",
+      "assets/tree/6.png",
   };
 
   for (u32 i = 0; i < array_count(texture_paths); i++) {

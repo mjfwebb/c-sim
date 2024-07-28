@@ -8,6 +8,7 @@
 #define TICKS_TO_NEXT_DECISION 5000
 #define TICKS_TO_NEXT_ACTION 500
 #define BASE_VELOCITY 20
+#define DEAD_ENTITY_TEXTURE 38
 
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
 #define print(format, ...)            \

@@ -377,13 +377,17 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
 
   float entity_shadow_height = entity_shadow_rect.size.y - entity_shadow_rect.position.y;
   entity_shadow_rect.position.y += (entity_shadow_height * 0.8f);
-  entity_shadow_rect.size.y += (entity_shadow_height * 0.2f);
+  entity_shadow_rect.size.y += (entity_shadow_height * 0.05f);
+
+  float entity_shadow_width = entity_shadow_rect.size.x - entity_shadow_rect.position.x;
+  entity_shadow_rect.position.x += (entity_shadow_width * 0.2f);
+  entity_shadow_rect.size.x -= (entity_shadow_width * 0.2f);
 
   render_batcher_copy_texture_quad(
       batcher, render_context.texture_atlas.textures[GFX_TEXTURE_SHADOW], &(RGBA){1, 1, 1, 0.25}, &entity_shadow_rect, NULL
   );
 
-  int entity_texture_id = game_context.health_current[entity_id] <= 0 ? 9 : game_context.texture[entity_id].texture_id;
+  int entity_texture_id = game_context.health_current[entity_id] <= 0 ? DEAD_ENTITY_TEXTURE : game_context.texture[entity_id].texture_id;
   render_batcher_copy_texture_quad(batcher, render_context.texture_atlas.textures[entity_texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL);
 
   if (render_context.camera.zoom > 0.5f) {

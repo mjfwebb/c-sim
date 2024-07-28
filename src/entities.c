@@ -102,7 +102,8 @@ char entity_names[][32] = {
     "homerjay48",
     "Woozx",
     "Przemko9856",
-    "whitent_"
+    "whitent_",
+    "dandymcgee"
 };
 
 void set_random_entity_direction(int entity_id, float velocity) {
@@ -161,7 +162,7 @@ void create_entity(float entity_width, int texture_id, int health_current, int h
 
 void create_tree(void) {
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
-  create_entity(100.0f, 8, 1000, 1000, "tree", Species__Tree, position);
+  create_entity(500.0f, random_int_between(39, 44), 1000, 1000, "tree", Species__Tree, position);
 
   game_context.entity_count++;
 }
