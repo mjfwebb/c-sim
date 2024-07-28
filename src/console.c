@@ -182,8 +182,8 @@ static bool calculate_distance_between_entities(char* arguments_text) {
     return false;
   }
 
-  Vec2 entity_a_position = game_context.position[found_entity_a].current_position;
-  Vec2 entity_b_position = game_context.position[found_entity_b].current_position;
+  Vec2 entity_a_position = game_context.position[found_entity_a].current;
+  Vec2 entity_b_position = game_context.position[found_entity_b].current;
 
   sprintf(
       output_message, "The distance between %s and %s, is %.2f", console_command_parts.part[1].value, console_command_parts.part[2].value,

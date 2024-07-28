@@ -8,11 +8,6 @@ typedef struct EntityDistance {
 } EntityDistance;
 
 typedef struct {
-  Vec2 current_position;
-  Vec2 previous_position;
-} PositionComponent;
-
-typedef struct {
   float current_velocity;
   float previous_velocity;
   Vec2 current_direction;
@@ -43,7 +38,7 @@ typedef struct {
   int action_countdown[MAX_ENTITIES];
   int decision_countdown[MAX_ENTITIES];
   SpeedComponent speed[MAX_ENTITIES];
-  PositionComponent position[MAX_ENTITIES];
+  Position position[MAX_ENTITIES];
   TextureComponent texture[MAX_ENTITIES];
   bool game_is_still_running;
   bool in_pause_menu;

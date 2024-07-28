@@ -90,13 +90,8 @@ FRect get_camera_rect(void) {
 }
 
 FRect get_entity_render_rect(int entity_id) {
-  FRect texture_rect = {
-      .position =
-          {.x = game_context.position[entity_id].current_position.x * (float)physics_context.alpha +
-                game_context.position[entity_id].previous_position.x * (float)(1.0 - physics_context.alpha),
-           .y = game_context.position[entity_id].current_position.y * (float)physics_context.alpha +
-                game_context.position[entity_id].previous_position.y * (float)(1.0 - physics_context.alpha)}
-  };
+  FRect texture_rect = {0};
+  texture_rect.position = game_context.position[entity_id].current;
   texture_rect.size.x = texture_rect.position.x + game_context.texture[entity_id].size.x;
   texture_rect.size.y = texture_rect.position.y + game_context.texture[entity_id].size.y;
 
@@ -366,16 +361,13 @@ void move_entity(int entity_id) {
     return;
   }
 
-  game_context.position[entity_id].previous_position = game_context.position[entity_id].current_position;
   game_context.speed[entity_id].previous_direction = game_context.speed[entity_id].current_direction;
   game_context.speed[entity_id].previous_velocity = game_context.speed[entity_id].current_velocity;
 
-  game_context.position[entity_id].current_position.x += (game_context.speed[entity_id].current_direction.x) *
-                                                         game_context.speed[entity_id].current_velocity *
-                                                         (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
-  game_context.position[entity_id].current_position.y += (game_context.speed[entity_id].current_direction.y) *
-                                                         game_context.speed[entity_id].current_velocity *
-                                                         (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
+  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * game_context.speed[entity_id].current_velocity *
+                                               (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
+  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * game_context.speed[entity_id].current_velocity *
+                                               (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
 }
 
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
@@ -635,6 +627,11 @@ void update(void) {
       make_decision(entity_id);
       make_action(entity_id);
       move_entity(entity_id);
+
+      game_context.position[entity_id].current.x =
+          spring_update(&game_context.position[entity_id].spring_x, game_context.position[entity_id].target.x);
+      game_context.position[entity_id].current.y =
+          spring_update(&game_context.position[entity_id].spring_y, game_context.position[entity_id].target.y);
     }
   }
 

@@ -39,7 +39,7 @@ EntityDistance find_closest_entity_of_species(int current_entity_id, Species spe
   loop(game_context.entity_count, entity_id) {
     if (current_entity_id != entity_id && game_context.species[entity_id] == species && game_context.health_current[entity_id] > 0) {
       float distance_between_entities =
-          calculate_distance_squared(game_context.position[current_entity_id].current_position, game_context.position[entity_id].current_position);
+          calculate_distance_squared(game_context.position[current_entity_id].current, game_context.position[entity_id].current);
 
       if (distance_between_entities < closest_distance) {
         closest_distance = distance_between_entities;
@@ -59,11 +59,10 @@ void make_action(int entity_id) {
         EntityDistance closest_tree = find_closest_entity_of_species(entity_id, Species__Tree);
         if (closest_tree.id > -1) {
           game_context.speed[entity_id].current_direction =
-              get_direction_vec2(game_context.position[entity_id].current_position, game_context.position[closest_tree.id].current_position);
+              get_direction_vec2(game_context.position[entity_id].current, game_context.position[closest_tree.id].current);
           game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
         }
         if (closest_tree.distance < 500.0f) {
-          game_context.position[entity_id].previous_position = game_context.position[entity_id].current_position;
           game_context.speed[entity_id].current_velocity = 0;
           game_context.decision[entity_id] = Decisions__Chop_Tree;
         }
@@ -81,10 +80,9 @@ void make_action(int entity_id) {
         EntityDistance closest_human = find_closest_entity_of_species(entity_id, Species__Human);
         if (closest_human.id > -1) {
           game_context.speed[entity_id].current_direction =
-              get_direction_vec2(game_context.position[entity_id].current_position, game_context.position[closest_human.id].current_position);
+              get_direction_vec2(game_context.position[entity_id].current, game_context.position[closest_human.id].current);
           game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
           if (closest_human.distance < 500.0f) {
-            game_context.position[entity_id].previous_position = game_context.position[entity_id].current_position;
             game_context.speed[entity_id].current_velocity = 0;
             game_context.decision[entity_id] = Decisions__Attack_Human;
           }
@@ -103,11 +101,10 @@ void make_action(int entity_id) {
         EntityDistance closest_rock = find_closest_entity_of_species(entity_id, Species__Rock);
         if (closest_rock.id > -1) {
           game_context.speed[entity_id].current_direction =
-              get_direction_vec2(game_context.position[entity_id].current_position, game_context.position[closest_rock.id].current_position);
+              get_direction_vec2(game_context.position[entity_id].current, game_context.position[closest_rock.id].current);
           game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
         }
         if (closest_rock.distance < 500.0f) {
-          game_context.position[entity_id].previous_position = game_context.position[entity_id].current_position;
           game_context.speed[entity_id].current_velocity = 0;
           game_context.decision[entity_id] = Decisions__Mine_Rock;
         }
@@ -128,7 +125,6 @@ void make_action(int entity_id) {
         set_random_entity_direction(entity_id, BASE_VELOCITY);
         break;
       case Decisions__Wait:
-        game_context.position[entity_id].previous_position = game_context.position[entity_id].current_position;
         game_context.speed[entity_id].current_velocity = 0;
         break;
 
