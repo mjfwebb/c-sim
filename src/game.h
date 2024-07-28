@@ -2,6 +2,11 @@
 
 #include "headers.h"
 
+typedef struct EntityDistance {
+  float distance;
+  int id;
+} EntityDistance;
+
 typedef struct {
   Vec2 current_position;
   Vec2 previous_position;
@@ -30,9 +35,13 @@ typedef struct {
   // int image[MAX_ENTITIES];
   Vec2 direction[MAX_ENTITIES];
   int personalities[MAX_ENTITIES][Personality_Count];
+  int species[MAX_ENTITIES];  // 0 is human, 1 is tree
+  int decision[MAX_ENTITIES];  // 0 is human, 1 is tree
   int experience[MAX_ENTITIES];
   int realm[MAX_ENTITIES];
   int entity_count;
+  int action_countdown[MAX_ENTITIES];
+  int decision_countdown[MAX_ENTITIES];
   SpeedComponent speed[MAX_ENTITIES];
   PositionComponent position[MAX_ENTITIES];
   TextureComponent texture[MAX_ENTITIES];

@@ -6,11 +6,11 @@
 #include "gfx.c"
 #include "fonts.c"
 #include "render_batcher.c"
-#include "personalities.c"
 #include "seed.c"
 #include "console.c"
 #include "entities.c"
 #include "pause_menu/pause_menu.c"
+#include "decisions.c"
 
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 
@@ -19,6 +19,7 @@ GFX_TEXTURE_ID terrains[MAX_TILES][MAX_TILES];
 
 RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
+int ticks = 0;
 
 bool entity_has_personality(int entity_index, Personality personality) {
   return game_context.personalities[entity_index][personality] > 0;
@@ -136,7 +137,7 @@ void render_debug_info(void) {
   draw_debug_text(index++, "mouse state: %d, button: %d, clicks: %d", mouse_state.state, mouse_state.button, mouse_state.clicks);
   draw_debug_text(index++, "prev mouse state: %d", mouse_state.prev_state);
   draw_debug_text(index++, "camera zoom: %.1f", render_context.camera.target_zoom);
-  draw_debug_text(index++, "game speed: %.1f", physics_context.simulation_speed);
+  draw_debug_text(index++, "game speed: %d", simulation_speeds[physics_context.simulation_speed]);
   draw_debug_text(
       index++, "camera: current x,y: %.2f,%.2f target x,y: %.2f,%.2f", render_context.camera.current.x, render_context.camera.current.y,
       render_context.camera.target.x, render_context.camera.target.y
@@ -175,27 +176,45 @@ char *cultivation_realm_name(int cultivation_realm) {
   }
 }
 
-float draw_cultivation_stats(int entity_id, FRect around) {
+float draw_stats(int entity_id, FRect around, float y_start) {
+  Font *font = &render_context.fonts[0];
+  float font_size = (float)font->size;
   char text_buffer[128];
-  int index = 0;
+  int line_number = 0;
   sprintf(text_buffer, "Realm: %s", cultivation_realm_name(game_context.realm[entity_id]));
   draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      &render_context.fonts[0]
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
   );
 
-  index++;
+  line_number++;
   sprintf(text_buffer, "Experience: %d", game_context.experience[entity_id]);
   draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      &render_context.fonts[0]
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
   );
 
-  return 32.0f * (index + 1);
+  line_number++;
+  sprintf(text_buffer, "Species: %s", Species__Strings[game_context.species[entity_id]]);
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
+  );
+
+  line_number++;
+  sprintf(text_buffer, "Decision: %s", Decisions__Strings[game_context.decision[entity_id]]);
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
+  );
+
+  return font_size * (line_number + 1);
 }
 
-void draw_personalities(int entity_id, FRect around, float y_start) {
+float draw_personalities(int entity_id, FRect around, float y_start) {
   // TODO: This should probably be sorted on creation, so we don't need to do it on every render
+  Font *font = &render_context.fonts[0];
+  float font_size = (float)font->size;
   int sorted_personality_ids[16] = {0};
   int length = 0;
 
@@ -227,20 +246,19 @@ void draw_personalities(int entity_id, FRect around, float y_start) {
   }
 
   char text_buffer[128];
-  for (int index = 0; index < length; index++) {
-    // sprintf(
-    //     text_buffer, "%d: %s", game_context.personalities[entity_id][sorted_personality_ids[index]],
-    //     Personality__Strings[sorted_personality_ids[index]]
-    // );
+  int line_number = 0;
+  for (line_number = 0; line_number < length; line_number++) {
     sprintf(
-        text_buffer, "%s: %d", Personality__Strings[sorted_personality_ids[index]],
-        game_context.personalities[entity_id][sorted_personality_ids[index]]
+        text_buffer, "%s: %d", Personality__Strings[sorted_personality_ids[line_number]],
+        game_context.personalities[entity_id][sorted_personality_ids[line_number]]
     );
     draw_text_outlined_utf8(
-        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (32.0f * index))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-        &render_context.fonts[0]
+        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+        font
     );
   }
+
+  return font_size * (line_number + 2);
 }
 
 void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
@@ -267,9 +285,9 @@ void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {
     // Draw the personalities list
-    float bottom_of_cultivation_stats = draw_cultivation_stats(entity_id, entity_screen_rect);
+    float bottom_of_stats = draw_stats(entity_id, entity_screen_rect, 0.0f);
 
-    draw_personalities(entity_id, entity_screen_rect, bottom_of_cultivation_stats);
+    draw_personalities(entity_id, entity_screen_rect, bottom_of_stats);
   }
 }
 
@@ -360,10 +378,10 @@ void move_entity(int entity_id) {
 
   game_context.position[entity_id].current_position.x += (game_context.speed[entity_id].current_direction.x) *
                                                          game_context.speed[entity_id].current_velocity *
-                                                         (float)(physics_context.delta_time * physics_context.simulation_speed);
+                                                         (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
   game_context.position[entity_id].current_position.y += (game_context.speed[entity_id].current_direction.y) *
                                                          game_context.speed[entity_id].current_velocity *
-                                                         (float)(physics_context.delta_time * physics_context.simulation_speed);
+                                                         (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
 }
 
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
@@ -379,9 +397,8 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
       batcher, render_context.texture_atlas.textures[GFX_TEXTURE_SHADOW], &(RGBA){1, 1, 1, 0.25}, &entity_shadow_rect, NULL
   );
 
-  render_batcher_copy_texture_quad(
-      batcher, render_context.texture_atlas.textures[game_context.texture[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
-  );
+  int entity_texture_id = game_context.health_current[entity_id] <= 0 ? 9 : game_context.texture[entity_id].texture_id;
+  render_batcher_copy_texture_quad(batcher, render_context.texture_atlas.textures[entity_texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL);
 
   if (render_context.camera.zoom > 0.5f) {
     draw_health_bar(entity_id, entity_screen_rect);
@@ -583,7 +600,7 @@ void select_entities_within_selection_rect(void) {
 
     FRect selection_rect = get_selection_rect();
 
-    if (selection_rect.size.x > 3.0f) {
+    if (selection_rect.size.x > 30.0f) {
       if (gfx_frect_contains_point(&selection_rect, &point_top_left) && gfx_frect_contains_point(&selection_rect, &point_bottom_right)) {
         game_context.selected[entity_id] = true;
       } else {
@@ -619,8 +636,10 @@ void update(void) {
     keyboard_control_camera();
   }
 
-  if (physics_context.simulation_speed > 0.0) {
+  if (physics_context.simulation_speed > 0) {
     loop(game_context.entity_count, entity_id) {
+      make_decision(entity_id);
+      make_action(entity_id);
       move_entity(entity_id);
     }
   }
@@ -695,12 +714,21 @@ void handle_input(void) {
 
           break;
         case SDLK_UP:
-          physics_context.simulation_speed += 0.5;
-          physics_context.simulation_speed = min(physics_context.simulation_speed, 10.0);
+          // TODO: if paused, then up should return to pre-paused speed
+          if (physics_context.prev_simulation_speed > 0) {
+            physics_context.simulation_speed = physics_context.prev_simulation_speed;
+            physics_context.prev_simulation_speed = 0;
+          } else {
+            physics_context.simulation_speed += 1;
+            physics_context.simulation_speed = min(physics_context.simulation_speed, MAX_SIMULATION_SPEED_INDEX);
+          }
           break;
         case SDLK_DOWN:
-          physics_context.simulation_speed -= 0.5;
-          physics_context.simulation_speed = max(physics_context.simulation_speed, 0.0);
+          // TODO: if paused, then do nothing?
+          if (physics_context.prev_simulation_speed == 0) {
+            physics_context.simulation_speed -= 1;
+            physics_context.simulation_speed = max(physics_context.simulation_speed, 0);
+          }
           break;
         case SDLK_SPACE:
           if (physics_context.prev_simulation_speed > 0) {
@@ -734,6 +762,7 @@ void handle_input(void) {
       game_context.hovered[entity_id] = is_entity_under_mouse(entity_id);
     }
 
+    // TODO: This needs to change when we take spatial partitioning into account
     bool any_entity_selected = false;
     reverse_loop(game_context.entity_count, entity_id) {
       if (is_entity_under_mouse(entity_id)) {
@@ -786,7 +815,7 @@ void render(void) {
 
   flush_render_batcher(&render_batcher);
 
-  draw_grid();
+  // draw_grid();
 
   FRect camera_rect = get_camera_rect();
   FRect translated_rect = frect_screen_to_world(camera_rect);
@@ -894,7 +923,7 @@ int main(int argc, char *args[]) {
       .friction = 0.1f,
   };
   game_context.game_is_still_running = 1;
-  physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 1.0};
+  physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 3};
   render_batcher = new_render_batcher(100000, render_context.renderer);
   render_context.timer[0] = (Timer){.interval = 100};  // Second timer
   render_context.timer[1] = (Timer){.interval = 60000};  // Minute timer

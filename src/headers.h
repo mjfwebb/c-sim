@@ -5,6 +5,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <assert.h>
 #include <math.h>
+#include <float.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,4 +23,6 @@
 #include "game.h"
 #include "mouse_state.h"
 #include "physics.h"
+#include "species.h"
+#include "decisions.h"
 #include "pause_menu/pause_menu.h"

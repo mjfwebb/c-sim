@@ -98,23 +98,48 @@ char entity_names[][32] = {
     "Riazey",
     "Phil_Massicotte",
     "whaatsuuup",
+    "BlaximusIV",
+    "homerjay48",
+    "Woozx",
+    "Przemko9856",
+    "whitent_"
 };
 
-void create_tree(void) {
-  float entity_width = 100.0f;
-  int texture_id = 8;
+void set_random_entity_direction(int entity_id, float velocity) {
+  float angle = (float)(random_int_between(0, 360) * ATH_PI / 180);
+
+  game_context.speed[entity_id] = (SpeedComponent){
+      .current_direction.x = cosf(angle),
+      .current_direction.y = sinf(angle),
+      .current_velocity = velocity,
+  };
+}
+
+void create_entity(float entity_width, int texture_id, int health_current, int health_max, char* name, Species species) {
   game_context.texture[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
 
   float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
   game_context.texture[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
 
-  game_context.health_current[game_context.entity_count] = 1000;
-  game_context.health_max[game_context.entity_count] = 1000;
+  game_context.health_current[game_context.entity_count] = health_current;
+  game_context.health_max[game_context.entity_count] = health_max;
 
-  strcpy(game_context.name[game_context.entity_count], "tree");  // FIXME: Use the safe version strcpy_s. PRs welcome
+  strcpy(game_context.name[game_context.entity_count], name);  // FIXME: Use the safe version strcpy_s. PRs welcome
 
   game_context.selected[game_context.entity_count] = false;
   game_context.hovered[game_context.entity_count] = false;
+
+  game_context.realm[game_context.entity_count] = 0;
+  game_context.experience[game_context.entity_count] = 0;
+  game_context.species[game_context.entity_count] = species;
+
+  game_context.decision_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_NEXT_DECISION);
+  game_context.action_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_NEXT_ACTION);
+  game_context.decision[game_context.entity_count] = Decisions__Wait;
+}
+
+void create_tree(void) {
+  create_entity(100.0f, 8, 1000, 1000, "tree", Species__Tree);
   game_context.position[game_context.entity_count] = (PositionComponent){
       .current_position =
           {
@@ -123,27 +148,26 @@ void create_tree(void) {
           },
   };
   game_context.position[game_context.entity_count].previous_position = game_context.position[game_context.entity_count].current_position;
-  game_context.realm[game_context.entity_count] = 0;
-  game_context.experience[game_context.entity_count] = 0;
 
   game_context.entity_count++;
 }
 
-void create_human(char *name) {
-  float entity_width = 100.0f;
-  int texture_id = random_int_between(0, 7);
-  game_context.texture[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
+void create_rock(void) {
+  create_entity(100.0f, 37, 1000, 1000, "rock", Species__Rock);
+  game_context.position[game_context.entity_count] = (PositionComponent){
+      .current_position =
+          {
+              .x = (float)random_int_between(-400, 400) * 100,
+              .y = (float)random_int_between(-400, 400) * 100,
+          },
+  };
+  game_context.position[game_context.entity_count].previous_position = game_context.position[game_context.entity_count].current_position;
 
-  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
-  game_context.texture[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
+  game_context.entity_count++;
+}
 
-  game_context.health_current[game_context.entity_count] = random_int_between(10, 100);
-  game_context.health_max[game_context.entity_count] = 100;
-
-  strcpy(game_context.name[game_context.entity_count], name);  // FIXME: Use the safe version strcpy_s. PRs welcome
-
-  game_context.selected[game_context.entity_count] = false;
-  game_context.hovered[game_context.entity_count] = false;
+void create_human(char* name) {
+  create_entity(100.0f, random_int_between(0, 7), random_int_between(10, 100), 100, name, Species__Human);
   game_context.position[game_context.entity_count] = (PositionComponent){
       .current_position =
           {
@@ -153,21 +177,13 @@ void create_human(char *name) {
   };
   game_context.position[game_context.entity_count].previous_position = game_context.position[game_context.entity_count].current_position;
 
-  float angle = (float)(random_int_between(0, 360) * ATH_PI / 180);
-
-  game_context.speed[game_context.entity_count] = (SpeedComponent){
-      .current_direction.x = cosf(angle),
-      .current_direction.y = sinf(angle),
-      .current_velocity = 55,
-  };
+  set_random_entity_direction(game_context.entity_count, BASE_VELOCITY);
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
     int personality = random_int_between(0, Personality_Count);
     game_context.personalities[game_context.entity_count][personality] = random_int_between(0, 100);
   }
-  game_context.realm[game_context.entity_count] = 0;
-  game_context.experience[game_context.entity_count] = 0;
 
   game_context.entity_count++;
 }
@@ -179,5 +195,9 @@ void create_entities(void) {
 
   for (int i = 0; i < 9999; i++) {
     create_tree();
+  }
+
+  for (int i = 0; i < 9999; i++) {
+    create_rock();
   }
 }

@@ -5,6 +5,9 @@
 #define NUM_OF_FONTS 8
 #define MAX_CONSOLE_INPUT_LENGTH 1024
 #define MAX_ENTITIES 1000000
+#define TICKS_TO_NEXT_DECISION 5000
+#define TICKS_TO_NEXT_ACTION 500
+#define BASE_VELOCITY 20
 
 #define array_count(static_array) (sizeof(static_array) / sizeof((static_array)[0]))
 #define print(format, ...)            \

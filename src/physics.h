@@ -2,11 +2,14 @@
 
 #include "headers.h"
 
+int simulation_speeds[] = {0, 1, 2, 4, 8, 16, 32, 64, 128};
+#define MAX_SIMULATION_SPEED_INDEX 8
+
 typedef struct {
   double delta_time;
   double alpha;  // This is the interpolation factor between the current and previous states. Used for rendering accurate physics steps
-  double simulation_speed;
-  double prev_simulation_speed;
+  int simulation_speed;
+  int prev_simulation_speed;
 } PhysicsContext;
 
 PhysicsContext physics_context = {0};
