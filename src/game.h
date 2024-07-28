@@ -26,12 +26,10 @@ typedef struct {
   bool selected[MAX_ENTITIES];
   bool single_entity_selected;
   bool hovered[MAX_ENTITIES];
-  // FRect rect[MAX_ENTITIES];
-  // int image[MAX_ENTITIES];
   Vec2 direction[MAX_ENTITIES];
   int personalities[MAX_ENTITIES][Personality_Count];
-  int species[MAX_ENTITIES];  // 0 is human, 1 is tree
-  int decision[MAX_ENTITIES];  // 0 is human, 1 is tree
+  int species[MAX_ENTITIES];
+  int decision[MAX_ENTITIES];
   int experience[MAX_ENTITIES];
   int realm[MAX_ENTITIES];
   int entity_count;
