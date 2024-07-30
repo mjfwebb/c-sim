@@ -2,7 +2,7 @@
 
 // FIXME: This can only produce numbers up to RAND_MAX which is at least 32767
 int random_int_between(int min, int max) {
-  return min + (rand() % (max - min));
+  return min + (rand() % (max - min + 1));
 }
 
 bool floats_equal(float a, float b) {

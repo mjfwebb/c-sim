@@ -484,7 +484,7 @@ void generate_grass_textures(void) {
         }
       }
 
-      int chosen_texture_id = possible_textures[random_int_between(0, possible_textures_count)];
+      int chosen_texture_id = possible_textures[random_int_between(0, possible_textures_count - 1)];
       terrains[y][x] = chosen_texture_id;
     }
   }
