@@ -225,13 +225,13 @@ float draw_personalities(int entity_id, FRect around, float y_start) {
 
   for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
     if (entity_has_personality(entity_id, personality_i)) {
-      int score = game_context.personalities[entity_id][personality_i];
-
       if (length == 0) {
         sorted_personality_ids[0] = personality_i;
         length++;
         continue;
       }
+
+      int score = game_context.personalities[entity_id][personality_i];
 
       for (int i = 0; i < length; i++) {
         if (score > game_context.personalities[entity_id][sorted_personality_ids[i]]) {
