@@ -780,13 +780,14 @@ void handle_input(void) {
     }
 
     // Two loops needed so we can have a case where multiple entities can be hovered over, but only one can be selected
-    reverse_loop(game_context.entity_count, entity_id) {
-      game_context.hovered[entity_id] = is_entity_under_mouse(entity_id);
+    reverse_loop(num_of_visible_entities, index) {
+      game_context.hovered[visible_entities[index]] = is_entity_under_mouse(visible_entities[index]);
     }
 
     // TODO: This needs to change when we take spatial partitioning into account
     bool any_entity_selected = false;
-    reverse_loop(game_context.entity_count, entity_id) {
+    reverse_loop(num_of_visible_entities, index) {
+      int entity_id = visible_entities[index];
       if (is_entity_under_mouse(entity_id)) {
         if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
           game_context.selected[entity_id] = !game_context.selected[entity_id];
