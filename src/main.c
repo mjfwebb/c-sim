@@ -793,18 +793,30 @@ void handle_input(void) {
     }
 
     // TODO: This needs to change when we take spatial partitioning into account
-    bool any_entity_selected = false;
-    reverse_loop(num_of_visible_entities, index) {
-      int entity_id = visible_entities[index];
-      if (is_entity_under_mouse(entity_id)) {
-        if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
-          game_context.selected[entity_id] = !game_context.selected[entity_id];
-          any_entity_selected = true;
-          break;
+    if (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_RELEASED) {
+      bool any_entity_selected = false;
+      int entity_id_to_click = -1;
+
+      reverse_loop(num_of_visible_entities, index) {
+        int entity_id = visible_entities[index];
+        if (is_entity_under_mouse(entity_id)) {
+          if (entity_id_to_click == -1) {
+            entity_id_to_click = entity_id;
+          } else {
+            if (game_context.species[entity_id] < game_context.species[entity_id_to_click]) {
+              entity_id_to_click = entity_id;
+            }
+          }
         }
       }
+      if (entity_id_to_click > -1) {
+        game_context.selected[entity_id_to_click] = !game_context.selected[entity_id_to_click];
+        any_entity_selected = true;
+        break;
+      }
+
+      game_context.single_entity_selected = any_entity_selected;
     }
-    game_context.single_entity_selected = any_entity_selected;
   }
 }
 
