@@ -51,10 +51,11 @@ EntityDistance find_closest_entity_of_species(int current_entity_id, Species spe
   return (EntityDistance){closest_distance, closest_tree_id};
 }
 
-void handle_attack(int entity_id) {
+void handle_attack(int entity_id, int attacker_id) {
   if (game_context.health_current[entity_id] == 0) {
     game_context.speed[entity_id].current_velocity = 0.0f;
     game_context.decision[entity_id] = Decisions__Wait;
+    game_context.killed_by[entity_id] = attacker_id;
     return;
   }
 }
@@ -62,7 +63,7 @@ void handle_attack(int entity_id) {
 void make_action_human(int entity_id) {
   if ((game_context.health_current[entity_id] > 0) && (game_context.health_current[entity_id] < (game_context.health_max[entity_id] * 0.2)) &&
       game_context.decision[entity_id] != Decisions__Flee) {
-    print("%s flees!", game_context.name[entity_id]);
+    // print("%s flees!", game_context.name[entity_id]);
     set_random_entity_direction(entity_id, BASE_VELOCITY);
     game_context.decision[entity_id] = Decisions__Flee;
     return;
@@ -105,11 +106,17 @@ void make_action_human(int entity_id) {
     case Decisions__Attack_Human: {
       EntityDistance closest_human = find_closest_entity_of_species(entity_id, Species__Human);
       if (closest_human.id > -1 && closest_human.distance < 5000.0f) {
-        game_context.health_current[closest_human.id] = max(0, game_context.health_current[closest_human.id] - 10);
+        int damage = random_int_between(5, 15);
+        game_context.health_current[closest_human.id] = max(0, game_context.health_current[closest_human.id] - damage);
         // print("%s attacked %s", game_context.name[entity_id], game_context.name[closest_human.id]);
-        handle_attack(closest_human.id);
+        handle_attack(closest_human.id, entity_id);
       } else {
-        game_context.decision[entity_id] = Decisions__Wait;
+        int should_continue_the_hunt = random_int_between(0, 1);
+        if (should_continue_the_hunt) {
+          game_context.decision[entity_id] = Decisions__Find_Human;
+        } else {
+          game_context.decision[entity_id] = Decisions__Wait;
+        }
       }
     } break;
     case Decisions__Find_Rock: {
@@ -169,25 +176,25 @@ void make_decision_human(int entity_id) {
         int random_chance = random_int_between(0, 10);
 
         if (random_chance <= 2) {
-          print("%s is wandering", game_context.name[entity_id]);
+          // print("%s is wandering", game_context.name[entity_id]);
           game_context.decision[entity_id] = Decisions__Wander;
           set_random_entity_direction(entity_id, BASE_VELOCITY);
           break;
         }
 
         if (random_chance > 2 && random_chance <= 4) {
-          print("%s is looking for a tree", game_context.name[entity_id]);
+          // print("%s is looking for a tree", game_context.name[entity_id]);
           game_context.decision[entity_id] = Decisions__Find_Tree;
           break;
         }
 
         if (random_chance > 4 && random_chance <= 6) {
-          print("%s is looking for someone", game_context.name[entity_id]);
+          // print("%s is looking for someone", game_context.name[entity_id]);
           game_context.decision[entity_id] = Decisions__Find_Human;
           break;
         }
 
-        print("%s is looking for a rock", game_context.name[entity_id]);
+        // print("%s is looking for a rock", game_context.name[entity_id]);
         game_context.decision[entity_id] = Decisions__Find_Rock;
       }
     } break;
@@ -208,7 +215,7 @@ void make_decision_human(int entity_id) {
     } break;
 
     default:
-      print("%s is waiting", game_context.name[entity_id]);
+      // print("%s is waiting", game_context.name[entity_id]);
       game_context.decision[entity_id] = Decisions__Wait;
       break;
   }

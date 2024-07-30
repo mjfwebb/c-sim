@@ -35,6 +35,7 @@ typedef struct {
   int entity_count;
   int action_countdown[MAX_ENTITIES];
   int decision_countdown[MAX_ENTITIES];
+  int killed_by[MAX_ENTITIES];
   SpeedComponent speed[MAX_ENTITIES];
   Position position[MAX_ENTITIES];
   TextureComponent texture[MAX_ENTITIES];

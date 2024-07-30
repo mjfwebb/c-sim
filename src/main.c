@@ -204,6 +204,15 @@ float draw_stats(int entity_id, FRect around, float y_start) {
       font
   );
 
+  if (game_context.health_current[entity_id] <= 0) {
+    line_number++;
+    sprintf(text_buffer, "Killed by: %s", game_context.name[game_context.killed_by[entity_id]]);
+    draw_text_outlined_utf8(
+        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+        font
+    );
+  }
+
   return font_size * (line_number + 1);
 }
 
