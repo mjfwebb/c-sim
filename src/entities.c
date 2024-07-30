@@ -176,7 +176,7 @@ void create_rock(void) {
 
 void create_human(char* name) {
   Vec2 position = {.x = (float)random_int_between(-1000, 1000), .y = (float)random_int_between(-1000, 1000)};
-  create_entity(100.0f, random_int_between(0, 7), random_int_between(10, 100), 100, name, Species__Human, position);
+  create_entity(100.0f, random_int_between(0, 7), 100, 100, name, Species__Human, position);
 
   set_random_entity_direction(game_context.entity_count, BASE_VELOCITY);
 

@@ -215,6 +215,13 @@ float draw_stats(int entity_id, FRect around, float y_start) {
     );
   }
 
+  line_number++;
+  sprintf(text_buffer, "Aggressive score: %d", aggressive_personality_score(entity_id));
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
+  );
+
   return font_size * (line_number + 1);
 }
 
@@ -914,7 +921,7 @@ void update_timer(Timer *timer, double frame_time) {
 }
 
 int main(int argc, char *args[]) {
-  srand(create_seed("who is the smelliest?"));
+  srand(create_seed("we can cultivate now"));
 
   int gfx_init_result = gfx_init();
   if (gfx_init_result == 1) {

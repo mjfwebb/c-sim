@@ -11,6 +11,8 @@
   X(Chop_Tree)         \
   X(Mine_Rock)         \
   X(Attack_Human)      \
+  X(Heal_Human)        \
+  X(Socialise)         \
   X(Flee)              \
   X(Wait)
 

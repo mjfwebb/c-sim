@@ -67,7 +67,6 @@
   X(Responsible)         \
   X(Romantic)            \
   X(Selfish)             \
-  X(Seriousminded)       \
   X(Serious)             \
   X(Shortsighted)        \
   X(Shy)                 \

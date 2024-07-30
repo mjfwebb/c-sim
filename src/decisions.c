@@ -8,6 +8,53 @@ float calculate_distance_squared(Vec2 a, Vec2 b) {
   return distance_squared;
 }
 
+int aggressive_personality_score(int entity_id) {
+  int aggressive_score = 0;
+
+  for (int i = 0; i < Personality_Count; i++) {
+    if (game_context.personalities[entity_id][i] > 0) {
+      switch (i) {
+        case Personalities__Assertive:
+        case Personalities__Brave:
+        case Personalities__Confident:
+        case Personalities__Cynical:
+        case Personalities__Deceptive:
+        case Personalities__Detached:
+        case Personalities__Emotional:
+        case Personalities__Impulsive:
+        case Personalities__Insecure:
+        case Personalities__Jaded:
+        case Personalities__Passionate:
+        case Personalities__Rebellious:
+        case Personalities__Sloppy:
+        case Personalities__Unreliable:
+        case Personalities__Selfish:
+        case Personalities__Stingy:
+        case Personalities__Indifferent: {
+          aggressive_score += game_context.personalities[entity_id][i];
+          break;
+        }
+
+        case Personalities__Cruel: {
+          aggressive_score += 3 * game_context.personalities[entity_id][i];
+          break;
+        }
+
+        case Personalities__Hostile:
+        case Personalities__Aggressive: {
+          aggressive_score += 5 * game_context.personalities[entity_id][i];
+          break;
+        }
+
+        default:
+          break;
+      }
+    }
+  }
+
+  return aggressive_score;
+}
+
 Vec2 normalize_vec2(Vec2 vec) {
   float length = sqrtf(vec.x * vec.x + vec.y * vec.y);
 
@@ -109,8 +156,35 @@ void make_action_human(int entity_id) {
         game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
         if (closest_human.distance < 5000.0f) {
           game_context.speed[entity_id].current_velocity = 0;
-          game_context.decision[entity_id] = Decisions__Attack_Human;
+
+          int aggressive_score = aggressive_personality_score(entity_id);
+          // If you are a bastard, then attack.
+          if (aggressive_score > 100) {
+            game_context.decision[entity_id] = Decisions__Attack_Human;
+            break;
+          }
+
+          // If you are nice, and the target hasn't got full health, heal them?
+          if (game_context.health_current[closest_human.id] < 50) {
+            // Rub them!
+            game_context.decision[entity_id] = Decisions__Heal_Human;
+            break;
+          }
+
+          // If you are nice, and the target is at full health, give them a kiss? OwO
+          game_context.decision[entity_id] = Decisions__Socialise;
         }
+      }
+    } break;
+    case Decisions__Heal_Human: {
+      EntityDistance closest_human = find_closest_entity_of_species(entity_id, Species__Human);
+      if (closest_human.id > -1 && closest_human.distance < 5000.0f) {
+        int heal = random_int_between(3, 7) * (game_context.realm[entity_id] + 1);
+        game_context.health_current[closest_human.id] =
+            max(game_context.health_max[closest_human.id], game_context.health_current[closest_human.id] + heal);
+        handle_attack(closest_human.id, entity_id);
+      } else {
+        game_context.decision[entity_id] = Decisions__Wait;
       }
     } break;
     case Decisions__Attack_Human: {
