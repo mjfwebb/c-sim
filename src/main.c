@@ -841,10 +841,48 @@ void render(void) {
   FRect camera_rect = get_camera_rect();
   FRect translated_rect = frect_screen_to_world(camera_rect);
 
-  loop(game_context.entity_count, entity_id) {
-    FRect entity_render_rect = get_entity_render_rect(entity_id);
-    if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
-      render_entity_batched(entity_id, &render_batcher);
+  {
+    int visible_entities[MAX_ENTITIES] = {0};
+    int num_of_visible_entities = 0;
+    // Create a array of entities which are "visible"
+    loop(game_context.entity_count, entity_id) {
+      FRect entity_render_rect = get_entity_render_rect(entity_id);
+      if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
+        visible_entities[num_of_visible_entities] = entity_id;
+        num_of_visible_entities++;
+      }
+    }
+
+    int sorted_visible_entities[MAX_ENTITIES] = {0};
+    int sorted_length = 0;
+    loop(num_of_visible_entities, index) {
+      if (sorted_length == 0) {
+        sorted_visible_entities[0] = visible_entities[index];
+        sorted_length++;
+        continue;
+      }
+
+      for (int i = 0; i < sorted_length; i++) {
+        FRect entity_a_rect = get_entity_render_rect(visible_entities[index]);
+        FRect entity_b_rect = get_entity_render_rect(sorted_visible_entities[i]);
+
+        if (entity_a_rect.size.y < entity_b_rect.size.y) {
+          memmove(sorted_visible_entities + i + 1, sorted_visible_entities + i, (sorted_length - i) * sizeof(int));
+          sorted_visible_entities[i] = visible_entities[index];
+          sorted_length++;
+          break;
+        }
+
+        if (i == sorted_length - 1) {
+          sorted_visible_entities[sorted_length] = visible_entities[index];
+          sorted_length++;
+          break;
+        }
+      }
+    }
+
+    loop(sorted_length, index) {
+      render_entity_batched(sorted_visible_entities[index], &render_batcher);
     }
   }
 
