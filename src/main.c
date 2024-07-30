@@ -20,7 +20,8 @@ GFX_TEXTURE_ID terrains[MAX_TILES][MAX_TILES];
 
 RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
-int ticks = 0;
+int visible_entities[10000] = {0};
+int num_of_visible_entities = 0;
 
 bool entity_has_personality(int entity_index, Personality personality) {
   return game_context.personalities[entity_index][personality] > 0;
@@ -829,6 +830,26 @@ void move_camera(void) {
   }
 }
 
+int compare_entities_y(const void *a, const void *b) {
+  int a_id = *(int *)a;
+  int b_id = *(int *)b;
+
+  FRect entity_a_rect = get_entity_render_rect(a_id);
+  FRect entity_b_rect = get_entity_render_rect(b_id);
+
+  float result = entity_a_rect.size.y - entity_b_rect.size.y;
+
+  if (result < 0) {
+    return -1;
+  }
+
+  if (result > 0) {
+    return 1;
+  }
+
+  return a_id - b_id;
+}
+
 void render(void) {
   gfx_clear_screen();
 
@@ -841,49 +862,21 @@ void render(void) {
   FRect camera_rect = get_camera_rect();
   FRect translated_rect = frect_screen_to_world(camera_rect);
 
-  {
-    int visible_entities[MAX_ENTITIES] = {0};
-    int num_of_visible_entities = 0;
-    // Create a array of entities which are "visible"
-    loop(game_context.entity_count, entity_id) {
-      FRect entity_render_rect = get_entity_render_rect(entity_id);
-      if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
-        visible_entities[num_of_visible_entities] = entity_id;
-        num_of_visible_entities++;
-      }
+  memset(visible_entities, 0, sizeof(visible_entities));
+  num_of_visible_entities = 0;
+  // Create a array of entities which are "visible"
+  loop(game_context.entity_count, entity_id) {
+    FRect entity_render_rect = get_entity_render_rect(entity_id);
+    if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
+      visible_entities[num_of_visible_entities] = entity_id;
+      num_of_visible_entities++;
     }
+  }
 
-    int sorted_visible_entities[MAX_ENTITIES] = {0};
-    int sorted_length = 0;
-    loop(num_of_visible_entities, index) {
-      if (sorted_length == 0) {
-        sorted_visible_entities[0] = visible_entities[index];
-        sorted_length++;
-        continue;
-      }
+  qsort(visible_entities, num_of_visible_entities, sizeof(int), compare_entities_y);
 
-      for (int i = 0; i < sorted_length; i++) {
-        FRect entity_a_rect = get_entity_render_rect(visible_entities[index]);
-        FRect entity_b_rect = get_entity_render_rect(sorted_visible_entities[i]);
-
-        if (entity_a_rect.size.y < entity_b_rect.size.y) {
-          memmove(sorted_visible_entities + i + 1, sorted_visible_entities + i, (sorted_length - i) * sizeof(int));
-          sorted_visible_entities[i] = visible_entities[index];
-          sorted_length++;
-          break;
-        }
-
-        if (i == sorted_length - 1) {
-          sorted_visible_entities[sorted_length] = visible_entities[index];
-          sorted_length++;
-          break;
-        }
-      }
-    }
-
-    loop(sorted_length, index) {
-      render_entity_batched(sorted_visible_entities[index], &render_batcher);
-    }
+  loop(num_of_visible_entities, index) {
+    render_entity_batched(visible_entities[index], &render_batcher);
   }
 
   if (render_context.camera.zoom > 0.5f) {
