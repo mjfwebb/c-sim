@@ -4,6 +4,7 @@
 
 #define Decisions_LIST \
   X(Wander)            \
+  X(Cultivate)         \
   X(Find_Tree)         \
   X(Find_Rock)         \
   X(Find_Human)        \
