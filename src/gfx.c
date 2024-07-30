@@ -132,6 +132,21 @@ typedef enum {
   GFX_TEXTURE_GRASS_SHORT_OVERGROWN_RIGHT_BOTTOM,
   GFX_TEXTURE_GRASS_SHORT_OVERGROWN_RIGHT_TOP,
   GFX_TEXTURE_GRASS_SHORT_OVERGROWN_TOP,
+  GFX_TEXTURE_ROCK,
+  GFX_TEXTURE_ROCK_SMASHED,
+  GFX_TEXTURE_TOMBSTONE,
+  GFX_TEXTURE_TREE_1,
+  GFX_TEXTURE_TREE_2,
+  GFX_TEXTURE_TREE_3,
+  GFX_TEXTURE_TREE_4,
+  GFX_TEXTURE_TREE_5,
+  GFX_TEXTURE_TREE_6,
+  GFX_TEXTURE_TREE_STUMP_1,
+  GFX_TEXTURE_TREE_STUMP_2,
+  GFX_TEXTURE_TREE_STUMP_3,
+  GFX_TEXTURE_TREE_STUMP_4,
+  GFX_TEXTURE_TREE_STUMP_5,
+  GFX_TEXTURE_TREE_STUMP_6,
   GFX_TEXTURE_count,
 } GFX_TEXTURE_ID;
 
@@ -208,6 +223,7 @@ void gfx_load_textures(void) {
       "assets/grass/short-overgrown-right-top.png",
       "assets/grass/short-overgrown-top.png",
       "assets/rock.png",
+      "assets/rock-smashed.png",
       "assets/tombstone.png",
       "assets/tree/1.png",
       "assets/tree/2.png",
@@ -215,6 +231,12 @@ void gfx_load_textures(void) {
       "assets/tree/4.png",
       "assets/tree/5.png",
       "assets/tree/6.png",
+      "assets/tree/1-stump.png",
+      "assets/tree/2-stump.png",
+      "assets/tree/3-stump.png",
+      "assets/tree/4-stump.png",
+      "assets/tree/5-stump.png",
+      "assets/tree/6-stump.png",
   };
 
   for (u32 i = 0; i < array_count(texture_paths); i++) {

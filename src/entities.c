@@ -162,14 +162,14 @@ void create_entity(float entity_width, int texture_id, int health_current, int h
 
 void create_tree(void) {
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
-  create_entity(500.0f, random_int_between(39, 44), 1000, 1000, "tree", Species__Tree, position);
+  create_entity(500.0f, random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6), 1000, 1000, "tree", Species__Tree, position);
 
   game_context.entity_count++;
 }
 
 void create_rock(void) {
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
-  create_entity(100.0f, 37, 1000, 1000, "rock", Species__Rock, position);
+  create_entity(100.0f, GFX_TEXTURE_ROCK, 1000, 1000, "rock", Species__Rock, position);
 
   game_context.entity_count++;
 }

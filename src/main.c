@@ -379,6 +379,17 @@ void move_entity(int entity_id) {
                                                (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
 }
 
+int dead_entity_texture(int entity_id) {
+  switch (game_context.species[entity_id]) {
+    case Species__Rock:
+      return GFX_TEXTURE_ROCK_SMASHED;
+    case Species__Tree:
+      return game_context.texture[entity_id].texture_id + 6;
+    default:
+      return GFX_TEXTURE_TOMBSTONE;
+  }
+}
+
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   FRect entity_render_rect = get_entity_render_rect(entity_id);
   FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
@@ -392,15 +403,21 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   entity_shadow_rect.position.x += (entity_shadow_width * 0.2f);
   entity_shadow_rect.size.x -= (entity_shadow_width * 0.2f);
 
-  render_batcher_copy_texture_quad(
-      batcher, render_context.texture_atlas.textures[GFX_TEXTURE_SHADOW], &(RGBA){1, 1, 1, 0.25}, &entity_shadow_rect, NULL
-  );
+  if (game_context.health_current[entity_id] <= 0) {
+    render_batcher_copy_texture_quad(
+        batcher, render_context.texture_atlas.textures[dead_entity_texture(entity_id)], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
+    );
+  } else {
+    render_batcher_copy_texture_quad(
+        batcher, render_context.texture_atlas.textures[GFX_TEXTURE_SHADOW], &(RGBA){1, 1, 1, 0.25}, &entity_shadow_rect, NULL
+    );
+    render_batcher_copy_texture_quad(
+        batcher, render_context.texture_atlas.textures[game_context.texture[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
+    );
 
-  int entity_texture_id = game_context.health_current[entity_id] <= 0 ? DEAD_ENTITY_TEXTURE : game_context.texture[entity_id].texture_id;
-  render_batcher_copy_texture_quad(batcher, render_context.texture_atlas.textures[entity_texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL);
-
-  if (render_context.camera.zoom > 0.5f) {
-    draw_health_bar(entity_id, entity_screen_rect);
+    if (render_context.camera.zoom > 0.5f) {
+      draw_health_bar(entity_id, entity_screen_rect);
+    }
   }
 
   // FIXME: Make this faster using the render batcher
