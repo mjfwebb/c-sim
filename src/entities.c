@@ -106,13 +106,22 @@ char entity_names[][32] = {
     "dandymcgee"
 };
 
+float get_entity_velocity(int entity_id) {
+  float velocity = game_context.speed[entity_id].velocity;
+  int realm = game_context.realm[entity_id] + 1;
+  float velocity_multiplier = ((float)realm / 10);
+  velocity += velocity * velocity_multiplier;
+
+  return velocity;
+}
+
 void set_random_entity_direction(int entity_id, float velocity) {
   float angle = (float)(random_int_between(0, 360) * ATH_PI / 180);
 
   game_context.speed[entity_id] = (SpeedComponent){
       .current_direction.x = cosf(angle),
       .current_direction.y = sinf(angle),
-      .current_velocity = velocity,
+      .velocity = velocity,
   };
 }
 

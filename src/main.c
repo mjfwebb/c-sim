@@ -158,8 +158,6 @@ void draw_selection_box(void) {
 
 char *cultivation_realm_name(int cultivation_realm) {
   switch (cultivation_realm) {
-    case 0:
-      return "Mortal";
     case 1:
       return "Qi Condensation";
     case 2:
@@ -169,7 +167,7 @@ char *cultivation_realm_name(int cultivation_realm) {
     case 4:
       return "Nascent Soul";
     default:
-      return "Your mumma";
+      return "Mortal";
   }
 }
 
@@ -217,6 +215,13 @@ float draw_stats(int entity_id, FRect around, float y_start) {
 
   line_number++;
   sprintf(text_buffer, "Aggressive score: %d", aggressive_personality_score(entity_id));
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
+  );
+
+  line_number++;
+  sprintf(text_buffer, "Velocity: %f", get_entity_velocity(entity_id));
   draw_text_outlined_utf8(
       text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
       font
@@ -380,10 +385,11 @@ void move_entity(int entity_id) {
   }
 
   game_context.speed[entity_id].previous_direction = game_context.speed[entity_id].current_direction;
+  float velocity = get_entity_velocity(entity_id);
 
-  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * game_context.speed[entity_id].velocity *
+  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * velocity *
                                                (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
-  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * game_context.speed[entity_id].velocity *
+  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * velocity *
                                                (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
 }
 
