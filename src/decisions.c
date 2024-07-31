@@ -100,7 +100,7 @@ EntityDistance find_closest_entity_of_species(int current_entity_id, Species spe
 
 void handle_attack(int entity_id, int attacker_id) {
   if (game_context.health_current[entity_id] == 0) {
-    game_context.speed[entity_id].current_velocity = 0.0f;
+    game_context.speed[entity_id].velocity = 0.0f;
     game_context.decision[entity_id] = Decisions__Wait;
     game_context.killed_by[entity_id] = attacker_id;
     return;
@@ -132,9 +132,9 @@ void make_action_human(int entity_id) {
       if (closest_tree.id > -1) {
         game_context.speed[entity_id].current_direction =
             get_direction_vec2(game_context.position[entity_id].target, game_context.position[closest_tree.id].target);
-        game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
+        game_context.speed[entity_id].velocity = BASE_VELOCITY;
         if (closest_tree.distance < 5000.0f) {
-          game_context.speed[entity_id].current_velocity = 0;
+          game_context.speed[entity_id].velocity = 0;
           game_context.decision[entity_id] = Decisions__Chop_Tree;
         }
       }
@@ -153,9 +153,9 @@ void make_action_human(int entity_id) {
       if (closest_human.id > -1) {
         game_context.speed[entity_id].current_direction =
             get_direction_vec2(game_context.position[entity_id].target, game_context.position[closest_human.id].target);
-        game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
+        game_context.speed[entity_id].velocity = BASE_VELOCITY;
         if (closest_human.distance < 5000.0f) {
-          game_context.speed[entity_id].current_velocity = 0;
+          game_context.speed[entity_id].velocity = 0;
 
           int aggressive_score = aggressive_personality_score(entity_id);
           // If you are a bastard, then attack.
@@ -208,9 +208,9 @@ void make_action_human(int entity_id) {
       if (closest_rock.id > -1) {
         game_context.speed[entity_id].current_direction =
             get_direction_vec2(game_context.position[entity_id].target, game_context.position[closest_rock.id].target);
-        game_context.speed[entity_id].current_velocity = BASE_VELOCITY;
+        game_context.speed[entity_id].velocity = BASE_VELOCITY;
         if (closest_rock.distance < 5000.0f) {
-          game_context.speed[entity_id].current_velocity = 0;
+          game_context.speed[entity_id].velocity = 0;
           game_context.decision[entity_id] = Decisions__Mine_Rock;
         }
       }
@@ -228,11 +228,11 @@ void make_action_human(int entity_id) {
       int exp_gain = random_int_between(1, 2);
       game_context.experience[entity_id] += exp_gain;
       handle_cultivation(entity_id);
-      game_context.speed[entity_id].current_velocity = 0;
+      game_context.speed[entity_id].velocity = 0;
       break;
 
     case Decisions__Wait:
-      game_context.speed[entity_id].current_velocity = 0;
+      game_context.speed[entity_id].velocity = 0;
       break;
 
     default:

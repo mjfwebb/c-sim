@@ -8,8 +8,7 @@ typedef struct EntityDistance {
 } EntityDistance;
 
 typedef struct {
-  float current_velocity;
-  float previous_velocity;
+  float velocity;
   Vec2 current_direction;
   Vec2 previous_direction;
 } SpeedComponent;

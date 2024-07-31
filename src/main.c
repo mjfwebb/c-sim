@@ -375,16 +375,15 @@ void draw_border(FRect around, float gap_width, float border_width) {
 }
 
 void move_entity(int entity_id) {
-  if (game_context.speed[entity_id].current_velocity == 0.0f) {
+  if (game_context.speed[entity_id].velocity == 0.0f) {
     return;
   }
 
   game_context.speed[entity_id].previous_direction = game_context.speed[entity_id].current_direction;
-  game_context.speed[entity_id].previous_velocity = game_context.speed[entity_id].current_velocity;
 
-  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * game_context.speed[entity_id].current_velocity *
+  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * game_context.speed[entity_id].velocity *
                                                (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
-  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * game_context.speed[entity_id].current_velocity *
+  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * game_context.speed[entity_id].velocity *
                                                (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
 }
 
