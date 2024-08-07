@@ -2,6 +2,7 @@
 
 #include "headers.h"
 
+#include "entity_names.c"
 #include "defs.c"
 #include "gfx.c"
 #include "fonts.c"
@@ -185,6 +186,20 @@ float draw_stats(int entity_id, FRect around, float y_start) {
   line_number++;
   int realm = game_context.realm[entity_id] + 1;
   sprintf(text_buffer, "Experience: %d/%d", game_context.experience[entity_id], (realm * 50) << realm);
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
+  );
+
+  line_number++;
+  sprintf(text_buffer, "Hunger: %d/%d", game_context.hunger_current[entity_id], game_context.hunger_max[entity_id]);
+  draw_text_outlined_utf8(
+      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
+      font
+  );
+
+  line_number++;
+  sprintf(text_buffer, "Thirst: %d/%d", game_context.thirst_current[entity_id], game_context.thirst_max[entity_id]);
   draw_text_outlined_utf8(
       text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
       font
@@ -668,8 +683,7 @@ void update(void) {
 
   if (physics_context.simulation_speed > 0) {
     loop(game_context.entity_count, entity_id) {
-      make_decision(entity_id);
-      make_action(entity_id);
+      reduce_countdowns(entity_id);
       move_entity(entity_id);
 
       game_context.position[entity_id].current.x =

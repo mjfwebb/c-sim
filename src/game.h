@@ -21,6 +21,10 @@ typedef struct {
 typedef struct {
   int health_current[MAX_ENTITIES];
   int health_max[MAX_ENTITIES];
+  int hunger_current[MAX_ENTITIES];
+  int hunger_max[MAX_ENTITIES];
+  int thirst_current[MAX_ENTITIES];
+  int thirst_max[MAX_ENTITIES];
   char name[MAX_ENTITIES][128];
   bool selected[MAX_ENTITIES];
   bool single_entity_selected;
@@ -34,6 +38,8 @@ typedef struct {
   int entity_count;
   int action_countdown[MAX_ENTITIES];
   int decision_countdown[MAX_ENTITIES];
+  int hunger_countdown[MAX_ENTITIES];
+  int thirst_countdown[MAX_ENTITIES];
   int killed_by[MAX_ENTITIES];
   SpeedComponent speed[MAX_ENTITIES];
   Position position[MAX_ENTITIES];

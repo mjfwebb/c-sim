@@ -1,111 +1,5 @@
 #include "headers.h"
 
-char entity_names[][32] = {
-    "pushqrdx",
-    "Athano",
-    "AshenHobs",
-    "adrian_learns",
-    "RVerite",
-    "Orshy",
-    "ruggs888",
-    "Xent12",
-    "nuke_bird",
-    "kasper_573",
-    "SturdyPose",
-    "coffee_lava",
-    "goudacheeseburgers",
-    "ikiwixz",
-    "NixAurvandil",
-    "smilingbig",
-    "tk_dev",
-    "realSuperku",
-    "Hoby2000",
-    "CuteMath",
-    "forodor",
-    "Azenris",
-    "collector_of_stuff",
-    "EvanMMO",
-    "thechaosbean",
-    "Lutf1sk",
-    "BauBas9883",
-    "physbuzz",
-    "rizoma0x00",
-    "Tkap1",
-    "GavinsAwfulStream",
-    "Resist_0",
-    "b1k4sh",
-    "nhancodes",
-    "qcircuit1",
-    "fruloo",
-    "programmer_jeff",
-    "BluePinStudio",
-    "Pierito95RsNg",
-    "jumpylionnn",
-    "Aruseus",
-    "lastmiles",
-    "soulfoam",
-    "AQtun81",
-    "jess_forrealz",
-    "RAFi18",
-    "Delvoid",
-    "Lolboy_30",
-    "VevenVelour",
-    "Kisamius",
-    "tobias_bms",
-    "spectral_ray1",
-    "Toasty",  // AKA CarbonCollins
-    "Roilisi",
-    "MickyMaven",
-    "Katsuida",
-    "YogiEisbar",
-    "WaryOfDairy",
-    "BauBas9883",
-    "Kataemoi",
-    "AgentulSRI",
-    "Pushtoy",
-    "Neron0010",
-    "exodus_uk",
-    "Coopert1n0",
-    "mantra4aa",
-    "Keikzz",
-    "sreetunks",
-    "noisycat3",
-    "ca2software",
-    "GyrosGeier",
-    "GloriousSir",
-    "kuviman",
-    "nigelwithrow",
-    "pgorley",
-    "Kasie_SoftThorn",
-    "tapir2342",
-    "Protonmat",
-    "davexmachina_",
-    "seek1337",
-    "godmode0071",
-    "cakez77",
-    "TravisVroman",
-    "Deharma",
-    "Rogue_Wolf_Dev",
-    "Tuhkamjuhkam",
-    "lolDayzo",
-    "retromaximusplays",
-    "nickely",
-    "MaGetzUb",
-    "capuche_man",
-    "MrElmida",
-    "Zanarias",
-    "dasraizer",
-    "Riazey",
-    "Phil_Massicotte",
-    "whaatsuuup",
-    "BlaximusIV",
-    "homerjay48",
-    "Woozx",
-    "Przemko9856",
-    "whitent_",
-    "dandymcgee"
-};
-
 float get_entity_velocity(int entity_id) {
   float velocity = game_context.speed[entity_id].velocity;
   int realm = game_context.realm[entity_id] + 1;
@@ -125,14 +19,23 @@ void set_random_entity_direction(int entity_id, float velocity) {
   };
 }
 
-void create_entity(float entity_width, int texture_id, int health_current, int health_max, char* name, Species species, Vec2 position) {
+typedef struct {
+  int current;
+  int max;
+} Stat;
+
+void create_entity(float entity_width, int texture_id, Stat health, Stat hunger, Stat thirst, char* name, Species species, Vec2 position) {
   game_context.texture[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
 
   float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
   game_context.texture[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
 
-  game_context.health_current[game_context.entity_count] = health_current;
-  game_context.health_max[game_context.entity_count] = health_max;
+  game_context.health_current[game_context.entity_count] = health.current;
+  game_context.health_max[game_context.entity_count] = health.max;
+  game_context.hunger_current[game_context.entity_count] = hunger.current;
+  game_context.hunger_max[game_context.entity_count] = hunger.max;
+  game_context.thirst_current[game_context.entity_count] = thirst.current;
+  game_context.thirst_max[game_context.entity_count] = thirst.max;
 
   strcpy(game_context.name[game_context.entity_count], name);  // FIXME: Use the safe version strcpy_s. PRs welcome
 
@@ -145,6 +48,8 @@ void create_entity(float entity_width, int texture_id, int health_current, int h
 
   game_context.decision_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_NEXT_DECISION);
   game_context.action_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_NEXT_ACTION);
+  game_context.hunger_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_HUNGER);
+  game_context.thirst_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_THIRST);
   game_context.decision[game_context.entity_count] = Decisions__Wait;
 
   game_context.position[game_context.entity_count] = (Position){
@@ -171,21 +76,58 @@ void create_entity(float entity_width, int texture_id, int health_current, int h
 
 void create_tree(void) {
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
-  create_entity(500.0f, random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6), 1000, 1000, "tree", Species__Tree, position);
+  Stat health = {
+      .current = 1000,
+      .max = 1000,
+  };
+  Stat hunger = {
+      .current = 0,
+      .max = 0,
+  };
+  Stat thirst = {
+      .current = 0,
+      .max = 0,
+  };
+  create_entity(500.0f, random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6), health, hunger, thirst, "tree", Species__Tree, position);
 
   game_context.entity_count++;
 }
 
 void create_rock(void) {
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
-  create_entity(100.0f, GFX_TEXTURE_ROCK, 1000, 1000, "rock", Species__Rock, position);
+  Stat health = {
+      .current = 1000,
+      .max = 1000,
+  };
+  Stat hunger = {
+      .current = 0,
+      .max = 0,
+  };
+  Stat thirst = {
+      .current = 0,
+      .max = 0,
+  };
+  create_entity(100.0f, GFX_TEXTURE_ROCK, health, hunger, thirst, "rock", Species__Rock, position);
 
   game_context.entity_count++;
 }
 
 void create_human(char* name) {
   Vec2 position = {.x = (float)random_int_between(-1000, 1000), .y = (float)random_int_between(-1000, 1000)};
-  create_entity(100.0f, random_int_between(0, 7), 100, 100, name, Species__Human, position);
+  Stat health = {
+      .current = 100,
+      .max = 100,
+  };
+  Stat hunger = {
+      .current = 100,
+      .max = 100,
+  };
+  Stat thirst = {
+      .current = 100,
+      .max = 100,
+  };
+
+  create_entity(100.0f, random_int_between(0, 7), health, hunger, thirst, name, Species__Human, position);
 
   set_random_entity_direction(game_context.entity_count, BASE_VELOCITY);
 

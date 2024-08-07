@@ -241,22 +241,19 @@ void make_action_human(int entity_id) {
 }
 
 void make_action(int entity_id) {
-  game_context.action_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
-  if (game_context.health_current[entity_id] > 0 && game_context.action_countdown[entity_id] <= 0) {
-    // Passive regeneration!
-    game_context.health_current[entity_id] = min(game_context.health_max[entity_id], game_context.health_current[entity_id] + 1);
+  // Passive regeneration!
+  game_context.health_current[entity_id] = min(game_context.health_max[entity_id], game_context.health_current[entity_id] + 1);
 
-    switch (game_context.species[entity_id]) {
-      case Species__Human:
-        make_action_human(entity_id);
-        break;
+  switch (game_context.species[entity_id]) {
+    case Species__Human:
+      make_action_human(entity_id);
+      break;
 
-      default:
-        break;
-    }
-
-    game_context.action_countdown[entity_id] = TICKS_TO_NEXT_ACTION;
+    default:
+      break;
   }
+
+  game_context.action_countdown[entity_id] = TICKS_TO_NEXT_ACTION;
 }
 
 void make_decision_human(int entity_id) {
@@ -318,21 +315,42 @@ void make_decision_human(int entity_id) {
 }
 
 void make_decision(int entity_id) {
+  // Let's see if the entity should find a new direction
+  // i.e. a new target, like a tree to chop down
+
+  switch (game_context.species[entity_id]) {
+    case Species__Human:
+      make_decision_human(entity_id);
+      break;
+
+    default:
+      game_context.decision[entity_id] = Decisions__Wait;
+      break;
+  }
+
+  game_context.decision_countdown[entity_id] = TICKS_TO_NEXT_DECISION;
+}
+
+void reduce_countdowns(int entity_id) {
+  game_context.action_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+  if (game_context.health_current[entity_id] > 0 && game_context.action_countdown[entity_id] <= 0) {
+    make_action(entity_id);
+  }
+
   game_context.decision_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
   if (game_context.decision_countdown[entity_id] <= 0) {
-    // Let's see if the entity should find a new direction
-    // i.e. a new target, like a tree to chop down
+    make_decision(entity_id);
+  }
 
-    switch (game_context.species[entity_id]) {
-      case Species__Human:
-        make_decision_human(entity_id);
-        break;
+  game_context.hunger_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+  if (game_context.hunger_countdown[entity_id] <= 0) {
+    game_context.hunger_current[entity_id] = max(0, game_context.hunger_current[entity_id] - 1);
+    game_context.hunger_countdown[entity_id] = TICKS_TO_HUNGER;
+  }
 
-      default:
-        game_context.decision[entity_id] = Decisions__Wait;
-        break;
-    }
-
-    game_context.decision_countdown[entity_id] = TICKS_TO_NEXT_DECISION;
+  game_context.thirst_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+  if (game_context.thirst_countdown[entity_id] <= 0) {
+    game_context.thirst_current[entity_id] = max(0, game_context.thirst_current[entity_id] - 1);
+    game_context.thirst_countdown[entity_id] = TICKS_TO_THIRST;
   }
 }
