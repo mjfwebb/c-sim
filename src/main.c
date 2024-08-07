@@ -91,6 +91,19 @@ FRect get_camera_rect(void) {
   return camera_rect;
 }
 
+FRect get_entity_hit_box_rect(int entity_id) {
+  FRect hit_box_rect = {0};
+  hit_box_rect.position = game_context.position[entity_id].current;
+  hit_box_rect.position.x += game_context.hit_box_offset_position[entity_id].x;
+  hit_box_rect.position.y += game_context.hit_box_offset_position[entity_id].y;
+  hit_box_rect.size.x =
+      game_context.position[entity_id].current.x + game_context.texture[entity_id].size.x - game_context.hit_box_offset_size[entity_id].x;
+  hit_box_rect.size.y =
+      game_context.position[entity_id].current.y + game_context.texture[entity_id].size.y - game_context.hit_box_offset_size[entity_id].y;
+
+  return hit_box_rect;
+}
+
 FRect get_entity_render_rect(int entity_id) {
   FRect texture_rect = {0};
   texture_rect.position = game_context.position[entity_id].current;
@@ -295,26 +308,30 @@ float draw_personalities(int entity_id, FRect around, float y_start) {
   return font_size * (line_number + 2);
 }
 
-void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
+void draw_name(int entity_id, RenderBatcher *batcher) {
+  FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
+  FRect entity_hit_box_screen_rect = frect_world_to_screen(entity_hit_box_rect);
+
   Font *font = &render_context.fonts[0];
   RGBA color = (RGBA){1, 1, 1, 1};
-  FRect entity_render_rect = get_entity_render_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
-
-  float y = (entity_screen_rect.position.y - (45.0f));
-
+  float name_y = (entity_hit_box_screen_rect.position.y - (45.0f));
   if (game_context.hovered[entity_id]) {
-    y -= 10.0f;  // move the text up a little when using the bigger font
+    name_y -= 10.0f;  // move the text up a little when using the bigger font
     color = (RGBA){1, 1, 0, 1};
     font = &render_context.fonts[1];
   }
+  Vec2 name_size = get_text_size(game_context.name[entity_id], font, false, true);
+  float diff = ((entity_hit_box_screen_rect.size.x - entity_hit_box_screen_rect.position.x) / 2) - (name_size.x / 2);
+  float name_x = entity_hit_box_screen_rect.position.x + diff;
 
-  Vec2 text_size = get_text_size(game_context.name[entity_id], font, false, true);
+  draw_text_outlined_utf8_batched(game_context.name[entity_id], (Vec2){.x = name_x, .y = name_y}, color, (RGBA){0, 0, 0, 1}, font, batcher);
+}
 
-  float diff = ((entity_screen_rect.size.x - entity_screen_rect.position.x) / 2) - (text_size.x / 2);
-  float x = entity_screen_rect.position.x + diff;
+void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
+  FRect entity_render_rect = get_entity_render_rect(entity_id);
+  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
 
-  draw_text_outlined_utf8_batched(game_context.name[entity_id], (Vec2){x, y}, color, (RGBA){0, 0, 0, 1}, font, batcher);
+  draw_name(entity_id, batcher);
 
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {
@@ -422,6 +439,8 @@ int dead_entity_texture(int entity_id) {
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   FRect entity_render_rect = get_entity_render_rect(entity_id);
   FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
+  FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
+  FRect entity_hit_box_screen_rect = frect_world_to_screen(entity_hit_box_rect);
   FRect entity_shadow_rect = entity_screen_rect;
 
   float entity_shadow_height = entity_shadow_rect.size.y - entity_shadow_rect.position.y;
@@ -445,13 +464,13 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
     );
 
     if (render_context.camera.zoom > 0.5f) {
-      draw_health_bar(entity_id, entity_screen_rect);
+      draw_health_bar(entity_id, entity_hit_box_screen_rect);
     }
   }
 
   // FIXME: Make this faster using the render batcher
   if (game_context.selected[entity_id]) {
-    draw_border(entity_screen_rect, 5.0f, 4.0f);
+    draw_border(entity_hit_box_screen_rect, 5.0f, 4.0f);
   }
 }
 
@@ -631,8 +650,8 @@ int get_entity_to_follow(void) {
 // Set selected on any entity within the selection_rect
 void select_entities_within_selection_rect(void) {
   loop(game_context.entity_count, entity_id) {
-    FRect entity_render_rect = get_entity_render_rect(entity_id);
-    FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
+    FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
+    FRect entity_screen_rect = frect_world_to_screen(entity_hit_box_rect);
 
     Vec2 point_top_left = {
         .x = entity_screen_rect.position.x,
@@ -658,8 +677,8 @@ void select_entities_within_selection_rect(void) {
 }
 
 bool is_entity_under_mouse(int entity_id) {
-  FRect entity_render_rect = get_entity_render_rect(entity_id);
-  FRect rect = frect_world_to_screen(entity_render_rect);
+  FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
+  FRect rect = frect_world_to_screen(entity_hit_box_rect);
 
   return gfx_frect_contains_point(&rect, &mouse_state.position);
 }

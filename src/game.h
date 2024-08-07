@@ -43,6 +43,8 @@ typedef struct {
   int killed_by[MAX_ENTITIES];
   SpeedComponent speed[MAX_ENTITIES];
   Position position[MAX_ENTITIES];
+  Vec2 hit_box_offset_position[MAX_ENTITIES];
+  Vec2 hit_box_offset_size[MAX_ENTITIES];
   TextureComponent texture[MAX_ENTITIES];
   bool game_is_still_running;
   bool in_pause_menu;

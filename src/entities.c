@@ -24,7 +24,10 @@ typedef struct {
   int max;
 } Stat;
 
-void create_entity(float entity_width, int texture_id, Stat health, Stat hunger, Stat thirst, char* name, Species species, Vec2 position) {
+void create_entity(
+    float entity_width, int texture_id, Stat health, Stat hunger, Stat thirst, char* name, Species species, Vec2 position,
+    Vec2 hit_box_offset_position, Vec2 hit_box_offset_size
+) {
   game_context.texture[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
 
   float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
@@ -52,6 +55,9 @@ void create_entity(float entity_width, int texture_id, Stat health, Stat hunger,
   game_context.thirst_countdown[game_context.entity_count] = random_int_between(0, TICKS_TO_THIRST);
   game_context.decision[game_context.entity_count] = Decisions__Wait;
 
+  game_context.hit_box_offset_position[game_context.entity_count] = hit_box_offset_position;
+  game_context.hit_box_offset_size[game_context.entity_count] = hit_box_offset_size;
+
   game_context.position[game_context.entity_count] = (Position){
       .current = position,
       .target = position,
@@ -75,7 +81,21 @@ void create_entity(float entity_width, int texture_id, Stat health, Stat hunger,
 }
 
 void create_tree(void) {
+  float entity_width = 500.0f;
+  int texture_id = random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6);
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
+  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
+  Vec2 texture_size = {
+      .x = entity_width,
+      .y = (float)(render_context.texture_atlas.size[texture_id].y * scale),
+  };
+
+  // These values get added to the current position
+  Vec2 position_offset = {.x = 150.0f, .y = texture_size.y - 200.0f};
+
+  // These values get subtracted from (current position + texture_size)
+  Vec2 size_offset = {.x = 150.0f, .y = 0.0f};
+
   Stat health = {
       .current = 1000,
       .max = 1000,
@@ -88,7 +108,7 @@ void create_tree(void) {
       .current = 0,
       .max = 0,
   };
-  create_entity(500.0f, random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6), health, hunger, thirst, "tree", Species__Tree, position);
+  create_entity(entity_width, texture_id, health, hunger, thirst, "tree", Species__Tree, position, position_offset, size_offset);
 
   game_context.entity_count++;
 }
@@ -107,7 +127,7 @@ void create_rock(void) {
       .current = 0,
       .max = 0,
   };
-  create_entity(100.0f, GFX_TEXTURE_ROCK, health, hunger, thirst, "rock", Species__Rock, position);
+  create_entity(100.0f, GFX_TEXTURE_ROCK, health, hunger, thirst, "rock", Species__Rock, position, (Vec2){0}, (Vec2){0});
 
   game_context.entity_count++;
 }
@@ -127,7 +147,7 @@ void create_human(char* name) {
       .max = 100,
   };
 
-  create_entity(100.0f, random_int_between(0, 7), health, hunger, thirst, name, Species__Human, position);
+  create_entity(100.0f, random_int_between(0, 7), health, hunger, thirst, name, Species__Human, position, (Vec2){0}, (Vec2){0});
 
   set_random_entity_direction(game_context.entity_count, BASE_VELOCITY);
 
