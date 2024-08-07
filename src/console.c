@@ -129,6 +129,17 @@ static bool follow_entity(char* text) {
   return false;
 }
 
+static bool follow_random_entity(char* text) {
+  int found_entity = random_int_between(0, array_count(entity_names));
+
+  loop(game_context.entity_count, entity_id) {
+    game_context.selected[entity_id] = false;
+  };
+
+  game_context.selected[found_entity] = true;
+  return true;
+}
+
 static bool heal_entity(char* text) {
   int found_entity = -1;
 
@@ -204,6 +215,11 @@ ConsoleCommand console_commands[] = {
         .callback = follow_entity,
         .close_console_on_success = true,
         .args[0].suggestion_callback = get_entity_names,
+    },
+    {
+        .name = "random_follow",
+        .callback = follow_random_entity,
+        .close_console_on_success = true,
     },
     {
         .name = "heal",
@@ -297,6 +313,7 @@ void console_execute_command(void) {
       }
 
       found_command = true;
+      break;
     }
   }
 
