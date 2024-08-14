@@ -439,8 +439,6 @@ int dead_entity_texture(int entity_id) {
 void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   FRect entity_render_rect = get_entity_render_rect(entity_id);
   FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
-  FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
-  FRect entity_hit_box_screen_rect = frect_world_to_screen(entity_hit_box_rect);
   FRect entity_shadow_rect = entity_screen_rect;
 
   float entity_shadow_height = entity_shadow_rect.size.y - entity_shadow_rect.position.y;
@@ -462,15 +460,6 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
     render_batcher_copy_texture_quad(
         batcher, render_context.texture_atlas.textures[game_context.texture[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
     );
-
-    if (render_context.camera.zoom > 0.5f) {
-      draw_health_bar(entity_id, entity_hit_box_screen_rect);
-    }
-  }
-
-  // FIXME: Make this faster using the render batcher
-  if (game_context.selected[entity_id]) {
-    draw_border(entity_hit_box_screen_rect, 5.0f, 4.0f);
   }
 }
 
@@ -914,8 +903,6 @@ void render(void) {
 
   draw_terrain(&render_batcher);
 
-  flush_render_batcher(&render_batcher);
-
   // draw_grid();
 
   FRect camera_rect = get_camera_rect();
@@ -939,15 +926,25 @@ void render(void) {
   }
 
   if (render_context.camera.zoom > 0.5f) {
-    loop(game_context.entity_count, entity_id) {
-      FRect entity_render_rect = get_entity_render_rect(entity_id);
-      if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
-        draw_entity_info_batched(entity_id, &render_batcher);
-      }
+    loop(num_of_visible_entities, index) {
+      draw_entity_info_batched(visible_entities[index], &render_batcher);
     }
   }
 
   flush_render_batcher(&render_batcher);
+
+  if (render_context.camera.zoom > 0.5f) {
+    loop(num_of_visible_entities, index) {
+      int entity_id = visible_entities[index];
+      FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
+      FRect entity_hit_box_screen_rect = frect_world_to_screen(entity_hit_box_rect);
+      // FIXME: Make this faster using the render batcher
+      draw_health_bar(entity_id, entity_hit_box_screen_rect);
+      if (game_context.selected[entity_id]) {
+        draw_border(entity_hit_box_screen_rect, 5.0f, 4.0f);
+      }
+    }
+  }
 
   if (mouse_primary_pressed(mouse_state)) {
     // Draw the selection box
