@@ -106,4 +106,5 @@ char entity_names[][32] = {
     "Sv3r",
     "electus200",
     "khnhkhnh8686",
+    "TimBeaudet"
 };

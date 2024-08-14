@@ -80,6 +80,10 @@ void create_entity(
   };
 }
 
+bool entity_has_personality(int entity_index, Personality personality) {
+  return game_context.personalities[entity_index][personality] > 0;
+}
+
 void create_tree(void) {
   float entity_width = 500.0f;
   int texture_id = random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6);
@@ -149,12 +153,43 @@ void create_human(char* name) {
 
   create_entity(100.0f, random_int_between(0, 7), health, hunger, thirst, name, Species__Human, position, (Vec2){0}, (Vec2){0});
 
-  set_random_entity_direction(game_context.entity_count, BASE_VELOCITY);
+  int entity_id = game_context.entity_count;
+  set_random_entity_direction(entity_id, BASE_VELOCITY);
 
   int random_amount_of_personalities = random_int_between(5, 10);
   for (int i = 0; i < random_amount_of_personalities; i++) {
     int personality = random_int_between(0, Personality_Count);
-    game_context.personalities[game_context.entity_count][personality] = random_int_between(0, 100);
+    game_context.personalities[entity_id][personality] = random_int_between(0, 100);
+  }
+
+  int length = 0;
+  for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
+    if (entity_has_personality(entity_id, personality_i)) {
+      if (length == 0) {
+        game_context.sorted_personalities[entity_id][0] = personality_i;
+        length++;
+        continue;
+      }
+
+      int score = game_context.personalities[entity_id][personality_i];
+
+      for (int i = 0; i < length; i++) {
+        if (score > game_context.personalities[entity_id][game_context.sorted_personalities[entity_id][i]]) {
+          memmove(game_context.sorted_personalities[entity_id] + i + 1, game_context.sorted_personalities[entity_id] + i, (length - i) * sizeof(int));
+          game_context.sorted_personalities[entity_id][i] = personality_i;
+          length++;
+          break;
+        }
+
+        if (i == length - 1) {
+          game_context.sorted_personalities[entity_id][length] = personality_i;
+          length++;
+          break;
+        }
+      }
+    }
+
+    game_context.sorted_personalities_length[entity_id] = length;
   }
 
   game_context.entity_count++;

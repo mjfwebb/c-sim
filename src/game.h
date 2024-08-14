@@ -31,6 +31,8 @@ typedef struct {
   bool hovered[MAX_ENTITIES];
   Vec2 direction[MAX_ENTITIES];
   int personalities[MAX_ENTITIES][Personality_Count];
+  int sorted_personalities[MAX_ENTITIES][Personality_Count];
+  int sorted_personalities_length[MAX_ENTITIES];
   int species[MAX_ENTITIES];
   int decision[MAX_ENTITIES];
   int experience[MAX_ENTITIES];

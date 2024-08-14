@@ -24,10 +24,6 @@ int game_is_still_running = 1;
 int visible_entities[10000] = {0};
 int num_of_visible_entities = 0;
 
-bool entity_has_personality(int entity_index, Personality personality) {
-  return game_context.personalities[entity_index][personality] > 0;
-}
-
 Vec2 vec2_world_to_screen(Vec2 point) {
   Vec2 translated_point;
   translated_point.x = (point.x - render_context.camera.current.x) * render_context.camera.zoom + render_context.window_w * 0.5f;
@@ -185,127 +181,18 @@ char *cultivation_realm_name(int cultivation_realm) {
   }
 }
 
-float draw_stats(int entity_id, FRect around, float y_start) {
+void buffer_text(char *text_buffer, float *max_width, char *format, ...) {
   Font *font = &render_context.fonts[0];
-  float font_size = (float)font->size;
-  char text_buffer[128];
-  int line_number = 0;
-  sprintf(text_buffer, "Realm: %s", cultivation_realm_name(game_context.realm[entity_id]));
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
+  va_list args;
+  va_start(args, format);
+  vsnprintf(text_buffer, 128, format, args);
+  va_end(args);
 
-  line_number++;
-  int realm = game_context.realm[entity_id] + 1;
-  sprintf(text_buffer, "Experience: %d/%d", game_context.experience[entity_id], (realm * 50) << realm);
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
+  float current_text_width = get_text_size(text_buffer, font, true, false).x;
 
-  line_number++;
-  sprintf(text_buffer, "Hunger: %d/%d", game_context.hunger_current[entity_id], game_context.hunger_max[entity_id]);
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
-
-  line_number++;
-  sprintf(text_buffer, "Thirst: %d/%d", game_context.thirst_current[entity_id], game_context.thirst_max[entity_id]);
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
-
-  line_number++;
-  sprintf(text_buffer, "Species: %s", Species__Strings[game_context.species[entity_id]]);
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
-
-  line_number++;
-  sprintf(text_buffer, "Decision: %s", Decisions__Strings[game_context.decision[entity_id]]);
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
-
-  if (game_context.health_current[entity_id] <= 0) {
-    line_number++;
-    sprintf(text_buffer, "Killed by: %s", game_context.name[game_context.killed_by[entity_id]]);
-    draw_text_outlined_utf8(
-        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-        font
-    );
+  if (current_text_width > *max_width) {
+    *max_width = current_text_width;
   }
-
-  line_number++;
-  sprintf(text_buffer, "Aggressive score: %d", aggressive_personality_score(entity_id));
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
-
-  line_number++;
-  sprintf(text_buffer, "Velocity: %f", get_entity_velocity(entity_id));
-  draw_text_outlined_utf8(
-      text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-      font
-  );
-
-  return font_size * (line_number + 1);
-}
-
-float draw_personalities(int entity_id, FRect around, float y_start) {
-  // TODO: This should probably be sorted on creation, so we don't need to do it on every render
-  Font *font = &render_context.fonts[0];
-  float font_size = (float)font->size;
-  int sorted_personality_ids[16] = {0};
-  int length = 0;
-
-  for (int personality_i = 0; personality_i < Personality_Count; personality_i++) {
-    if (entity_has_personality(entity_id, personality_i)) {
-      if (length == 0) {
-        sorted_personality_ids[0] = personality_i;
-        length++;
-        continue;
-      }
-
-      int score = game_context.personalities[entity_id][personality_i];
-
-      for (int i = 0; i < length; i++) {
-        if (score > game_context.personalities[entity_id][sorted_personality_ids[i]]) {
-          memmove(sorted_personality_ids + i + 1, sorted_personality_ids + i, (length - i) * sizeof(int));
-          sorted_personality_ids[i] = personality_i;
-          length++;
-          break;
-        }
-
-        if (i == length - 1) {
-          sorted_personality_ids[length] = personality_i;
-          length++;
-          break;
-        }
-      }
-    }
-  }
-
-  char text_buffer[128];
-  int line_number = 0;
-  for (line_number = 0; line_number < length; line_number++) {
-    sprintf(
-        text_buffer, "%s: %d", Personality__Strings[sorted_personality_ids[line_number]],
-        game_context.personalities[entity_id][sorted_personality_ids[line_number]]
-    );
-    draw_text_outlined_utf8(
-        text_buffer, (Vec2){around.position.x, (around.size.y + 10.0f + y_start + (font_size * line_number))}, (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1},
-        font
-    );
-  }
-
-  return font_size * (line_number + 2);
 }
 
 void draw_name(int entity_id, RenderBatcher *batcher) {
@@ -328,17 +215,62 @@ void draw_name(int entity_id, RenderBatcher *batcher) {
 }
 
 void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
-  FRect entity_render_rect = get_entity_render_rect(entity_id);
-  FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
+  FRect top_right_screen_rect =
+      {.position =
+           {
+               .x = 0,
+               .y = 0,
+           },
+       .size = {
+           .x = 0,
+           .y = 0,
+       }};
 
-  draw_name(entity_id, batcher);
+  // Draw the personalities list
+  Font *font = &render_context.fonts[0];
+  float font_size = (float)font->size;
+  char text_buffer[64][128];
+  int line_number = 0;
+  float max_text_width = 0.0f;
+  float y_start = 20.0f;
+  int realm = game_context.realm[entity_id] + 1;
 
-  // FIXME: Make this faster using the render batcher
-  if (game_context.selected[entity_id]) {
-    // Draw the personalities list
-    float bottom_of_stats = draw_stats(entity_id, entity_screen_rect, 0.0f);
+  buffer_text(text_buffer[line_number], &max_text_width, "ID: %d", entity_id);
+  buffer_text(text_buffer[++line_number], &max_text_width, "Realm: %s", cultivation_realm_name(game_context.realm[entity_id]));
+  buffer_text(text_buffer[++line_number], &max_text_width, "Experience: %d/%d", game_context.experience[entity_id], (realm * 50) << realm);
+  buffer_text(
+      text_buffer[++line_number], &max_text_width, "Hunger: %d/%d", game_context.hunger_current[entity_id], game_context.hunger_max[entity_id]
+  );
+  buffer_text(
+      text_buffer[++line_number], &max_text_width, "Thirst: %d/%d", game_context.thirst_current[entity_id], game_context.thirst_max[entity_id]
+  );
+  buffer_text(text_buffer[++line_number], &max_text_width, "Species: %s", Species__Strings[game_context.species[entity_id]]);
+  buffer_text(text_buffer[++line_number], &max_text_width, "Decision: %s", Decisions__Strings[game_context.decision[entity_id]]);
+  if (game_context.health_current[entity_id] <= 0) {
+    buffer_text(text_buffer[++line_number], &max_text_width, "Killed by: %s", game_context.name[game_context.killed_by[entity_id]]);
+  }
+  buffer_text(text_buffer[++line_number], &max_text_width, "Aggressive score: %d", aggressive_personality_score(entity_id));
+  buffer_text(text_buffer[++line_number], &max_text_width, "Velocity: %f", get_entity_velocity(entity_id));
 
-    draw_personalities(entity_id, entity_screen_rect, bottom_of_stats);
+  for (int personality_index = 0; personality_index < game_context.sorted_personalities_length[entity_id]; personality_index++) {
+    int personality_value = game_context.personalities[entity_id][game_context.sorted_personalities[entity_id][personality_index]];
+
+    if (personality_value == 0) {
+      break;
+    }
+
+    buffer_text(
+        text_buffer[++line_number], &max_text_width, "%s: %d", Personality__Strings[game_context.sorted_personalities[entity_id][personality_index]],
+        personality_value
+    );
+  }
+
+  for (int i = 0; i <= line_number; i++) {
+    draw_text_outlined_utf8_batched(
+        text_buffer[i],
+        (Vec2){.x = (float)(render_context.window_w - (max_text_width + 40.0f)), (top_right_screen_rect.size.y + 10.0f + y_start + (font_size * i))},
+        (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1}, font, batcher
+    );
   }
 }
 
@@ -621,7 +553,7 @@ void keyboard_control_camera(void) {
   }
 }
 
-int get_entity_to_follow(void) {
+int get_singly_selected_entity(void) {
   int result = INVALID_ENTITY;
   int selected_count = 0;
   loop(game_context.entity_count, entity_id) {
@@ -854,7 +786,7 @@ void move_camera(void) {
       .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
   };
 
-  int entity_to_follow = get_entity_to_follow();
+  int entity_to_follow = get_singly_selected_entity();
 
   if (!game_context.single_entity_selected && mouse_primary_pressed(mouse_state)) {
     select_entities_within_selection_rect();
@@ -927,8 +859,13 @@ void render(void) {
 
   if (render_context.camera.zoom > 0.5f) {
     loop(num_of_visible_entities, index) {
-      draw_entity_info_batched(visible_entities[index], &render_batcher);
+      draw_name(visible_entities[index], &render_batcher);
     }
+  }
+
+  int single_entity = get_singly_selected_entity();
+  if (single_entity != INVALID_ENTITY) {
+    draw_entity_info_batched(single_entity, &render_batcher);
   }
 
   flush_render_batcher(&render_batcher);
@@ -968,7 +905,7 @@ void update_timer(Timer *timer, double frame_time) {
 }
 
 int main(int argc, char *args[]) {
-  srand(create_seed("we can cultivate now"));
+  srand(create_seed("I like calculating widths"));
 
   int gfx_init_result = gfx_init();
   if (gfx_init_result == 1) {
