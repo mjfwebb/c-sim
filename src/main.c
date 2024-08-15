@@ -2,7 +2,6 @@
 
 #include "headers.h"
 
-#include "entity_names.c"
 #include "defs.c"
 #include "gfx.c"
 #include "fonts.c"

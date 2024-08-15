@@ -14,6 +14,7 @@
 #include <time.h>
 #include <stdarg.h>
 
+#include "entity_names.h"
 #include "defs.h"
 #include "colors.h"
 #include "render_batcher.h"
