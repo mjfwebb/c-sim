@@ -151,21 +151,19 @@ TargetEntity find_entity_of_species(int entity_id, Species species) {
 }
 
 bool get_current_target(int entity_id, float valid_distance, TargetEntity* target) {
-  if (game_context.target_entity_id[entity_id] == INVALID_ENTITY) {
+  int target_id = game_context.target_entity_id[entity_id];
+
+  if (target_id == INVALID_ENTITY) {
     return false;
   }
 
-  TargetEntity target_temp = {
-      .distance = calculate_distance(get_entity_origin_point(entity_id), get_entity_origin_point(game_context.target_entity_id[entity_id])),
-      .id = game_context.target_entity_id[entity_id],
-  };
+  target->id = target_id;
+  target->distance = calculate_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target_id));
 
-  if (game_context.health_current[target_temp.id] <= 0 || target_temp.distance > valid_distance) {
+  if (game_context.health_current[target->id] <= 0 || target->distance > valid_distance) {
     game_context.target_entity_id[entity_id] = INVALID_ENTITY;
     return false;
   }
-
-  *target = target_temp;
 
   return true;
 }
