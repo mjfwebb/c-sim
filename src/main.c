@@ -86,19 +86,6 @@ FRect get_camera_rect(void) {
   return camera_rect;
 }
 
-FRect get_entity_hit_box_rect(int entity_id) {
-  FRect hit_box_rect = {0};
-  hit_box_rect.position = game_context.position[entity_id].current;
-  hit_box_rect.position.x += game_context.hit_box_offset_position[entity_id].x;
-  hit_box_rect.position.y += game_context.hit_box_offset_position[entity_id].y;
-  hit_box_rect.size.x =
-      game_context.position[entity_id].current.x + game_context.texture[entity_id].size.x - game_context.hit_box_offset_size[entity_id].x;
-  hit_box_rect.size.y =
-      game_context.position[entity_id].current.y + game_context.texture[entity_id].size.y - game_context.hit_box_offset_size[entity_id].y;
-
-  return hit_box_rect;
-}
-
 FRect get_entity_render_rect(int entity_id) {
   FRect texture_rect = {0};
   texture_rect.position = game_context.position[entity_id].current;
@@ -235,6 +222,7 @@ void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
   int realm = game_context.realm[entity_id] + 1;
 
   buffer_text(text_buffer[line_number], &max_text_width, "ID: %d", entity_id);
+  buffer_text(text_buffer[++line_number], &max_text_width, "Target ID: %d", game_context.target_entity_id[entity_id]);
   buffer_text(text_buffer[++line_number], &max_text_width, "Realm: %s", cultivation_realm_name(game_context.realm[entity_id]));
   buffer_text(text_buffer[++line_number], &max_text_width, "Experience: %d/%d", game_context.experience[entity_id], (realm * 50) << realm);
   buffer_text(

@@ -1,5 +1,40 @@
 #include "headers.h"
 
+FRect get_entity_hit_box_rect(int entity_id) {
+  FRect hit_box_rect = {0};
+  hit_box_rect.position = game_context.position[entity_id].current;
+  hit_box_rect.position.x += game_context.hit_box_offset_position[entity_id].x;
+  hit_box_rect.position.y += game_context.hit_box_offset_position[entity_id].y;
+  hit_box_rect.size.x =
+      game_context.position[entity_id].current.x + game_context.texture[entity_id].size.x - game_context.hit_box_offset_size[entity_id].x;
+  hit_box_rect.size.y =
+      game_context.position[entity_id].current.y + game_context.texture[entity_id].size.y - game_context.hit_box_offset_size[entity_id].y;
+
+  return hit_box_rect;
+}
+
+FRect get_entity_hit_box_rect_target(int entity_id) {
+  FRect hit_box_rect = {0};
+  hit_box_rect.position = game_context.position[entity_id].target;
+  hit_box_rect.position.x += game_context.hit_box_offset_position[entity_id].x;
+  hit_box_rect.position.y += game_context.hit_box_offset_position[entity_id].y;
+  hit_box_rect.size.x =
+      game_context.position[entity_id].target.x + game_context.texture[entity_id].size.x - game_context.hit_box_offset_size[entity_id].x;
+  hit_box_rect.size.y =
+      game_context.position[entity_id].target.y + game_context.texture[entity_id].size.y - game_context.hit_box_offset_size[entity_id].y;
+
+  return hit_box_rect;
+}
+
+Vec2 get_entity_origin_point(int entity_id) {
+  FRect entity_hit_box_rect = get_entity_hit_box_rect_target(entity_id);
+
+  return (Vec2){
+      .x = entity_hit_box_rect.position.x + (entity_hit_box_rect.size.x - entity_hit_box_rect.position.x) * 0.5f,
+      .y = entity_hit_box_rect.position.y + (entity_hit_box_rect.size.y - entity_hit_box_rect.position.y) * 0.5f,
+  };
+}
+
 float get_entity_velocity(int entity_id) {
   float velocity = game_context.speed[entity_id].velocity;
   int realm = game_context.realm[entity_id] + 1;
@@ -28,6 +63,7 @@ void create_entity(
     float entity_width, int texture_id, Stat health, Stat hunger, Stat thirst, char* name, Species species, Vec2 position,
     Vec2 hit_box_offset_position, Vec2 hit_box_offset_size
 ) {
+  game_context.target_entity_id[game_context.entity_count] = INVALID_ENTITY;
   game_context.texture[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
 
   float scale = entity_width / render_context.texture_atlas.size[texture_id].x;

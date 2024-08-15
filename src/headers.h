@@ -26,5 +26,6 @@
 #include "mouse_state.h"
 #include "physics.h"
 #include "species.h"
+#include "entities.h"
 #include "decisions.h"
 #include "pause_menu/pause_menu.h"

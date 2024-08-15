@@ -2,10 +2,10 @@
 
 #include "headers.h"
 
-typedef struct EntityDistance {
+typedef struct TargetEntity {
   float distance;
   int id;
-} EntityDistance;
+} TargetEntity;
 
 typedef struct {
   float velocity;
@@ -43,6 +43,7 @@ typedef struct {
   int hunger_countdown[MAX_ENTITIES];
   int thirst_countdown[MAX_ENTITIES];
   int killed_by[MAX_ENTITIES];
+  int target_entity_id[MAX_ENTITIES];
   SpeedComponent speed[MAX_ENTITIES];
   Position position[MAX_ENTITIES];
   Vec2 hit_box_offset_position[MAX_ENTITIES];
