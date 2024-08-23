@@ -108,7 +108,10 @@ void handle_attack(int entity_id, int attacker_id) {
     game_context.speed[entity_id].velocity = 0.0f;
     game_context.decision[entity_id] = Decisions__Wait;
     game_context.killed_by[entity_id] = attacker_id;
+    audio_play_sound(SOUND_KILL_ORGANIC_1);
     return;
+  } else {
+    audio_play_sound(random_int_between(SOUND_HIT_ORGANIC_1, SOUND_HIT_ORGANIC_3));
   }
 }
 
@@ -168,22 +171,34 @@ bool get_current_target(int entity_id, float valid_distance, TargetEntity* targe
   return true;
 }
 
-void play_decision_sound(int entity_id, Decisions decision) {
+void play_entity_sound(int entity_id, SoundEffect sound_effect) {
   if (!entity_is_visible(entity_id)) {
     return;
   }
 
-  switch (decision) {
-    case Decisions__Attack_Human:
-      audio_play_sound(random_int_between(SOUND_HIT_ORGANIC_1, SOUND_HIT_ORGANIC_3));
-      break;
+  audio_play_sound(sound_effect);
+}
 
+void play_decision_sound(int entity_id, Decisions decision) {
+  switch (decision) {
     case Decisions__Chop_Tree:
-      audio_play_sound(random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
       break;
 
     case Decisions__Mine_Rock:
-      audio_play_sound(random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
+      break;
+
+    case Decisions__Cultivate:
+      play_entity_sound(entity_id, SOUND_CULTIVATE_1);
+      break;
+
+    case Decisions__Heal_Human:
+      play_entity_sound(entity_id, SOUND_HEAL_1);
+      break;
+
+    case Decisions__Flee:
+      // play_entity_sound(entity_id, random_int_between(SOUND_FLEE_1, SOUND_FLEE_15));
       break;
 
     default:
@@ -249,6 +264,7 @@ void make_action_human(int entity_id) {
       if (valid_target) {
         int heal = random_int_between(3, 7) * (game_context.realm[entity_id] + 1);
         game_context.health_current[target.id] = max(game_context.health_max[target.id], game_context.health_current[target.id] + heal);
+        play_decision_sound(entity_id, Decisions__Heal_Human);
         handle_attack(target.id, entity_id);
       } else {
         game_context.decision[entity_id] = Decisions__Wait;
@@ -258,7 +274,6 @@ void make_action_human(int entity_id) {
       TargetEntity target;
       bool valid_target = get_current_target(entity_id, 100.0f, &target);
       if (valid_target) {
-        play_decision_sound(entity_id, game_context.decision[entity_id]);
         int damage = random_int_between(5, 15) * (game_context.realm[entity_id] + 1);
         game_context.health_current[target.id] = max(0, game_context.health_current[target.id] - damage);
         handle_attack(target.id, entity_id);
@@ -280,6 +295,7 @@ void make_action_human(int entity_id) {
     } break;
     case Decisions__Cultivate:
       int exp_gain = random_int_between(1, 2);
+      play_decision_sound(entity_id, Decisions__Cultivate);
       game_context.experience[entity_id] += exp_gain;
       handle_cultivation(entity_id);
       game_context.speed[entity_id].velocity = 0;

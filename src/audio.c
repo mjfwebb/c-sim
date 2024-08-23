@@ -1,38 +1,5 @@
 #include "headers.h"
 
-#define MAX_SOUNDS 10
-#define MAX_MUSIC 5
-#define MAX_VOLUME 128
-
-// Enums for sound effects and music tracks
-enum SoundEffect {
-  SOUND_HIT_WOOD_1,
-  SOUND_HIT_WOOD_2,
-  SOUND_HIT_WOOD_3,
-  KILL_WOOD_1,
-  SOUND_HIT_ROCK_1,
-  SOUND_HIT_ROCK_2,
-  SOUND_HIT_ROCK_3,
-  KILL_ROCK_1,
-  SOUND_HIT_ORGANIC_1,
-  SOUND_HIT_ORGANIC_2,
-  SOUND_HIT_ORGANIC_3,
-  KILL_ORGANIC_1,
-  SOUND_COUNT
-};
-
-enum MusicTrack { MUSIC_MAIN_THEME, MUSIC_MENU_THEME, MUSIC_COUNT };
-
-typedef struct {
-  Mix_Chunk* sounds[MAX_SOUNDS];
-  Mix_Music* music[MAX_MUSIC];
-  int sound_count;
-  int music_count;
-  int music_volume;
-  int sound_volume;
-  int master_volume;
-} AudioContext;
-
 AudioContext audio_context = {0};
 
 void audio_set_music_volume(int volume) {
@@ -60,6 +27,7 @@ void audio_set_master_volume(int volume) {
 }
 
 void audio_load_sound(enum SoundEffect sound, const char* filename) {
+  // TODO: Add check that file actually exists, because apparently SDL doesn't do that Q_Q
   if (sound < SOUND_COUNT && audio_context.sound_count < MAX_SOUNDS) {
     audio_context.sounds[sound] = Mix_LoadWAV(filename);
     if (audio_context.sounds[sound] == NULL) {
@@ -135,14 +103,16 @@ int audio_load_sounds(void) {
   audio_load_sound(SOUND_HIT_WOOD_1, "assets/audio/sounds/hit_wood_1.mp3");
   audio_load_sound(SOUND_HIT_WOOD_2, "assets/audio/sounds/hit_wood_2.mp3");
   audio_load_sound(SOUND_HIT_WOOD_3, "assets/audio/sounds/hit_wood_3.mp3");
-  audio_load_sound(KILL_WOOD_1, "assets/audio/sounds/kill_wood_1.mp3");
+  audio_load_sound(SOUND_KILL_WOOD_1, "assets/audio/sounds/kill_wood_1.mp3");
   audio_load_sound(SOUND_HIT_ROCK_1, "assets/audio/sounds/hit_rock_1.mp3");
   audio_load_sound(SOUND_HIT_ROCK_2, "assets/audio/sounds/hit_rock_2.mp3");
-  audio_load_sound(KILL_ROCK_1, "assets/audio/sounds/kill_rock_1.mp3");
+  audio_load_sound(SOUND_KILL_ROCK_1, "assets/audio/sounds/kill_rock_1.mp3");
   audio_load_sound(SOUND_HIT_ORGANIC_1, "assets/audio/sounds/hit_organic_1.mp3");
   audio_load_sound(SOUND_HIT_ORGANIC_2, "assets/audio/sounds/hit_organic_2.mp3");
   audio_load_sound(SOUND_HIT_ORGANIC_3, "assets/audio/sounds/hit_organic_3.mp3");
-  audio_load_sound(KILL_ORGANIC_1, "assets/audio/sounds/kill_organic_1.mp3");
+  audio_load_sound(SOUND_KILL_ORGANIC_1, "assets/audio/sounds/kill_organic_1.mp3");
+  audio_load_sound(SOUND_CULTIVATE_1, "assets/audio/sounds/cultivate_1.mp3");
+  audio_load_sound(SOUND_HEAL_1, "assets/audio/sounds/heal_1.mp3");
 
   // Load music tracks
   audio_load_music(MUSIC_MAIN_THEME, "assets/audio/music/main_theme.mp3");
