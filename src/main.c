@@ -24,17 +24,17 @@ int visible_entities[10000] = {0};
 int num_of_visible_entities = 0;
 
 Vec2 vec2_world_to_screen(Vec2 point) {
-  Vec2 translated_point;
-  translated_point.x = (point.x - render_context.camera.current.x) * render_context.camera.zoom + render_context.window_w * 0.5f;
-  translated_point.y = (point.y - render_context.camera.current.y) * render_context.camera.zoom + render_context.window_h * 0.5f;
-  return translated_point;
+  return (Vec2){
+      .x = (point.x - render_context.camera.current.x) * render_context.camera.zoom + (render_context.window_w * 0.5f),
+      .y = (point.y - render_context.camera.current.y) * render_context.camera.zoom + (render_context.window_h * 0.5f),
+  };
 }
 
 Vec2 vec2_screen_to_world(Vec2 point) {
-  Vec2 translated_point;
-  translated_point.x = (point.x - render_context.window_w * 0.5f) / render_context.camera.zoom + render_context.camera.current.x;
-  translated_point.y = (point.y - render_context.window_h * 0.5f) / render_context.camera.zoom + render_context.camera.current.y;
-  return translated_point;
+  return (Vec2){
+      .x = (point.x - render_context.window_w * 0.5f) / render_context.camera.zoom + render_context.camera.current.x,
+      .y = (point.y - render_context.window_h * 0.5f) / render_context.camera.zoom + render_context.camera.current.y,
+  };
 }
 
 FRect frect_world_to_screen(FRect rect) {
@@ -77,15 +77,13 @@ void load_fonts(void) {
   render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
-FRect get_camera_rect(void) {
-  FRect camera_rect = {
-      .left = render_context.camera.current.x,
-      .top = render_context.camera.current.y,
-      .right = (float)(render_context.camera.current.x + render_context.window_w),
-      .bottom = (float)(render_context.camera.current.y + render_context.window_h),
+FRect get_camera_world_rect(void) {
+  return (FRect){
+      .left = render_context.camera.current.x - (render_context.window_w * 0.5f) / render_context.camera.zoom,
+      .top = render_context.camera.current.y - (render_context.window_h * 0.5f) / render_context.camera.zoom,
+      .right = render_context.camera.current.x + (render_context.window_w * 0.5f) / render_context.camera.zoom,
+      .bottom = render_context.camera.current.y + (render_context.window_h * 0.5f) / render_context.camera.zoom,
   };
-
-  return camera_rect;
 }
 
 FRect get_entity_render_rect(int entity_id) {
@@ -814,15 +812,14 @@ void render(void) {
 
   // draw_grid();
 
-  FRect camera_rect = get_camera_rect();
-  FRect translated_rect = frect_screen_to_world(camera_rect);
+  FRect camera_rect = get_camera_world_rect();
 
   memset(visible_entities, 0, sizeof(visible_entities));
   num_of_visible_entities = 0;
   // Create a array of entities which are "visible"
   loop(game_context.entity_count, entity_id) {
     FRect entity_render_rect = get_entity_render_rect(entity_id);
-    if (gfx_frect_intersects_frect(&entity_render_rect, &translated_rect)) {
+    if (gfx_frect_intersects_frect(&entity_render_rect, &camera_rect)) {
       visible_entities[num_of_visible_entities] = entity_id;
       num_of_visible_entities++;
     }

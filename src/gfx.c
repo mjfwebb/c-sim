@@ -288,8 +288,8 @@ void gfx_clear_screen(void) {
 }
 
 // Check if two rectangles intersect
-bool gfx_frect_intersects_frect(FRect *rect_a, FRect *rect_b) {
-  return (rect_a->left > rect_b->left && rect_a->left < rect_b->right) || (rect_a->top > rect_b->top && rect_a->top < rect_b->bottom);
+bool gfx_frect_intersects_frect(FRect *a, FRect *b) {
+  return (a->left <= b->right && b->left <= a->right && a->top <= b->bottom && b->top <= a->bottom);
 }
 
 // Check if a rectangle contains a point
