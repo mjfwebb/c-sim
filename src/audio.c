@@ -46,7 +46,8 @@ void audio_set_music_volume(int volume) {
 void audio_set_sound_volume(int volume) {
   audio_context.sound_volume = volume;
 
-  int sound_volume = ((int)(audio_context.sound_volume * render_context.camera.zoom) * audio_context.master_volume) / MAX_VOLUME;
+  int sound_volume = ((int)(audio_context.sound_volume * render_context.camera.target_zoom) * audio_context.master_volume) / MAX_VOLUME;
+  print("setting sound volume to %d", sound_volume);
 
   Mix_Volume(-1, sound_volume);  // -1 means all channels
 }
@@ -123,7 +124,7 @@ int audio_init(void) {
   // audio_context.music_volume = 16;
   // audio_context.sound_volume = 16;
   audio_set_music_volume(16);
-  audio_set_master_volume(128);
+  audio_set_master_volume(64);
   audio_set_sound_volume(16);
 
   return EXIT_SUCCESS;
@@ -137,7 +138,6 @@ int audio_load_sounds(void) {
   audio_load_sound(KILL_WOOD_1, "assets/audio/sounds/kill_wood_1.mp3");
   audio_load_sound(SOUND_HIT_ROCK_1, "assets/audio/sounds/hit_rock_1.mp3");
   audio_load_sound(SOUND_HIT_ROCK_2, "assets/audio/sounds/hit_rock_2.mp3");
-  audio_load_sound(SOUND_HIT_ROCK_3, "assets/audio/sounds/hit_rock_3.mp3");
   audio_load_sound(KILL_ROCK_1, "assets/audio/sounds/kill_rock_1.mp3");
   audio_load_sound(SOUND_HIT_ORGANIC_1, "assets/audio/sounds/hit_organic_1.mp3");
   audio_load_sound(SOUND_HIT_ORGANIC_2, "assets/audio/sounds/hit_organic_2.mp3");

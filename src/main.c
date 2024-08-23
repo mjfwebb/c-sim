@@ -879,16 +879,6 @@ void update_timer(Timer *timer, double frame_time) {
 int main(int argc, char *args[]) {
   srand(create_seed("I like calculating widths"));
 
-  int gfx_init_result = gfx_init();
-  if (gfx_init_result == EXIT_FAILURE) {
-    return EXIT_FAILURE;
-  }
-
-  int audio_init_result = audio_init();
-  if (audio_init_result == EXIT_FAILURE) {
-    return EXIT_FAILURE;
-  }
-
   render_context.background_color = (SDL_Color){35, 127, 178, 255};
   render_context.camera = (Camera){
       .zoom = 1.0f,
@@ -944,6 +934,17 @@ int main(int argc, char *args[]) {
       .acceleration = 0.5f,
       .friction = 0.1f,
   };
+
+  int gfx_init_result = gfx_init();
+  if (gfx_init_result == EXIT_FAILURE) {
+    return EXIT_FAILURE;
+  }
+
+  int audio_init_result = audio_init();
+  if (audio_init_result == EXIT_FAILURE) {
+    return EXIT_FAILURE;
+  }
+
   game_context.game_is_still_running = 1;
   physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 3};
   render_batcher = new_render_batcher(100000, render_context.renderer);
