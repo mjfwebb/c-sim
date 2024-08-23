@@ -1,26 +1,27 @@
 #include "headers.h"
 
 FRect get_entity_hit_box_rect(int entity_id) {
-  FRect hit_box_rect = {0};
-  hit_box_rect.position = game_context.position[entity_id].current;
-  hit_box_rect.position.x += game_context.hit_box_offset_position[entity_id].x;
-  hit_box_rect.position.y += game_context.hit_box_offset_position[entity_id].y;
-  hit_box_rect.size.x =
+  FRect hit_box_rect = {.top = game_context.position[entity_id].current.y, .left = game_context.position[entity_id].current.x};
+  // hit_box_rect.position = game_context.position[entity_id].current;
+  hit_box_rect.left += game_context.hit_box_offset_position[entity_id].x;
+  hit_box_rect.top += game_context.hit_box_offset_position[entity_id].y;
+  hit_box_rect.right =
       game_context.position[entity_id].current.x + game_context.texture[entity_id].size.x - game_context.hit_box_offset_size[entity_id].x;
-  hit_box_rect.size.y =
+  hit_box_rect.bottom =
       game_context.position[entity_id].current.y + game_context.texture[entity_id].size.y - game_context.hit_box_offset_size[entity_id].y;
 
   return hit_box_rect;
 }
 
 FRect get_entity_hit_box_rect_target(int entity_id) {
-  FRect hit_box_rect = {0};
-  hit_box_rect.position = game_context.position[entity_id].target;
-  hit_box_rect.position.x += game_context.hit_box_offset_position[entity_id].x;
-  hit_box_rect.position.y += game_context.hit_box_offset_position[entity_id].y;
-  hit_box_rect.size.x =
+  // FRect hit_box_rect = {0};
+  // hit_box_rect.position = game_context.position[entity_id].target;
+  FRect hit_box_rect = {.top = game_context.position[entity_id].target.y, .left = game_context.position[entity_id].target.x};
+  hit_box_rect.left += game_context.hit_box_offset_position[entity_id].x;
+  hit_box_rect.top += game_context.hit_box_offset_position[entity_id].y;
+  hit_box_rect.right =
       game_context.position[entity_id].target.x + game_context.texture[entity_id].size.x - game_context.hit_box_offset_size[entity_id].x;
-  hit_box_rect.size.y =
+  hit_box_rect.bottom =
       game_context.position[entity_id].target.y + game_context.texture[entity_id].size.y - game_context.hit_box_offset_size[entity_id].y;
 
   return hit_box_rect;
@@ -30,8 +31,8 @@ Vec2 get_entity_origin_point(int entity_id) {
   FRect entity_hit_box_rect = get_entity_hit_box_rect_target(entity_id);
 
   return (Vec2){
-      .x = entity_hit_box_rect.position.x + (entity_hit_box_rect.size.x - entity_hit_box_rect.position.x) * 0.5f,
-      .y = entity_hit_box_rect.position.y + (entity_hit_box_rect.size.y - entity_hit_box_rect.position.y) * 0.5f,
+      .x = entity_hit_box_rect.left + (entity_hit_box_rect.right - entity_hit_box_rect.left) * 0.5f,
+      .y = entity_hit_box_rect.top + (entity_hit_box_rect.bottom - entity_hit_box_rect.top) * 0.5f,
   };
 }
 

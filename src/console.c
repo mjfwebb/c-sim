@@ -400,10 +400,10 @@ static void console_draw_suggestion_text(Vec2* text_size, float y) {
 // Draw a blinking cursor at the rightmost point of the text
 static void console_draw_cursor(Vec2* text_size) {
   FRect console_input_cursor_rect = {
-      .position.x = text_size->x + 10.0f,
-      .position.y = console.y_spring.current - CONSOLE_INPUT_HEIGHT + 10.0f,
-      .size.x = text_size->x + 22.0f,
-      .size.y = console.y_spring.current - 10.0f,
+      .left = text_size->x + 10.0f,
+      .top = console.y_spring.current - CONSOLE_INPUT_HEIGHT + 10.0f,
+      .right = text_size->x + 22.0f,
+      .bottom = console.y_spring.current - 10.0f,
   };
 
   // Calculate the opacity of the cursor based on a sine wave
@@ -428,10 +428,10 @@ static void console_draw_output_text(void) {
 
 static void console_draw_input_rect(float y) {
   FRect console_input_rect = {
-      .position.x = 0.0f,
-      .position.y = y,
-      .size.x = (float)render_context.window_w,
-      .size.y = y + CONSOLE_INPUT_HEIGHT,
+      .left = 0.0f,
+      .top = y,
+      .right = (float)render_context.window_w,
+      .bottom = y + CONSOLE_INPUT_HEIGHT,
   };
   gfx_draw_frect_filled(&console_input_rect, &(RGBA){1, 1, 1, 0.9f});
 }
@@ -441,10 +441,10 @@ void console_draw(void) {
 
   // Draw full console rect
   FRect console_rect = {
-      .position.x = 0.0f,
-      .position.y = 0.0f,
-      .size.x = (float)render_context.window_w,
-      .size.y = console.y_spring.current,
+      .left = 0.0f,
+      .top = 0.0f,
+      .right = (float)render_context.window_w,
+      .bottom = console.y_spring.current,
   };
   gfx_draw_frect_filled(&console_rect, &(RGBA){1, 1, 1, 0.9f});
 

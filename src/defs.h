@@ -26,8 +26,12 @@ typedef struct Vec2 {
 } Vec2;
 
 typedef struct {
-  Vec2 position;
-  Vec2 size;
+  // Vec2 position;
+  // Vec2 size;
+  float top;
+  float left;
+  float right;
+  float bottom;
 } FRect;
 
 typedef int8_t s8;

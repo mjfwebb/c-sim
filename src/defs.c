@@ -10,11 +10,11 @@ bool floats_equal(float a, float b) {
 }
 
 float frect_width(FRect *rect) {
-  return rect->size.x - rect->position.x;
+  return rect->right - rect->left;
 }
 
 float frect_height(FRect *rect) {
-  return rect->size.y - rect->position.y;
+  return rect->bottom - rect->top;
 }
 
 #ifdef _WIN32

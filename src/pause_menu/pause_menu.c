@@ -24,10 +24,10 @@ FRect get_container(float* element_sizes, int element_count) {
   float y = ((float)render_context.window_h / 2) - (container_height / 2);
 
   FRect container = {
-      .position.x = middle_of_screen_container_x,
-      .position.y = y,
-      .size.x = middle_of_screen_container_x + container_width,
-      .size.y = y + container_height,
+      .left = middle_of_screen_container_x,
+      .top = y,
+      .right = middle_of_screen_container_x + container_width,
+      .bottom = y + container_height,
   };
 
   return container;
@@ -59,10 +59,10 @@ void toggle_pause_menu(void) {
 
 bool pause_menu_title(PauseMenuTitle title) {
   Vec2 text_size = get_text_size(title.text, &render_context.fonts[2], false, false);
-  float container_width = title.rect.size.x - title.rect.position.x;
+  float container_width = title.rect.right - title.rect.left;
   Vec2 text_centered = {
-      .x = title.rect.position.x + (container_width / 2) - (text_size.x / 2),
-      .y = title.rect.position.y,
+      .x = title.rect.left + (container_width / 2) - (text_size.x / 2),
+      .y = title.rect.top,
   };
 
   draw_text_utf8(title.text, (Vec2){.x = text_centered.x, .y = text_centered.y}, (RGBA){1, 1, 1, 1}, &render_context.fonts[2]);
@@ -73,8 +73,8 @@ bool pause_menu_title(PauseMenuTitle title) {
 bool draw_pause_menu_dropdown(PauseMenuDropdown dropdown) {
   // Then draw text on top
   Vec2 dropdown_dimensions = {
-      .x = dropdown.rect.size.x - dropdown.rect.position.x,
-      .y = dropdown.rect.size.y - dropdown.rect.position.y,
+      .x = dropdown.rect.right - dropdown.rect.left,
+      .y = dropdown.rect.bottom - dropdown.rect.top,
   };
 
   bool dropdown_is_hovered = pause_menu.input_mode == PAUSE_MENU_MOUSE_MODE && gfx_frect_contains_point(&dropdown.rect, &mouse_state.position);
@@ -109,7 +109,7 @@ bool draw_pause_menu_dropdown(PauseMenuDropdown dropdown) {
       .y = (dropdown_dimensions.y / 2) - (text_size.y / 2),
   };
   draw_text_utf8(
-      dropdown.text, (Vec2){.x = dropdown.rect.position.x + 30.0f, .y = dropdown.rect.position.y + text_centered.y},
+      dropdown.text, (Vec2){.x = dropdown.rect.left + 30.0f, .y = dropdown.rect.top + text_centered.y},
       dropdown_is_hot ? (RGBA){0.5f, 0.5f, 0.8f, 1} : (RGBA){0, 0, 0, 1}, &render_context.fonts[1]
   );
 
@@ -127,8 +127,8 @@ bool draw_pause_menu_dropdown(PauseMenuDropdown dropdown) {
 bool pause_menu_button(PauseMenuButton button) {
   // Then draw text on top
   Vec2 button_dimensions = {
-      .x = button.rect.size.x - button.rect.position.x,
-      .y = button.rect.size.y - button.rect.position.y,
+      .x = button.rect.right - button.rect.left,
+      .y = button.rect.bottom - button.rect.top,
   };
 
   bool button_is_hovered = pause_menu.input_mode == PAUSE_MENU_MOUSE_MODE && gfx_frect_contains_point(&button.rect, &mouse_state.position);
@@ -157,10 +157,10 @@ bool pause_menu_button(PauseMenuButton button) {
 
   FRect button_rect = button.rect;
   if (button_is_hot) {
-    button_rect.position.x = max(button.rect.position.x - 6.0f, button_rect.position.x - hovered_time * 35.0f);
-    button_rect.position.y = max(button.rect.position.y - 6.0f, button_rect.position.y - hovered_time * 35.0f);
-    button_rect.size.x = min(button.rect.size.x + 6.0f, button_rect.size.x + hovered_time * 35.0f);
-    button_rect.size.y = min(button.rect.size.y + 6.0f, button_rect.size.y + hovered_time * 35.0f);
+    button_rect.left = max(button.rect.left - 6.0f, button_rect.left - hovered_time * 35.0f);
+    button_rect.top = max(button.rect.top - 6.0f, button_rect.top - hovered_time * 35.0f);
+    button_rect.right = min(button.rect.right + 6.0f, button_rect.right + hovered_time * 35.0f);
+    button_rect.bottom = min(button.rect.bottom + 6.0f, button_rect.bottom + hovered_time * 35.0f);
   }
 
   gfx_draw_frect_filled(&button_rect, &(RGBA){1, 1, 1, 1});
@@ -171,7 +171,7 @@ bool pause_menu_button(PauseMenuButton button) {
       .y = (button_dimensions.y / 2) - (text_size.y / 2),
   };
   draw_text_utf8(
-      button.text, (Vec2){.x = button.rect.position.x + text_centered.x, .y = button.rect.position.y + text_centered.y},
+      button.text, (Vec2){.x = button.rect.left + text_centered.x, .y = button.rect.top + text_centered.y},
       button_is_hot ? (RGBA){0.5f, 0.5f, 0.8f, 1} : (RGBA){0, 0, 0, 1}, &render_context.fonts[1]
   );
 
@@ -195,11 +195,7 @@ void pause_menu_draw_main(void) {
 
   if (pause_menu_button((PauseMenuButton){
           .id = element_id_start + element_count,
-          .rect =
-              {.position.x = container.position.x,
-               .position.y = container.position.y,
-               .size.x = container.size.x,
-               .size.y = container.position.y + element_height},
+          .rect = {.left = container.left, .top = container.top, .right = container.right, .bottom = container.top + element_height},
           .text = "Continue",
       })) {
     // Then we have clicked continue
@@ -212,10 +208,10 @@ void pause_menu_draw_main(void) {
     if (pause_menu_button((PauseMenuButton){
             .id = element_id_start + element_count,
             .rect =
-                {.position.x = container.position.x,
-                 .position.y = container.position.y + current_element_y,
-                 .size.x = container.size.x,
-                 .size.y = container.position.y + current_element_y + element_height},
+                {.left = container.left,
+                 .top = container.top + current_element_y,
+                 .right = container.right,
+                 .bottom = container.top + current_element_y + element_height},
             .text = "Video",
         })) {
       pause_menu.current_screen = PAUSE_MENU_VIDEO;
@@ -228,10 +224,10 @@ void pause_menu_draw_main(void) {
     if (pause_menu_button((PauseMenuButton){
             .id = element_id_start + element_count,
             .rect =
-                {.position.x = container.position.x,
-                 .position.y = container.position.y + current_element_y,
-                 .size.x = container.size.x,
-                 .size.y = container.position.y + current_element_y + element_height},
+                {.left = container.left,
+                 .top = container.top + current_element_y,
+                 .right = container.right,
+                 .bottom = container.top + current_element_y + element_height},
             .text = "Audio",
         })) {
       // Then we have clicked continue
@@ -245,10 +241,10 @@ void pause_menu_draw_main(void) {
     if (pause_menu_button((PauseMenuButton){
             .id = element_id_start + element_count,
             .rect =
-                {.position.x = container.position.x,
-                 .position.y = container.position.y + current_element_y,
-                 .size.x = container.size.x,
-                 .size.y = container.position.y + current_element_y + element_height},
+                {.left = container.left,
+                 .top = container.top + current_element_y,
+                 .right = container.right,
+                 .bottom = container.top + current_element_y + element_height},
             .text = "Controls",
         })) {
       // Then we have clicked continue
@@ -262,10 +258,10 @@ void pause_menu_draw_main(void) {
     if (pause_menu_button((PauseMenuButton){
             .id = element_id_start + element_count,
             .rect =
-                {.position.x = container.position.x,
-                 .position.y = container.position.y + current_element_y,
-                 .size.x = container.size.x,
-                 .size.y = container.position.y + current_element_y + element_height},
+                {.left = container.left,
+                 .top = container.top + current_element_y,
+                 .right = container.right,
+                 .bottom = container.top + current_element_y + element_height},
             .text = "Quit",
         })) {
       // Then we have clicked continue
@@ -283,10 +279,10 @@ void pause_menu_draw(void) {
 
   // Draw full pause_menu rect
   FRect pause_menu_rect = {
-      .position.x = 0.0f,
-      .position.y = 0.0f,
-      .size.x = (float)render_context.window_w,
-      .size.y = (float)render_context.window_h,
+      .left = 0.0f,
+      .top = 0.0f,
+      .right = (float)render_context.window_w,
+      .bottom = (float)render_context.window_h,
   };
 
   gfx_draw_frect_filled(&pause_menu_rect, &(RGBA){0, 0, 0, 0.9f});

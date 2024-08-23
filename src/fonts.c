@@ -141,8 +141,8 @@ static void fill_glyph_set_data(LoadGlyphSetData *data, const u32 character, Fon
     return;
   }
   m->valid = 1;
-  m->source.size.x = (float)data->glyphs[index]->w;
-  m->source.size.y = (float)data->glyphs[index]->h;
+  m->source.right = (float)data->glyphs[index]->w;
+  m->source.bottom = (float)data->glyphs[index]->h;
   if (data->glyphs[index]->h > data->glyph_max_height) {
     data->glyph_max_height = data->glyphs[index]->h;
   }
@@ -184,18 +184,18 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
     int current_pos = 0;
     for (int i = 0; i < font->glyph_count; i++) {
       if (font->glyph_metrics[i].valid) {
-        font->glyph_metrics[i].source.position.y = 0;
+        font->glyph_metrics[i].source.top = 0;
 
         if ((font->outline_size > 0 && current_pos + data->outline_glyphs[i]->w > data->atlas_width) ||
             current_pos + data->glyphs[i]->w > data->atlas_width) {
-          font->glyph_metrics[i].source.position.x = 0;
+          font->glyph_metrics[i].source.left = 0;
           if (font->outline_size) {
             current_pos = data->outline_glyphs[i]->w + 2;
           } else {
             current_pos = data->glyphs[i]->w + 2;
           }
         } else {
-          font->glyph_metrics[i].source.position.x = (float)current_pos;
+          font->glyph_metrics[i].source.left = (float)current_pos;
           if (font->outline_size) {
             current_pos += data->outline_glyphs[i]->w + 2;
           } else {
@@ -221,8 +221,8 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
     for (; glyph_counter < font->glyph_count; glyph_counter++) {
       if (font->glyph_metrics[glyph_counter].valid) {
         SDL_Rect dst = {
-            (int)font->glyph_metrics[glyph_counter].source.position.x,
-            (int)font->glyph_metrics[glyph_counter].source.position.y,
+            (int)font->glyph_metrics[glyph_counter].source.left,
+            (int)font->glyph_metrics[glyph_counter].source.top,
             (int)frect_width(&font->glyph_metrics[glyph_counter].source),
             (int)frect_height(&font->glyph_metrics[glyph_counter].source),
         };
@@ -237,7 +237,7 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
           dst.y += dst.h + 2;
           dst.w = data->outline_glyphs[glyph_counter]->w;
           dst.h = data->outline_glyphs[glyph_counter]->h;
-          font->outline_sources[glyph_counter] = (FRect){{(float)dst.x, (float)dst.y}, {(float)dst.w, (float)dst.h}};
+          font->outline_sources[glyph_counter] = (FRect){.left = (float)dst.x, .top = (float)dst.y, .right = (float)dst.w, .bottom = (float)dst.h};
           SDL_BlitSurface(data->outline_glyphs[glyph_counter], NULL, glyph_cache, &dst);
         }
         rendered_glyphs_counter++;
@@ -371,28 +371,28 @@ static void draw_text_internal(
     char_index = get_index_in_font(current_char, font);
     metrics = &font->glyph_metrics[char_index];
 
-    if (metrics->valid && metrics->source.size.x > 0) {
+    if (metrics->valid && metrics->source.right > 0) {
       if (prev_char) {
         const int kern = TTF_GetFontKerningSizeGlyphs32(font->font_handle, prev_char, current_char);
         xc += kern;
       }
 
-      dst = (SDL_FRect){xc, yc, metrics->source.size.x, metrics->source.size.y};
+      dst = (SDL_FRect){xc, yc, metrics->source.right, metrics->source.bottom};
       dst.x = min(dst.x, dst.x + metrics->min_x);
 
       if (outline > 0 && outline_color->a > 0) {
         source = (SDL_Rect
-        ){(int)font->outline_sources[char_index].position.x, (int)font->outline_sources[char_index].position.y,
-          (int)font->outline_sources[char_index].size.x, (int)font->outline_sources[char_index].size.y};
+        ){(int)font->outline_sources[char_index].left, (int)font->outline_sources[char_index].top, (int)font->outline_sources[char_index].right,
+          (int)font->outline_sources[char_index].bottom};
         if (batcher) {
           batcher_quad = (FRect){
-              .position.x = dst.x,
-              .position.y = dst.y,
-              .size.x = dst.x + metrics->source.size.x + outline * 2,
-              .size.y = dst.y + metrics->source.size.y + outline * 2,
+              .left = dst.x,
+              .top = dst.y,
+              .right = dst.x + metrics->source.right + outline * 2,
+              .bottom = dst.y + metrics->source.bottom + outline * 2,
           };
-          batcher_quad.position.x -= outline * 0.5f;
-          batcher_quad.position.y -= outline * 0.5f;
+          batcher_quad.left -= outline * 0.5f;
+          batcher_quad.top -= outline * 0.5f;
           int atlas_width;
           int atlas_height;
           SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
@@ -406,7 +406,7 @@ static void draw_text_internal(
           uvs[3].y = (float)(source.y + source.h) / (float)atlas_height;
           render_batcher_copy_texture_quad(batcher, font->atlas[metrics->atlas_index], outline_color, &batcher_quad, uvs);
         } else {
-          temp_dst = (SDL_FRect){.x = dst.x, .y = dst.y, .w = metrics->source.size.x + outline * 2, .h = metrics->source.size.y + outline * 2};
+          temp_dst = (SDL_FRect){.x = dst.x, .y = dst.y, .w = metrics->source.right + outline * 2, .h = metrics->source.bottom + outline * 2};
           temp_dst.x -= outline * 0.5f;
           temp_dst.y -= outline * 0.5f;
 
@@ -418,10 +418,9 @@ static void draw_text_internal(
         }
       }
 
-      source = (SDL_Rect){(int)metrics->source.position.x, (int)metrics->source.position.y, (int)metrics->source.size.x, (int)metrics->source.size.y};
+      source = (SDL_Rect){(int)metrics->source.left, (int)metrics->source.top, (int)metrics->source.right, (int)metrics->source.bottom};
       if (batcher) {
-        batcher_quad =
-            (FRect){.position.x = dst.x, .position.y = dst.y, .size.x = dst.x + metrics->source.size.x, .size.y = dst.y + metrics->source.size.y};
+        batcher_quad = (FRect){.left = dst.x, .top = dst.y, .right = dst.x + metrics->source.right, .bottom = dst.y + metrics->source.bottom};
         int atlas_width;
         int atlas_height;
         SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);

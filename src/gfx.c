@@ -54,8 +54,8 @@ void gfx_get_window_size(int *out_w, int *out_h) {
 // Internal function to convert a rect to an SDL_Rect
 static SDL_FRect frect_to_sdl_frect(FRect *rect) {
   return (SDL_FRect){
-      .x = rect->position.x,
-      .y = rect->position.y,
+      .x = rect->left,
+      .y = rect->top,
       .w = frect_width(rect),
       .h = frect_height(rect),
   };
@@ -289,11 +289,10 @@ void gfx_clear_screen(void) {
 
 // Check if two rectangles intersect
 bool gfx_frect_intersects_frect(FRect *rect_a, FRect *rect_b) {
-  return (rect_a->position.x > rect_b->position.x && rect_a->position.x < rect_b->size.x) ||
-         (rect_a->position.y > rect_b->position.y && rect_a->position.y < rect_b->size.y);
+  return (rect_a->left > rect_b->left && rect_a->left < rect_b->right) || (rect_a->top > rect_b->top && rect_a->top < rect_b->bottom);
 }
 
 // Check if a rectangle contains a point
 bool gfx_frect_contains_point(FRect *rect, Vec2 *point) {
-  return ((point->x >= rect->position.x) && (point->x < (rect->size.x)) && (point->y >= rect->position.y) && (point->y < (rect->size.y)));
+  return ((point->x >= rect->left) && (point->x < (rect->right)) && (point->y >= rect->top) && (point->y < (rect->bottom)));
 }

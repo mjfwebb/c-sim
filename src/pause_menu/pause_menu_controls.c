@@ -9,8 +9,7 @@ void pause_menu_draw_controls(int number_of_elements, int element_id_start, floa
   pause_menu_title((PauseMenuTitle){
       .id = 0,
       .text = "Controls",
-      .rect = (FRect
-      ){.position.x = container.position.x, .position.y = container.position.y, .size.x = container.size.x, .size.y = container.position.y + 64.0f},
+      .rect = (FRect){.left = container.left, .top = container.top, .right = container.right, .bottom = container.top + 64.0f},
   });
 
   element_count++;
@@ -18,10 +17,10 @@ void pause_menu_draw_controls(int number_of_elements, int element_id_start, floa
   if (draw_pause_menu_dropdown((PauseMenuDropdown){
           .id = element_id_start + element_count,
           .rect =
-              {.position.x = container.position.x,
-               .position.y = container.position.y + current_element_y,
-               .size.x = container.size.x,
-               .size.y = container.position.y + current_element_y + element_height},
+              {.left = container.left,
+               .top = container.top + current_element_y,
+               .right = container.right,
+               .bottom = container.top + current_element_y + element_height},
           .text = "Keyboard",
       })) {
     // Then we have clicked continue
@@ -33,10 +32,10 @@ void pause_menu_draw_controls(int number_of_elements, int element_id_start, floa
   if (draw_pause_menu_dropdown((PauseMenuDropdown){
           .id = element_id_start + element_count,
           .rect =
-              {.position.x = container.position.x,
-               .position.y = container.position.y + current_element_y,
-               .size.x = container.size.x,
-               .size.y = container.position.y + current_element_y + element_height},
+              {.left = container.left,
+               .top = container.top + current_element_y,
+               .right = container.right,
+               .bottom = container.top + current_element_y + element_height},
           .text = "Mouse",
       })) {
     // Then we have clicked continue
@@ -48,10 +47,10 @@ void pause_menu_draw_controls(int number_of_elements, int element_id_start, floa
   if (draw_pause_menu_dropdown((PauseMenuDropdown){
           .id = element_id_start + element_count,
           .rect =
-              {.position.x = container.position.x,
-               .position.y = container.position.y + current_element_y,
-               .size.x = container.size.x,
-               .size.y = container.position.y + current_element_y + element_height},
+              {.left = container.left,
+               .top = container.top + current_element_y,
+               .right = container.right,
+               .bottom = container.top + current_element_y + element_height},
           .text = "Mouse",
       })) {
     // Then we have clicked continue
