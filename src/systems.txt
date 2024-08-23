@@ -1,0 +1,32 @@
+systems to add:
+
+  hunger
+  thirst
+  energy (stamina)
+  day/night cycle? meaning sleep?
+  water/food
+  weaponry/medical supplies - inventory?
+  stress
+
+energy would mean the ability to:
+
+  wander
+  attack
+  flee
+  socialise
+  hunt
+  labor -> chopping wood, mining rocks
+
+new priority order:
+  1. thirst
+  2. hunger
+  3. energy
+  4. else
+
+
+energy is regained by:
+  1. having sufficient drink
+  2. having sufficient food
+  3. having sufficient rest
+
+stress can cause cultivation deviation resulting in loss of experience or even realm

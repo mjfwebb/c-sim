@@ -1,5 +1,17 @@
 #include "headers.h"
 
+int visible_entities[10000] = {0};
+int num_of_visible_entities = 0;
+
+bool entity_is_visible(int entity_id) {
+  loop(num_of_visible_entities, index) {
+    if (visible_entities[index] == entity_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 FRect get_entity_hit_box_rect(int entity_id) {
   FRect hit_box_rect = {.top = game_context.position[entity_id].current.y, .left = game_context.position[entity_id].current.x};
   // hit_box_rect.position = game_context.position[entity_id].current;

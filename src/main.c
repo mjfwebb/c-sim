@@ -4,6 +4,7 @@
 
 #include "defs.c"
 #include "gfx.c"
+#include "audio.c"
 #include "fonts.c"
 #include "render_batcher.c"
 #include "seed.c"
@@ -20,8 +21,6 @@ GFX_TEXTURE_ID terrains[MAX_TILES][MAX_TILES];
 
 RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
-int visible_entities[10000] = {0};
-int num_of_visible_entities = 0;
 
 Vec2 vec2_world_to_screen(Vec2 point) {
   return (Vec2){
@@ -715,9 +714,11 @@ void handle_input(void) {
       if (event.wheel.y > 0) {
         // zoom in
         render_context.camera.target_zoom = min(render_context.camera.target_zoom + 0.1f, 2.0f);
+        audio_set_sound_volume(audio_context.sound_volume);
       } else if (event.wheel.y < 0) {
         // zoom out
         render_context.camera.target_zoom = max(render_context.camera.target_zoom - 0.1f, 0.1f);
+        audio_set_sound_volume(audio_context.sound_volume);
       }
     }
 
@@ -755,7 +756,6 @@ void handle_input(void) {
 }
 
 void move_camera(void) {
-  // bool spring_camera = true;
   Vec2 camera_spring_distance = {
       .x = fabsf(render_context.camera.target.x - render_context.camera.current.x),
       .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
@@ -809,8 +809,6 @@ void render(void) {
   gfx_clear_screen();
 
   draw_terrain(&render_batcher);
-
-  // draw_grid();
 
   FRect camera_rect = get_camera_world_rect();
 
@@ -882,7 +880,12 @@ int main(int argc, char *args[]) {
   srand(create_seed("I like calculating widths"));
 
   int gfx_init_result = gfx_init();
-  if (gfx_init_result == 1) {
+  if (gfx_init_result == EXIT_FAILURE) {
+    return EXIT_FAILURE;
+  }
+
+  int audio_init_result = audio_init();
+  if (audio_init_result == EXIT_FAILURE) {
     return EXIT_FAILURE;
   }
 
@@ -948,6 +951,8 @@ int main(int argc, char *args[]) {
   render_context.timer[1] = (Timer){.interval = 60000};  // Minute timer
 
   gfx_load_textures();
+
+  audio_load_sounds();
 
   load_fonts();
 

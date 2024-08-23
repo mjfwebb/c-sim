@@ -1,3 +1,9 @@
+- Hot code reloading
+- Add a profiler
+- Spawn items
 keybindings should be a thing
 build pipelines for windows and linux builds
 saving/loading state
+graphics bug when deselecting a followed entity
+day/night cycle
+UI with clock
