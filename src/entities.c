@@ -79,8 +79,8 @@ void create_entity(
   game_context.target_entity_id[game_context.entity_count] = INVALID_ENTITY;
   game_context.texture[game_context.entity_count] = (TextureComponent){.texture_id = texture_id, .size = {.x = entity_width}};
 
-  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
-  game_context.texture[game_context.entity_count].size.y = (float)(render_context.texture_atlas.size[texture_id].y * scale);
+  float scale = entity_width / render_context.texture_atlas.textures[texture_id]->texture_w;
+  game_context.texture[game_context.entity_count].size.y = (float)(render_context.texture_atlas.textures[texture_id]->texture_h * scale);
 
   game_context.health_current[game_context.entity_count] = health.current;
   game_context.health_max[game_context.entity_count] = health.max;
@@ -137,10 +137,10 @@ void create_tree(void) {
   float entity_width = 500.0f;
   int texture_id = random_int_between(GFX_TEXTURE_TREE_1, GFX_TEXTURE_TREE_6);
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
-  float scale = entity_width / render_context.texture_atlas.size[texture_id].x;
+  float scale = entity_width / render_context.texture_atlas.textures[texture_id]->texture_w;
   Vec2 texture_size = {
       .x = entity_width,
-      .y = (float)(render_context.texture_atlas.size[texture_id].y * scale),
+      .y = (float)(render_context.texture_atlas.textures[texture_id]->texture_h * scale),
   };
 
   // These values get added to the current position

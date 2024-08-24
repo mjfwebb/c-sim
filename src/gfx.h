@@ -2,9 +2,96 @@
 
 #include "headers.h"
 
-int gfx_init();
+typedef enum GrassDirection {
+  SHORT_GRASS_TOP = 1,
+  SHORT_GRASS_RIGHT = 2,
+  SHORT_GRASS_BOTTOM = 4,
+  SHORT_GRASS_LEFT = 8,
+  LONG_GRASS_TOP = 16,
+  LONG_GRASS_RIGHT = 32,
+  LONG_GRASS_BOTTOM = 64,
+  LONG_GRASS_LEFT = 128,
+  OVERGROWN_GRASS_TOP = 256,
+  OVERGROWN_GRASS_RIGHT = 512,
+  OVERGROWN_GRASS_BOTTOM = 1024,
+  OVERGROWN_GRASS_LEFT = 2048,
+} GrassDirection;
 
-void gfx_render_present();
+typedef enum GFXTextureID {
+  GFX_TEXTURE_COURAGE_TALISMAN,
+  GFX_TEXTURE_DEATH_POTION,
+  GFX_TEXTURE_HEALTH_POTION,
+  GFX_TEXTURE_LOVE_POTION,
+  GFX_TEXTURE_LUCK_TALISMAN,
+  GFX_TEXTURE_SLEEP_POTION,
+  GFX_TEXTURE_TRUTH_POTION,
+  GFX_TEXTURE_WATER_BREATHING_POTION,
+  GFX_TEXTURE_TREE,
+  GFX_TEXTURE_SHADOW,
+  GFX_TEXTURE_GRASS_LONG_CENTER,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_BOTTOM,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_LEFT,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_LEFT_BOTTOM,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_LEFT_TOP,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_RIGHT,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_RIGHT_BOTTOM,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_RIGHT_TOP,
+  GFX_TEXTURE_GRASS_LONG_OVERGROWN_TOP,
+  GFX_TEXTURE_GRASS_OVERGROWN_CENTER,
+  GFX_TEXTURE_GRASS_SHORT_CENTER,
+  GFX_TEXTURE_GRASS_SHORT_LONG_BOTTOM,
+  GFX_TEXTURE_GRASS_SHORT_LONG_LEFT,
+  GFX_TEXTURE_GRASS_SHORT_LONG_LEFT_BOTTOM,
+  GFX_TEXTURE_GRASS_SHORT_LONG_LEFT_TOP,
+  GFX_TEXTURE_GRASS_SHORT_LONG_RIGHT,
+  GFX_TEXTURE_GRASS_SHORT_LONG_RIGHT_BOTTOM,
+  GFX_TEXTURE_GRASS_SHORT_LONG_RIGHT_TOP,
+  GFX_TEXTURE_GRASS_SHORT_LONG_TOP,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_BOTTOM,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_LEFT,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_LEFT_BOTTOM,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_LEFT_TOP,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_RIGHT,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_RIGHT_BOTTOM,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_RIGHT_TOP,
+  GFX_TEXTURE_GRASS_SHORT_OVERGROWN_TOP,
+  GFX_TEXTURE_ROCK,
+  GFX_TEXTURE_ROCK_SMASHED,
+  GFX_TEXTURE_TOMBSTONE,
+  GFX_TEXTURE_TREE_1,
+  GFX_TEXTURE_TREE_2,
+  GFX_TEXTURE_TREE_3,
+  GFX_TEXTURE_TREE_4,
+  GFX_TEXTURE_TREE_5,
+  GFX_TEXTURE_TREE_6,
+  GFX_TEXTURE_TREE_STUMP_1,
+  GFX_TEXTURE_TREE_STUMP_2,
+  GFX_TEXTURE_TREE_STUMP_3,
+  GFX_TEXTURE_TREE_STUMP_4,
+  GFX_TEXTURE_TREE_STUMP_5,
+  GFX_TEXTURE_TREE_STUMP_6,
+  GFX_TEXTURE_count,
+} GFXTextureID;
+
+typedef struct {
+  float r;
+  float g;
+  float b;
+  float a;
+} RGBA;
+
+typedef struct {
+  float h;
+  float s;
+  float v;
+} HSV;
+
+HSV rgb_to_hsv(RGBA rgb);
+RGBA hsv_to_rgb(HSV hsv);
+
+int gfx_init(void);
+
+void gfx_render_present(void);
 
 void gfx_get_window_size(int *out_w, int *out_h);
 
@@ -12,18 +99,22 @@ void gfx_draw_frect(FRect *rect, RGBA *color);
 
 void gfx_draw_frect_filled(FRect *rect, RGBA *color);
 
-void gfx_load_textures();
+int gfx_load_textures(void);
 
-void gfx_set_blend_mode_blend();
+// TODO: Fix this
+// void gfx_set_blend_mode_blend();
 
-void gfx_set_blend_mode_none();
+// TODO: Fix this
+// void gfx_set_blend_mode_none();
 
-void gfx_destroy();
+void gfx_destroy(void);
 
 void gfx_draw_line(float x1, float y1, float x2, float y2, RGBA *color);
 
-void gfx_clear_screen();
+void gfx_clear_screen(void);
 
-bool gfx_frect_intersects_frect(FRect *rect_a, FRect *rect_b);
+bool gfx_frect_intersects_frect(FRect *a, FRect *b);
 
 bool gfx_frect_contains_point(FRect *rect, Vec2 *point);
+
+void gfx_draw_texture(int texture_id, float x, float y);

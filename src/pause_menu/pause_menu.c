@@ -275,7 +275,8 @@ void pause_menu_draw(void) {
     return;
   }
 
-  gfx_set_blend_mode_blend();
+  // TODO: Fix this
+  // gfx_set_blend_mode_blend();
 
   // Draw full pause_menu rect
   FRect pause_menu_rect = {
@@ -305,7 +306,8 @@ void pause_menu_draw(void) {
       break;
   }
 
-  gfx_set_blend_mode_none();
+  // TODO: Fix this
+  // gfx_set_blend_mode_none();
 }
 
 void pause_menu_handle_input(SDL_Event* event) {

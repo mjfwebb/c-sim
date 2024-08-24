@@ -207,7 +207,7 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
   }
 
   font->atlas_count = atlas_count;
-  SDL_Texture **atlases = (SDL_Texture **)malloc(sizeof(SDL_Texture *) * atlas_count);
+  GPU_Image **atlases = (GPU_Image **)malloc(sizeof(GPU_Image *) * atlas_count);
   SDL_Surface *glyph_cache;
   if (font->outline_size > 0) {
     font->outline_sources = (FRect *)malloc(sizeof(FRect) * font->glyph_count);
@@ -243,9 +243,12 @@ static void build_texture_atlas(LoadGlyphSetData *data, Font *font) {
         rendered_glyphs_counter++;
       }
     }
-    atlases[i] = SDL_CreateTextureFromSurface(font->renderer, glyph_cache);
+    // TODO: Fix this using GPU_CopyImageFromSurface
+    // atlases[i] = SDL_CreateTextureFromSurface(font->target, glyph_cache);
+    atlases[i] = GPU_CopyImageFromSurface(glyph_cache);
     assert(atlases[i]);
-    SDL_SetTextureBlendMode(atlases[i], SDL_BLENDMODE_BLEND);
+    // SDL_SetTextureBlendMode(atlases[i], SDL_BLENDMODE_BLEND);
+    GPU_SetBlendMode(atlases[i], GPU_BLEND_PREMULTIPLIED_ALPHA);
     SDL_FreeSurface(glyph_cache);
   }
 
@@ -265,7 +268,7 @@ Font load_font(const char *path, const FontLoadParams loader) {
     return font;
   }
 
-  font.renderer = loader.renderer;
+  font.target = loader.target;
   font.font_handle = main_font;
   font.character_sets = loader.character_sets;
   font.size = loader.size;
@@ -311,7 +314,7 @@ Font load_font(const char *path, const FontLoadParams loader) {
 }
 
 static void draw_text_internal(
-    const char *text, const Vec2 position, const RGBA *color, const RGBA *outline_color, const Font *font, const u8 is_utf8, RenderBatcher *batcher
+    const char *text, const Vec2 position, const RGBA *color, const RGBA *outline_color, const Font *font, const u8 is_utf8
 ) {
   const float height = (float)font->height;
   const float outline = outline_color->a > 0 ? ((float)font->outline_size) : 0;
@@ -325,11 +328,10 @@ static void draw_text_internal(
 
   SDL_FRect dst = {0};
   SDL_FRect temp_dst;
-  SDL_Rect source;
+  GPU_Rect source;
 
-  FRect batcher_quad;
   GlyphMetrics *metrics;
-  Vec2 uvs[4];
+
   for (const u8 *c = (u8 *)text; *c; c++) {
     if (is_utf8 && !in_basic_latin(*c)) {
       // there might be an optimal way to translate utf8 to unicode decimal value
@@ -380,64 +382,38 @@ static void draw_text_internal(
       dst = (SDL_FRect){xc, yc, metrics->source.right, metrics->source.bottom};
       dst.x = min(dst.x, dst.x + metrics->min_x);
 
+      // If there is an outline, then draw the outlined version of the glyph
       if (outline > 0 && outline_color->a > 0) {
-        source = (SDL_Rect
-        ){(int)font->outline_sources[char_index].left, (int)font->outline_sources[char_index].top, (int)font->outline_sources[char_index].right,
-          (int)font->outline_sources[char_index].bottom};
-        if (batcher) {
-          batcher_quad = (FRect){
-              .left = dst.x,
-              .top = dst.y,
-              .right = dst.x + metrics->source.right + outline * 2,
-              .bottom = dst.y + metrics->source.bottom + outline * 2,
-          };
-          batcher_quad.left -= outline * 0.5f;
-          batcher_quad.top -= outline * 0.5f;
-          int atlas_width;
-          int atlas_height;
-          SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
-          uvs[0].x = (float)(source.x) / (float)atlas_width;
-          uvs[0].y = (float)(source.y) / (float)atlas_height;
-          uvs[1].x = (float)(source.x + source.w) / (float)atlas_width;
-          uvs[1].y = (float)(source.y) / (float)atlas_height;
-          uvs[2].x = (float)(source.x + source.w) / (float)atlas_width;
-          uvs[2].y = (float)(source.y + source.h) / (float)atlas_height;
-          uvs[3].x = (float)(source.x) / (float)atlas_width;
-          uvs[3].y = (float)(source.y + source.h) / (float)atlas_height;
-          render_batcher_copy_texture_quad(batcher, font->atlas[metrics->atlas_index], outline_color, &batcher_quad, uvs);
-        } else {
-          temp_dst = (SDL_FRect){.x = dst.x, .y = dst.y, .w = metrics->source.right + outline * 2, .h = metrics->source.bottom + outline * 2};
-          temp_dst.x -= outline * 0.5f;
-          temp_dst.y -= outline * 0.5f;
+        // TODO: .w and .h might need to negate the values from x and y, but check first
+        source = (GPU_Rect
+        ){.x = font->outline_sources[char_index].left,
+          .y = font->outline_sources[char_index].top,
+          .w = font->outline_sources[char_index].right,
+          .h = font->outline_sources[char_index].bottom};
 
-          SDL_SetTextureColorMod(
-              font->atlas[metrics->atlas_index], (u8)(255 * outline_color->r), (u8)(255 * outline_color->g), (u8)(255 * outline_color->b)
-          );
-          SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * outline_color->a));
-          SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &temp_dst);
-        }
+        temp_dst = (SDL_FRect){.x = dst.x, .y = dst.y, .w = metrics->source.right + outline * 2, .h = metrics->source.bottom + outline * 2};
+        temp_dst.x -= outline * 0.5f;
+        temp_dst.y -= outline * 0.5f;
+
+        GPU_SetRGBA(
+            font->atlas[metrics->atlas_index], (Uint8)(255 * outline_color->r), (Uint8)(255 * outline_color->g), (Uint8)(255 * outline_color->b),
+            (Uint8)(255 * outline_color->a)
+        );
+
+        GPU_Rect dst_rect = {temp_dst.x, temp_dst.y, temp_dst.w, temp_dst.h};
+        GPU_BlitRect(font->atlas[metrics->atlas_index], &source, font->target, &dst_rect);
       }
 
-      source = (SDL_Rect){(int)metrics->source.left, (int)metrics->source.top, (int)metrics->source.right, (int)metrics->source.bottom};
-      if (batcher) {
-        batcher_quad = (FRect){.left = dst.x, .top = dst.y, .right = dst.x + metrics->source.right, .bottom = dst.y + metrics->source.bottom};
-        int atlas_width;
-        int atlas_height;
-        SDL_QueryTexture(font->atlas[metrics->atlas_index], NULL, NULL, &atlas_width, &atlas_height);
-        uvs[0].x = (float)(source.x) / (float)atlas_width;
-        uvs[0].y = (float)(source.y) / (float)atlas_height;
-        uvs[1].x = (float)(source.x + source.w) / (float)atlas_width;
-        uvs[1].y = (float)(source.y) / (float)atlas_height;
-        uvs[2].x = (float)(source.x + source.w) / (float)atlas_width;
-        uvs[2].y = (float)(source.y + source.h) / (float)atlas_height;
-        uvs[3].x = (float)(source.x) / (float)atlas_width;
-        uvs[3].y = (float)(source.y + source.h) / (float)atlas_height;
-        render_batcher_copy_texture_quad(batcher, font->atlas[metrics->atlas_index], color, &batcher_quad, uvs);
-      } else {
-        SDL_SetTextureColorMod(font->atlas[metrics->atlas_index], (u8)(255 * color->r), (u8)(255 * color->g), (u8)(255 * color->b));
-        SDL_SetTextureAlphaMod(font->atlas[metrics->atlas_index], (u8)(255 * color->a));
-        SDL_RenderCopyF(font->renderer, font->atlas[metrics->atlas_index], &source, &dst);
-      }
+      // Now draw the glyph
+      // TODO: .w and .h might need to negate the values from x and y, but check first
+      source = (GPU_Rect){.x = metrics->source.left, .y = metrics->source.top, .w = metrics->source.right, .h = metrics->source.bottom};
+
+      GPU_SetRGBA(
+          font->atlas[metrics->atlas_index], (Uint8)(255 * color->r), (Uint8)(255 * color->g), (Uint8)(255 * color->b), (Uint8)(255 * color->a)
+      );
+
+      GPU_Rect dst_rect = {temp_dst.x, temp_dst.y, temp_dst.w, temp_dst.h};
+      GPU_BlitRect(font->atlas[metrics->atlas_index], &source, font->target, &dst_rect);
     }
     prev_char = current_char;
     current_char = 0;
@@ -446,46 +422,26 @@ static void draw_text_internal(
 }
 
 void draw_text_utf8(const char *text, Vec2 position, const RGBA color, const Font *font) {
-  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1, NULL);
+  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1);
 }
 
 void draw_text_outlined_utf8(const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font) {
-  draw_text_internal(text, position, &color, &outline_color, font, 1, NULL);
+  draw_text_internal(text, position, &color, &outline_color, font, 1);
 }
 
 void draw_text(const char *text, Vec2 position, const RGBA color, const Font *font) {
-  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0, NULL);
+  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0);
 }
 
 void draw_text_outlined(const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font) {
-  draw_text_internal(text, position, &color, &outline_color, font, 0, NULL);
-}
-
-void draw_text_utf8_batched(const char *text, Vec2 position, const RGBA color, const Font *font, RenderBatcher *batcher) {
-  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 1, batcher);
-}
-
-void draw_text_outlined_utf8_batched(
-    const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
-) {
-  draw_text_internal(text, position, &color, &outline_color, font, 1, batcher);
-}
-
-void draw_text_batched(const char *text, Vec2 position, const RGBA color, const Font *font, RenderBatcher *batcher) {
-  draw_text_internal(text, position, &color, &(RGBA){0, 0, 0, 0}, font, 0, batcher);
-}
-
-void draw_text_outlined_batched(
-    const char *text, Vec2 position, const RGBA color, const RGBA outline_color, const Font *font, RenderBatcher *batcher
-) {
-  draw_text_internal(text, position, &color, &outline_color, font, 0, batcher);
+  draw_text_internal(text, position, &color, &outline_color, font, 0);
 }
 
 int free_font(Font *atlas) {
   assert(atlas);
   free(atlas->glyph_metrics);
   for (int i = 0; i < atlas->atlas_count; i++) {
-    SDL_DestroyTexture(atlas->atlas[i]);
+    GPU_FreeImage(atlas->atlas[i]);
   }
   if (atlas->font_handle) {
     TTF_CloseFont(atlas->font_handle);
@@ -563,4 +519,22 @@ Vec2 get_text_size(const char *text, const Font *font, const u8 do_outline, cons
   result.x = result.x < (maxx - minx) ? (maxx - minx) : result.x;
   result.x += outline;
   return result;
+}
+
+void load_fonts(void) {
+  init_japanese_character_sets(HIRAGANA_BIT | KATAKANA_BIT);
+
+  init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
+
+  FontLoadParams font_parameters = {0};
+  font_parameters.size = 24;
+  font_parameters.target = render_context.target;
+  font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
+  font_parameters.outline_size = 1;
+
+  render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+  font_parameters.size = 32;
+  render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+  font_parameters.size = 64;
+  render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }

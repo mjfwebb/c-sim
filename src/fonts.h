@@ -1,7 +1,6 @@
 #pragma once
 
 #include "headers.h"
-#include "render_batcher.h"
 
 #define BASIC_LATIN_SET_COUNT (126 - 32)
 #define LATIN_ONE_SUPPLEMENT_SET_COUNT (255 - 128)
@@ -33,10 +32,11 @@ typedef struct {
 } GlyphMetrics;
 
 typedef struct {
-  struct SDL_Texture** atlas;
+  struct GPU_Image** atlas;
   GlyphMetrics* glyph_metrics;
   FRect* outline_sources;
-  struct SDL_Renderer* renderer;
+  // struct SDL_Renderer* renderer;
+  GPU_Target* target;
   struct _TTF_Font* font_handle;
   int size;
   int line_skip;
@@ -54,7 +54,8 @@ typedef struct {
 } Font;
 
 typedef struct {
-  struct SDL_Renderer* renderer;
+  // struct SDL_Renderer* renderer;
+  GPU_Target* target;
   int size;
   int outline_size;
   u32 character_sets;
@@ -74,19 +75,10 @@ void draw_text(const char* text, Vec2 position, const RGBA color, const Font* fo
 
 void draw_text_outlined(const char* text, Vec2 position, const RGBA color, const RGBA outline_color, const Font* font);
 
-void draw_text_utf8_batched(const char* text, Vec2 position, const RGBA color, const Font* font, RenderBatcher* batcher);
-
-void draw_text_outlined_utf8_batched(
-    const char* text, Vec2 position, const RGBA color, const RGBA outline_color, const Font* font, RenderBatcher* batcher
-);
-
-void draw_text_batched(const char* text, Vec2 position, const RGBA color, const Font* font, RenderBatcher* batcher);
-
-void draw_text_outlined_batched(
-    const char* text, Vec2 position, const RGBA color, const RGBA outline_color, const Font* font, RenderBatcher* batcher
-);
-
 Vec2 get_text_size(const char* text, const Font* font, const u8 do_outline, const u8 is_utf8);
 
 Font load_font(const char* path, const FontLoadParams loader);
+
 int free_font(Font* atlas);
+
+void load_fonts(void);

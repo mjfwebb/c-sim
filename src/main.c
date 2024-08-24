@@ -6,7 +6,6 @@
 #include "gfx.c"
 #include "audio.c"
 #include "fonts.c"
-#include "render_batcher.c"
 #include "seed.c"
 #include "console.c"
 #include "entities.c"
@@ -17,9 +16,8 @@
 #define VA_ARGS(...) , ##__VA_ARGS__  // For variadic macros
 
 #define MAX_TILES 1000
-GFX_TEXTURE_ID terrains[MAX_TILES][MAX_TILES];
+GFXTextureID terrains[MAX_TILES][MAX_TILES];
 
-RenderBatcher render_batcher = {0};
 int game_is_still_running = 1;
 
 Vec2 vec2_world_to_screen(Vec2 point) {
@@ -56,24 +54,6 @@ FRect frect_screen_to_world(FRect rect) {
       .right = size.x,
       .bottom = size.y,
   };
-}
-
-void load_fonts(void) {
-  init_japanese_character_sets(HIRAGANA_BIT | KATAKANA_BIT);
-
-  init_latin_character_sets(BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT);
-
-  FontLoadParams font_parameters = {0};
-  font_parameters.size = 24;
-  font_parameters.renderer = render_context.renderer;
-  font_parameters.character_sets = BASIC_LATIN_BIT | LATIN_ONE_SUPPLEMENT_BIT;
-  font_parameters.outline_size = 1;
-
-  render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
-  font_parameters.size = 32;
-  render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
-  font_parameters.size = 64;
-  render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
 FRect get_camera_world_rect(void) {
@@ -177,7 +157,7 @@ void buffer_text(char *text_buffer, float *max_width, char *format, ...) {
   }
 }
 
-void draw_name(int entity_id, RenderBatcher *batcher) {
+void draw_name(int entity_id) {
   FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
   FRect entity_hit_box_screen_rect = frect_world_to_screen(entity_hit_box_rect);
 
@@ -193,10 +173,10 @@ void draw_name(int entity_id, RenderBatcher *batcher) {
   float diff = ((entity_hit_box_screen_rect.right - entity_hit_box_screen_rect.left) / 2) - (name_size.x / 2);
   float name_x = entity_hit_box_screen_rect.left + diff;
 
-  draw_text_outlined_utf8_batched(game_context.name[entity_id], (Vec2){.x = name_x, .y = name_y}, color, (RGBA){0, 0, 0, 1}, font, batcher);
+  draw_text_outlined_utf8(game_context.name[entity_id], (Vec2){.x = name_x, .y = name_y}, color, (RGBA){0, 0, 0, 1}, font);
 }
 
-void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
+void draw_entity_info(int entity_id) {
   FRect top_right_screen_rect = {0};
 
   // Draw the personalities list
@@ -240,10 +220,10 @@ void draw_entity_info_batched(int entity_id, RenderBatcher *batcher) {
   }
 
   for (int i = 0; i <= line_number; i++) {
-    draw_text_outlined_utf8_batched(
+    draw_text_outlined_utf8(
         text_buffer[i],
         (Vec2){.x = (float)(render_context.window_w - (max_text_width + 40.0f)), (top_right_screen_rect.bottom + 10.0f + y_start + (font_size * i))},
-        (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1}, font, batcher
+        (RGBA){1, 1, 1, 1}, (RGBA){0, 0, 0, 1}, font
     );
   }
 }
@@ -342,7 +322,7 @@ int dead_entity_texture(int entity_id) {
   }
 }
 
-void render_entity_batched(int entity_id, RenderBatcher *batcher) {
+void render_entity(int entity_id) {
   FRect entity_render_rect = get_entity_render_rect(entity_id);
   FRect entity_screen_rect = frect_world_to_screen(entity_render_rect);
   FRect entity_shadow_rect = entity_screen_rect;
@@ -356,43 +336,11 @@ void render_entity_batched(int entity_id, RenderBatcher *batcher) {
   entity_shadow_rect.right -= (entity_shadow_width * 0.2f);
 
   if (game_context.health_current[entity_id] <= 0) {
-    render_batcher_copy_texture_quad(
-        batcher, render_context.texture_atlas.textures[dead_entity_texture(entity_id)], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
-    );
+    gfx_draw_texture(dead_entity_texture(entity_id), entity_screen_rect.left, entity_screen_rect.top);
   } else {
-    render_batcher_copy_texture_quad(
-        batcher, render_context.texture_atlas.textures[GFX_TEXTURE_SHADOW], &(RGBA){1, 1, 1, 0.25}, &entity_shadow_rect, NULL
-    );
-    render_batcher_copy_texture_quad(
-        batcher, render_context.texture_atlas.textures[game_context.texture[entity_id].texture_id], &(RGBA){1, 1, 1, 1}, &entity_screen_rect, NULL
-    );
+    gfx_draw_texture(GFX_TEXTURE_SHADOW, entity_shadow_rect.left, entity_shadow_rect.top);
+    gfx_draw_texture(game_context.texture[entity_id].texture_id, entity_screen_rect.left, entity_screen_rect.top);
   }
-}
-
-void draw_grid(void) {
-  gfx_set_blend_mode_blend();
-  float grid_size = 256.0f;
-  float window_w = (float)render_context.window_w;
-  float window_h = (float)render_context.window_h;
-
-  FRect grid = {
-      .left = (0 - render_context.camera.current.x) * render_context.camera.zoom + render_context.window_w / 2,
-      .top = (0 - render_context.camera.current.y) * render_context.camera.zoom + render_context.window_h / 2,
-      .right = grid_size * render_context.camera.zoom,
-      .bottom = grid_size * render_context.camera.zoom,
-  };
-
-  float x_start = grid.left - floorf(grid.left / grid.right) * grid.right;
-  for (float x = x_start; x < window_w; x += grid.right) {
-    gfx_draw_line(x, 0, x, window_h, &(RGBA){0, 0, 0, 0.15f});
-  }
-
-  float y_start = grid.top - floorf(grid.top / grid.bottom) * grid.bottom;
-  for (float y = y_start; y < window_h; y += grid.bottom) {
-    gfx_draw_line(0, y, window_w, y, &(RGBA){0, 0, 0, 0.15f});
-  }
-
-  gfx_set_blend_mode_none();
 }
 
 void generate_grass_textures(void) {
@@ -432,8 +380,9 @@ void generate_grass_textures(void) {
   }
 }
 
-void draw_terrain(RenderBatcher *batcher) {
-  gfx_set_blend_mode_blend();
+void draw_terrain(void) {
+  // TODO: Fix this
+  // gfx_set_blend_mode_blend();
   float original_grid_size = 256.0f;
   float zoom = render_context.camera.zoom;
   Vec2 camera = render_context.camera.current;
@@ -450,7 +399,7 @@ void draw_terrain(RenderBatcher *batcher) {
 
   // The amount of tiles that is drawn beyond the calculated screen tiles
   int padding = 2;
-  RGBA color = {1, 1, 1, 1};
+  // RGBA color = {1, 1, 1, 1};
 
   for (int y = y_start - padding; y < y_start + screen_tiles_y + padding; y++) {
     for (int x = x_start - padding; x < x_start + screen_tiles_x + padding; x++) {
@@ -462,20 +411,11 @@ void draw_terrain(RenderBatcher *batcher) {
         continue;
       }
       int terrain_id = terrains[terrain_y][terrain_x];
-      render_batcher_copy_texture_quad(
-          batcher, render_context.texture_atlas.textures[terrain_id], &color,
-          &(FRect){
-              // Use top left position for drawing
-              .left = grid_pos_x - (camera.x * zoom - window_w / 2),
-              .top = grid_pos_y - (camera.y * zoom - window_h / 2),
-              .right = grid_size + grid_pos_x - (camera.x * zoom - window_w / 2),
-              .bottom = grid_size + grid_pos_y - (camera.y * zoom - window_h / 2),
-          },
-          NULL
-      );
+      gfx_draw_texture(terrain_id, grid_pos_x - (camera.x * zoom - window_w / 2), grid_pos_y - (camera.y * zoom - window_h / 2));
     }
   }
-  gfx_set_blend_mode_none();
+  // TODO: Fix this
+  // gfx_set_blend_mode_none();
 }
 
 void mouse_control_camera(void) {
@@ -808,7 +748,7 @@ int compare_entities_y(const void *a, const void *b) {
 void render(void) {
   gfx_clear_screen();
 
-  draw_terrain(&render_batcher);
+  draw_terrain();
 
   FRect camera_rect = get_camera_world_rect();
 
@@ -826,28 +766,25 @@ void render(void) {
   qsort(visible_entities, num_of_visible_entities, sizeof(int), compare_entities_y);
 
   loop(num_of_visible_entities, index) {
-    render_entity_batched(visible_entities[index], &render_batcher);
+    render_entity(visible_entities[index]);
   }
 
   if (render_context.camera.zoom > 0.5f) {
     loop(num_of_visible_entities, index) {
-      draw_name(visible_entities[index], &render_batcher);
+      draw_name(visible_entities[index]);
     }
   }
 
   int single_entity = get_singly_selected_entity();
   if (single_entity != INVALID_ENTITY) {
-    draw_entity_info_batched(single_entity, &render_batcher);
+    draw_entity_info(single_entity);
   }
-
-  flush_render_batcher(&render_batcher);
 
   if (render_context.camera.zoom > 0.5f) {
     loop(num_of_visible_entities, index) {
       int entity_id = visible_entities[index];
       FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
       FRect entity_hit_box_screen_rect = frect_world_to_screen(entity_hit_box_rect);
-      // FIXME: Make this faster using the render batcher
       draw_health_bar(entity_id, entity_hit_box_screen_rect);
       if (game_context.selected[entity_id]) {
         draw_border(entity_hit_box_screen_rect, 5.0f, 4.0f);
@@ -947,7 +884,6 @@ int main(int argc, char *args[]) {
 
   game_context.game_is_still_running = 1;
   physics_context = (PhysicsContext){.delta_time = 0.01, .simulation_speed = 3};
-  render_batcher = new_render_batcher(100000, render_context.renderer);
   render_context.timer[0] = (Timer){.interval = 100};  // Second timer
   render_context.timer[1] = (Timer){.interval = 60000};  // Minute timer
 

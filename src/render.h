@@ -33,25 +33,18 @@ typedef struct {
 } Position;
 
 typedef struct {
-  int w;
-  int h;
-  SDL_Texture *texture;
-} Image;
-
-typedef struct {
   int interval;
   double accumulated;
 } Timer;
 
 typedef struct {
   u32 count;
-  SDL_Texture *textures[64];
-  Vec2 size[64];
+  GPU_Image *textures[64];
 } TextureAtlas;
 
 typedef struct {
   Timer timer[2];
-  SDL_Renderer *renderer;
+  // SDL_Renderer *renderer;
   SDL_Window *window;
   int window_w;
   int window_h;
@@ -62,6 +55,8 @@ typedef struct {
   Position selection;
   const u8 *keyboard_state;
   TextureAtlas texture_atlas;
+  GPU_Target *target;
+  Uint32 shader_program;
 } RenderContext;
 
 RenderContext render_context = {0};

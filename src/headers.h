@@ -4,6 +4,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_gpu.h>
 #include <assert.h>
 #include <math.h>
 #include <float.h>
@@ -17,9 +18,8 @@
 
 #include "entity_names.h"
 #include "defs.h"
+#include "gfx.h"
 #include "audio.h"
-#include "colors.h"
-#include "render_batcher.h"
 #include "fonts.h"
 #include "render.h"
 #include "personalities.h"

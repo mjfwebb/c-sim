@@ -437,7 +437,8 @@ static void console_draw_input_rect(float y) {
 }
 
 void console_draw(void) {
-  gfx_set_blend_mode_blend();
+  // TODO: Fix this
+  // gfx_set_blend_mode_blend();
 
   // Draw full console rect
   FRect console_rect = {
@@ -461,7 +462,8 @@ void console_draw(void) {
   console_draw_cursor(&input_text_size);
   console_draw_output_text();
 
-  gfx_set_blend_mode_none();
+  // TODO: Fix this
+  // gfx_set_blend_mode_none();
 }
 
 void append_console_input(char* new_input) {
