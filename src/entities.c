@@ -12,6 +12,51 @@ bool entity_is_visible(int entity_id) {
   return false;
 }
 
+int compare_entities_y(const void *a, const void *b) {
+  int a_id = *(int *)a;
+  int b_id = *(int *)b;
+
+  FRect entity_a_rect = get_entity_render_rect(a_id);
+  FRect entity_b_rect = get_entity_render_rect(b_id);
+
+  float bottom = entity_a_rect.bottom - entity_b_rect.bottom;
+
+  if (bottom < 0) {
+    return -1;
+  }
+
+  if (bottom > 0) {
+    return 1;
+  }
+
+  return a_id - b_id;
+}
+
+FRect get_entity_render_rect(int entity_id) {
+  FRect texture_rect = {0};
+  texture_rect.left = game_context.position[entity_id].current.x;
+  texture_rect.top = game_context.position[entity_id].current.y;
+  texture_rect.right = texture_rect.left + game_context.texture[entity_id].size.x;
+  texture_rect.bottom = texture_rect.top + game_context.texture[entity_id].size.y;
+
+  return texture_rect;
+}
+
+void calculate_visible_entities(FRect camera_rect) {
+  memset(visible_entities, 0, sizeof(visible_entities));
+  num_of_visible_entities = 0;
+  // Create a array of entities which are "visible"
+  loop(game_context.entity_count, entity_id) {
+    FRect entity_render_rect = get_entity_render_rect(entity_id);
+    if (gfx_frect_intersects_frect(&entity_render_rect, &camera_rect)) {
+      visible_entities[num_of_visible_entities] = entity_id;
+      num_of_visible_entities++;
+    }
+  }
+
+  qsort(visible_entities, num_of_visible_entities, sizeof(int), compare_entities_y);
+}
+
 FRect get_entity_hit_box_rect(int entity_id) {
   FRect hit_box_rect = {.top = game_context.position[entity_id].current.y, .left = game_context.position[entity_id].current.x};
   // hit_box_rect.position = game_context.position[entity_id].current;
@@ -73,7 +118,7 @@ typedef struct {
 } Stat;
 
 void create_entity(
-    float entity_width, int texture_id, Stat health, Stat hunger, Stat thirst, char* name, Species species, Vec2 position,
+    float entity_width, int texture_id, Stat health, Stat hunger, Stat thirst, char *name, Species species, Vec2 position,
     Vec2 hit_box_offset_position, Vec2 hit_box_offset_size
 ) {
   game_context.target_entity_id[game_context.entity_count] = INVALID_ENTITY;
@@ -185,7 +230,7 @@ void create_rock(void) {
   game_context.entity_count++;
 }
 
-void create_human(char* name) {
+void create_human(char *name) {
   Vec2 position = {.x = (float)random_int_between(-1000, 1000), .y = (float)random_int_between(-1000, 1000)};
   Stat health = {
       .current = 100,

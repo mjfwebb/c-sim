@@ -2,6 +2,42 @@
 
 // NOTES: You need to reset game_context.target_entity_id[entity_id] on new decision probably.
 
+// TODO: put this is in a nicer file
+void play_entity_sound(int entity_id, SoundEffect sound_effect) {
+  if (!entity_is_visible(entity_id)) {
+    return;
+  }
+
+  audio_play_sound(sound_effect);
+}
+
+void play_decision_sound(int entity_id, Decisions decision) {
+  switch (decision) {
+    case Decisions__Chop_Tree:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
+      break;
+
+    case Decisions__Mine_Rock:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
+      break;
+
+    case Decisions__Cultivate:
+      play_entity_sound(entity_id, SOUND_CULTIVATE_1);
+      break;
+
+    case Decisions__Heal_Human:
+      play_entity_sound(entity_id, SOUND_HEAL_1);
+      break;
+
+    case Decisions__Flee:
+      // play_entity_sound(entity_id, random_int_between(SOUND_FLEE_1, SOUND_FLEE_15));
+      break;
+
+    default:
+      break;
+  }
+}
+
 float calculate_distance_squared(Vec2 a, Vec2 b) {
   Vec2 distance = {.x = a.x - b.x, .y = a.y - b.y};
 
@@ -108,10 +144,10 @@ void handle_attack(int entity_id, int attacker_id) {
     game_context.speed[entity_id].velocity = 0.0f;
     game_context.decision[entity_id] = Decisions__Wait;
     game_context.killed_by[entity_id] = attacker_id;
-    audio_play_sound(SOUND_KILL_ORGANIC_1);
+    play_entity_sound(entity_id, SOUND_KILL_ORGANIC_1);
     return;
   } else {
-    audio_play_sound(random_int_between(SOUND_HIT_ORGANIC_1, SOUND_HIT_ORGANIC_3));
+    play_entity_sound(entity_id, random_int_between(SOUND_HIT_ORGANIC_1, SOUND_HIT_ORGANIC_3));
   }
 }
 
@@ -169,41 +205,6 @@ bool get_current_target(int entity_id, float valid_distance, TargetEntity* targe
   }
 
   return true;
-}
-
-void play_entity_sound(int entity_id, SoundEffect sound_effect) {
-  if (!entity_is_visible(entity_id)) {
-    return;
-  }
-
-  audio_play_sound(sound_effect);
-}
-
-void play_decision_sound(int entity_id, Decisions decision) {
-  switch (decision) {
-    case Decisions__Chop_Tree:
-      play_entity_sound(entity_id, random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
-      break;
-
-    case Decisions__Mine_Rock:
-      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
-      break;
-
-    case Decisions__Cultivate:
-      play_entity_sound(entity_id, SOUND_CULTIVATE_1);
-      break;
-
-    case Decisions__Heal_Human:
-      play_entity_sound(entity_id, SOUND_HEAL_1);
-      break;
-
-    case Decisions__Flee:
-      // play_entity_sound(entity_id, random_int_between(SOUND_FLEE_1, SOUND_FLEE_15));
-      break;
-
-    default:
-      break;
-  }
 }
 
 void make_action_human(int entity_id) {

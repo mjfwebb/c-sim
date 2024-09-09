@@ -85,16 +85,6 @@ FRect get_camera_world_rect(void) {
   };
 }
 
-FRect get_entity_render_rect(int entity_id) {
-  FRect texture_rect = {0};
-  texture_rect.left = game_context.position[entity_id].current.x;
-  texture_rect.top = game_context.position[entity_id].current.y;
-  texture_rect.right = texture_rect.left + game_context.texture[entity_id].size.x;
-  texture_rect.bottom = texture_rect.top + game_context.texture[entity_id].size.y;
-
-  return texture_rect;
-}
-
 void draw_debug_text(int index, char *str, ...) {
   char text_buffer[128];
   va_list args;
@@ -785,26 +775,6 @@ void move_camera(void) {
   }
 }
 
-int compare_entities_y(const void *a, const void *b) {
-  int a_id = *(int *)a;
-  int b_id = *(int *)b;
-
-  FRect entity_a_rect = get_entity_render_rect(a_id);
-  FRect entity_b_rect = get_entity_render_rect(b_id);
-
-  float bottom = entity_a_rect.bottom - entity_b_rect.bottom;
-
-  if (bottom < 0) {
-    return -1;
-  }
-
-  if (bottom > 0) {
-    return 1;
-  }
-
-  return a_id - b_id;
-}
-
 void render(void) {
   gfx_clear_screen();
 
@@ -812,18 +782,7 @@ void render(void) {
 
   FRect camera_rect = get_camera_world_rect();
 
-  memset(visible_entities, 0, sizeof(visible_entities));
-  num_of_visible_entities = 0;
-  // Create a array of entities which are "visible"
-  loop(game_context.entity_count, entity_id) {
-    FRect entity_render_rect = get_entity_render_rect(entity_id);
-    if (gfx_frect_intersects_frect(&entity_render_rect, &camera_rect)) {
-      visible_entities[num_of_visible_entities] = entity_id;
-      num_of_visible_entities++;
-    }
-  }
-
-  qsort(visible_entities, num_of_visible_entities, sizeof(int), compare_entities_y);
+  calculate_visible_entities(camera_rect);
 
   loop(num_of_visible_entities, index) {
     render_entity_batched(visible_entities[index], &render_batcher);
