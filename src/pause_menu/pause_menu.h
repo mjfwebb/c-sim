@@ -17,6 +17,22 @@ typedef enum {
 typedef struct {
   int id;
   FRect rect;
+  int value;
+  int min;
+  int max;
+  int step;
+  int width;
+  char text[32];
+} PauseMenuSlider;
+
+typedef struct {
+  int new_value;
+  bool changed;
+} PauseMenuSliderResult;
+
+typedef struct {
+  int id;
+  FRect rect;
   char text[32];
 } PauseMenuDropdown;
 
@@ -36,6 +52,8 @@ typedef struct {
   int hovered_id;
   int focused_id;
   double hover_start_time;
+  bool key_right_pressed;
+  bool key_left_pressed;
   PauseMenuInputMode input_mode;
   PauseMenuScreen current_screen;
 } PauseMenu;
@@ -57,5 +75,7 @@ bool pause_menu_title(PauseMenuTitle title);
 float current_element_position_y(float* element_heights, int current_element);
 
 bool draw_pause_menu_dropdown(PauseMenuDropdown dropdown);
+
+PauseMenuSliderResult draw_pause_menu_slider(PauseMenuSlider slider);
 
 void toggle_pause_menu(void);

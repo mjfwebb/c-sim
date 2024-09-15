@@ -1,13 +1,14 @@
 #include "headers.h"
 
-AudioContext audio_context = {0};
-
 void audio_set_music_volume(int volume) {
   audio_context.music_volume = volume;
 
   int music_volume = (audio_context.music_volume * audio_context.master_volume) / MAX_VOLUME;
 
-  Mix_VolumeMusic(music_volume);
+  // Now convert to 0 - 128 because SDL2_Audio uses a maximum of 128 instead of 100
+  int converted_volume = music_volume * 128 / 100;
+
+  Mix_VolumeMusic(converted_volume);
 }
 
 void audio_set_sound_volume(int volume) {
@@ -16,7 +17,10 @@ void audio_set_sound_volume(int volume) {
   int sound_volume = ((int)(audio_context.sound_volume * render_context.camera.target_zoom) * audio_context.master_volume) / MAX_VOLUME;
   print("setting sound volume to %d", sound_volume);
 
-  Mix_Volume(-1, sound_volume);  // -1 means all channels
+  // Now convert to 0 - 128 because SDL2_Audio uses a maximum of 128 instead of 100
+  int converted_volume = sound_volume * 128 / 100;
+
+  Mix_Volume(-1, converted_volume);  // -1 means all channels
 }
 
 void audio_set_master_volume(int volume) {

@@ -9,7 +9,7 @@ void pause_menu_draw_video(int number_of_elements, int element_id_start, float e
   pause_menu_title((PauseMenuTitle){
       .id = 0,
       .text = "Video",
-      .rect = (FRect){.left = container.left, .top = container.top, .right = container.right, .bottom = container.top + 64.0f},
+      .rect = (FRect){.left = container.left, .top = 150, .right = container.right, .bottom = container.top + 64.0f},
   });
 
   element_count++;
@@ -24,6 +24,6 @@ void pause_menu_draw_video(int number_of_elements, int element_id_start, float e
           .text = "Resolution",
       })) {
     // Then we have clicked continue
-    toggle_pause_menu();
+    // toggle_pause_menu();
   }
 }

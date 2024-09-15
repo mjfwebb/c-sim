@@ -4,7 +4,7 @@
 
 #define MAX_SOUNDS 128
 #define MAX_MUSIC 5
-#define MAX_VOLUME 128
+#define MAX_VOLUME 100
 
 // Enums for sound effects and music tracks
 typedef enum SoundEffect {
@@ -32,10 +32,16 @@ typedef struct {
   Mix_Music* music[MAX_MUSIC];
   int sound_count;
   int music_count;
-  int music_volume;
-  int sound_volume;
-  int master_volume;
+  int music_volume;  // 0 - 100, to be converted to 0 - 128 to be used with SDL_Audio
+  int sound_volume;  // 0 - 100, to be converted to 0 - 128 to be used with SDL_Audio
+  int master_volume;  // 0 - 100, to be converted to 0 - 128 to be used with SDL_Audio
 } AudioContext;
+
+void audio_set_master_volume(int volume);
+
+void audio_set_sound_volume(int volume);
+
+void audio_set_music_volume(int volume);
 
 void audio_load_sound(enum SoundEffect sound, const char* filename);
 
@@ -52,3 +58,5 @@ void audio_cleanup(void);
 int audio_init(void);
 
 int audio_load_sounds(void);
+
+AudioContext audio_context = {0};

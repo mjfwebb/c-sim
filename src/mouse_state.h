@@ -9,6 +9,9 @@
 #define mouse_primary_pressed(mouse_state) \
   (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_PRESSED && mouse_state.prev_state == SDL_PRESSED)
 
+#define mouse_primary_released(mouse_state) \
+  (mouse_state.button == SDL_BUTTON_LEFT && mouse_state.state == SDL_RELEASED && mouse_state.prev_state == SDL_PRESSED)
+
 typedef struct {
   int prev_state;
   int state;
