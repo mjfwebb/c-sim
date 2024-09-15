@@ -315,8 +315,8 @@ void move_entity(int entity_id) {
   game_context.speed[entity_id].previous_direction = game_context.speed[entity_id].current_direction;
   float velocity = get_entity_velocity(entity_id);
 
-  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * velocity * (float)(physics_context.delta_time);
-  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * velocity * (float)(physics_context.delta_time);
+  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * velocity;
+  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * velocity;
 }
 
 int dead_entity_texture(int entity_id) {

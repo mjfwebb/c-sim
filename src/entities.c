@@ -96,7 +96,7 @@ float get_entity_velocity(int entity_id) {
   float velocity_multiplier = ((float)realm / 10);
   velocity += velocity * velocity_multiplier;
 
-  return velocity;
+  return velocity * 0.01f;
 }
 
 void set_random_entity_direction(int entity_id, float velocity) {
@@ -158,7 +158,7 @@ void create_entity(
               .current = position.x,
               .velocity = 0.0f,
               .acceleration = 0.01f,
-              .friction = 0.1f,
+              .friction = 0.5f,
           },
       .spring_y =
           {
@@ -166,7 +166,7 @@ void create_entity(
               .current = position.y,
               .velocity = 0.0f,
               .acceleration = 0.01f,
-              .friction = 0.1f,
+              .friction = 0.5f,
           },
   };
 }
