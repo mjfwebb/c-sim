@@ -174,8 +174,6 @@ PauseMenuSliderResult draw_pause_menu_slider(PauseMenuSlider slider) {
     .right = (float)sider_button_position + 15};
   bool slider_button_is_hovered =
       pause_menu.input_mode == PAUSE_MENU_MOUSE_MODE && gfx_frect_contains_point(&slider_button_rect, &mouse_state.position);
-  bool slider_button_is_focused = pause_menu.input_mode == PAUSE_MENU_KEYBOARD_MODE && pause_menu.focused_id == slider.id;
-  bool slider_button_is_hot = slider_button_is_hovered || slider_button_is_focused;
 
   if (pause_menu.hovered_id == slider.id) {
     if (!slider_button_is_hovered && !mouse_primary_pressed(mouse_state)) {
