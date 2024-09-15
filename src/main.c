@@ -315,10 +315,8 @@ void move_entity(int entity_id) {
   game_context.speed[entity_id].previous_direction = game_context.speed[entity_id].current_direction;
   float velocity = get_entity_velocity(entity_id);
 
-  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * velocity *
-                                               (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
-  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * velocity *
-                                               (float)(physics_context.delta_time * (simulation_speeds[physics_context.simulation_speed]));
+  game_context.position[entity_id].target.x += (game_context.speed[entity_id].current_direction.x) * velocity * (float)(physics_context.delta_time);
+  game_context.position[entity_id].target.y += (game_context.speed[entity_id].current_direction.y) * velocity * (float)(physics_context.delta_time);
 }
 
 int dead_entity_texture(int entity_id) {
@@ -569,20 +567,8 @@ bool is_entity_under_mouse(int entity_id) {
 }
 
 void update(void) {
-  // Spring the camera zoom
-  render_context.camera.zoom = spring_update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
-
-  // Spring the console position
-  console.y = spring_update(&console.y_spring, console.target_y);
-
-  mouse_control_camera();
-
   if (game_context.in_pause_menu) {
     return;
-  }
-
-  if (!console_is_open()) {
-    keyboard_control_camera();
   }
 
   if (physics_context.simulation_speed > 0) {
@@ -596,10 +582,6 @@ void update(void) {
           spring_update(&game_context.position[entity_id].spring_y, game_context.position[entity_id].target.y);
     }
   }
-
-  // Spring the selection box
-  render_context.selection.current.x = spring_update(&render_context.selection.spring_x, render_context.selection.target.x);
-  render_context.selection.current.y = spring_update(&render_context.selection.spring_y, render_context.selection.target.y);
 }
 
 void handle_input(void) {
@@ -673,7 +655,7 @@ void handle_input(void) {
             physics_context.prev_simulation_speed = 0;
           } else {
             physics_context.simulation_speed += 1;
-            physics_context.simulation_speed = min(physics_context.simulation_speed, MAX_SIMULATION_SPEED_INDEX);
+            physics_context.simulation_speed = min(physics_context.simulation_speed, array_count(simulation_speeds) - 1);
           }
           break;
         case SDLK_DOWN:
@@ -874,16 +856,16 @@ int main(int argc, char *args[]) {
                   .target = 1.0f,
                   .current = 1.0f,
                   .velocity = 0.0f,
-                  .acceleration = 0.5f,
-                  .friction = 0.1f,
+                  .acceleration = 2.0f,
+                  .friction = 0.05f,
               },
           .spring_y =
               {
                   .target = 1.0f,
                   .current = 1.0f,
                   .velocity = 0.0f,
-                  .acceleration = 0.5f,
-                  .friction = 0.1f,
+                  .acceleration = 2.0f,
+                  .friction = 0.05f,
               },
       },
   console.y_spring = (Spring){
@@ -950,7 +932,7 @@ int main(int argc, char *args[]) {
     }
 
     current_time = new_time;
-    accumulator += frame_time;
+    accumulator += (frame_time * simulation_speeds[physics_context.simulation_speed]);
 
     handle_input();
 
@@ -964,6 +946,22 @@ int main(int argc, char *args[]) {
     // Set the alpha to 1.0 so that rendering is consistent when the simulation speed is 0.
     if (physics_context.simulation_speed == 0) {
       physics_context.alpha = 1.0;
+    }
+
+    // Spring the camera zoom
+    render_context.camera.zoom = spring_update(&render_context.camera.zoom_spring, render_context.camera.target_zoom);
+
+    // Spring the console position
+    console.y = spring_update(&console.y_spring, console.target_y);
+
+    // Spring the selection box
+    render_context.selection.current.x = spring_update(&render_context.selection.spring_x, render_context.selection.target.x);
+    render_context.selection.current.y = spring_update(&render_context.selection.spring_y, render_context.selection.target.y);
+
+    mouse_control_camera();
+
+    if (!console_is_open()) {
+      keyboard_control_camera();
     }
 
     move_camera();

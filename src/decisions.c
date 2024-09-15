@@ -426,25 +426,25 @@ void make_decision(int entity_id) {
 
 void reduce_countdowns(int entity_id) {
   if (game_context.health_current[entity_id] > 0) {
-    game_context.action_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+    game_context.action_countdown[entity_id] -= 1;
     if (game_context.action_countdown[entity_id] <= 0) {
       make_action(entity_id);
     }
 
-    game_context.hunger_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+    game_context.hunger_countdown[entity_id] -= 1;
     if (game_context.hunger_countdown[entity_id] <= 0) {
       game_context.hunger_current[entity_id] = max(0, game_context.hunger_current[entity_id] - 1);
       game_context.hunger_countdown[entity_id] = TICKS_TO_HUNGER;
     }
 
-    game_context.thirst_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+    game_context.thirst_countdown[entity_id] -= 1;
     if (game_context.thirst_countdown[entity_id] <= 0) {
       game_context.thirst_current[entity_id] = max(0, game_context.thirst_current[entity_id] - 1);
       game_context.thirst_countdown[entity_id] = TICKS_TO_THIRST;
     }
   }
 
-  game_context.decision_countdown[entity_id] -= simulation_speeds[physics_context.simulation_speed];
+  game_context.decision_countdown[entity_id] -= 1;
   if (game_context.decision_countdown[entity_id] <= 0) {
     make_decision(entity_id);
   }

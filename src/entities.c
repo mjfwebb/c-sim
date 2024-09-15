@@ -160,7 +160,7 @@ void create_entity(
               .target = position.x,
               .current = position.x,
               .velocity = 0.0f,
-              .acceleration = 0.5f,
+              .acceleration = 0.01f,
               .friction = 0.1f,
           },
       .spring_y =
@@ -168,7 +168,7 @@ void create_entity(
               .target = position.y,
               .current = position.y,
               .velocity = 0.0f,
-              .acceleration = 0.5f,
+              .acceleration = 0.01f,
               .friction = 0.1f,
           },
   };

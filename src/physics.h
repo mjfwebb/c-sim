@@ -2,8 +2,7 @@
 
 #include "headers.h"
 
-int simulation_speeds[] = {0, 1, 2, 4, 8, 16, 32, 64, 128};
-#define MAX_SIMULATION_SPEED_INDEX 8
+int simulation_speeds[] = {0, 1, 2, 4, 8, 16, 32};
 
 typedef struct {
   double delta_time;
