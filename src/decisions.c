@@ -168,23 +168,18 @@ TargetEntity find_entity_of_species(int entity_id, Species species) {
       .id = game_context.target_entity_id[entity_id],
   };
   if (target.id == INVALID_ENTITY) {
-    TargetEntity closest_tree = find_closest_entity_of_species(entity_id, species);
-    if (closest_tree.id > -1) {
-      target.id = closest_tree.id;
-      target.distance = closest_tree.distance;
+    TargetEntity closest_entity = find_closest_entity_of_species(entity_id, species);
+    if (closest_entity.id > -1) {
+      target.id = closest_entity.id;
+      target.distance = closest_entity.distance;
     }
   } else {
     if (game_context.health_current[target.id] <= 0 || game_context.species[target.id] != species) {
-      game_context.target_entity_id[entity_id] = INVALID_ENTITY;
-      return target;
+      target.id = INVALID_ENTITY;
+    } else {
+      target.distance = calculate_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
     }
-    target.distance = calculate_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
   }
-
-  game_context.target_entity_id[entity_id] = target.id;
-  game_context.speed[entity_id].velocity = BASE_VELOCITY;
-  game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
-  // TODO: Implement max range?
 
   return target;
 }
@@ -219,6 +214,15 @@ void make_action_human(int entity_id) {
   switch (game_context.decision[entity_id]) {
     case Decisions__Find_Tree: {
       TargetEntity target = find_entity_of_species(entity_id, Species__Tree);
+      game_context.target_entity_id[entity_id] = target.id;
+
+      if (target.id == INVALID_ENTITY) {
+        break;
+      }
+
+      game_context.speed[entity_id].velocity = BASE_VELOCITY;
+      game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+
       if (target.distance < 100.0f) {
         game_context.speed[entity_id].velocity = 0;
         game_context.decision[entity_id] = Decisions__Chop_Tree;
@@ -237,6 +241,15 @@ void make_action_human(int entity_id) {
     } break;
     case Decisions__Find_Human: {
       TargetEntity target = find_entity_of_species(entity_id, Species__Human);
+      game_context.target_entity_id[entity_id] = target.id;
+
+      if (target.id == INVALID_ENTITY) {
+        break;
+      }
+
+      game_context.speed[entity_id].velocity = BASE_VELOCITY;
+      game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+
       if (target.distance < 100.0f) {
         game_context.speed[entity_id].velocity = 0;
 
@@ -289,6 +302,15 @@ void make_action_human(int entity_id) {
     } break;
     case Decisions__Find_Rock: {
       TargetEntity target = find_entity_of_species(entity_id, Species__Rock);
+      game_context.target_entity_id[entity_id] = target.id;
+
+      if (target.id == INVALID_ENTITY) {
+        break;
+      }
+
+      game_context.speed[entity_id].velocity = BASE_VELOCITY;
+      game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+
       if (target.distance < 100.0f) {
         game_context.speed[entity_id].velocity = 0;
         game_context.decision[entity_id] = Decisions__Mine_Rock;
