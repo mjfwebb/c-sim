@@ -59,7 +59,6 @@ void calculate_visible_entities(FRect camera_rect) {
 
 FRect get_entity_hit_box_rect(int entity_id) {
   FRect hit_box_rect = {.top = game_context.position[entity_id].current.y, .left = game_context.position[entity_id].current.x};
-  // hit_box_rect.position = game_context.position[entity_id].current;
   hit_box_rect.left += game_context.hit_box_offset_position[entity_id].x;
   hit_box_rect.top += game_context.hit_box_offset_position[entity_id].y;
   hit_box_rect.right =
@@ -71,8 +70,6 @@ FRect get_entity_hit_box_rect(int entity_id) {
 }
 
 FRect get_entity_hit_box_rect_target(int entity_id) {
-  // FRect hit_box_rect = {0};
-  // hit_box_rect.position = game_context.position[entity_id].target;
   FRect hit_box_rect = {.top = game_context.position[entity_id].target.y, .left = game_context.position[entity_id].target.x};
   hit_box_rect.left += game_context.hit_box_offset_position[entity_id].x;
   hit_box_rect.top += game_context.hit_box_offset_position[entity_id].y;
