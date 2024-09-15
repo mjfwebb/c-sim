@@ -728,6 +728,10 @@ void handle_input(void) {
 }
 
 void move_camera(void) {
+  if (game_context.in_pause_menu) {
+    return;
+  }
+
   Vec2 camera_spring_distance = {
       .x = fabsf(render_context.camera.target.x - render_context.camera.current.x),
       .y = fabsf(render_context.camera.target.y - render_context.camera.current.y),
