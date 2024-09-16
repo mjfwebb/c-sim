@@ -17,8 +17,9 @@
 
 #include "entity_names.h"
 #include "defs.h"
-#include "audio.h"
 #include "colors.h"
+#include "gfx.h"
+#include "audio.h"
 #include "render_batcher.h"
 #include "fonts.h"
 #include "render.h"
