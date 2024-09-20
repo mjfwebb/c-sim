@@ -208,6 +208,33 @@ void create_tree(void) {
   game_context.entity_count++;
 }
 
+void create_item(char *name, Vec2 position, int texture_id, float entity_width, Species species) {
+  Stat health = {
+      .current = 1000,
+      .max = 1000,
+  };
+  Stat hunger = {
+      .current = 0,
+      .max = 0,
+  };
+  Stat thirst = {
+      .current = 0,
+      .max = 0,
+  };
+
+  create_entity(entity_width, texture_id, health, hunger, thirst, name, Species__Lumber, position, (Vec2){0}, (Vec2){0});
+
+  game_context.entity_count++;
+}
+
+void create_lumber(Vec2 position) {
+  create_item("Lumber", position, GFX_TEXTURE_LUMBER_1, 100.0f, Species__Lumber);
+}
+
+void create_quarried_rock(Vec2 position) {
+  create_item("Quarried Rock", position, GFX_TEXTURE_QUARRIED_ROCK_1, 100.0f, Species__Quarried_Rock);
+}
+
 void create_rock(void) {
   Vec2 position = {.x = (float)random_int_between(-400, 400) * 100, .y = (float)random_int_between(-400, 400) * 100};
   Stat health = {

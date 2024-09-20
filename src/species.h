@@ -5,6 +5,8 @@
 #define SPECIES_LIST \
   X(Human)           \
   X(Rock)            \
+  X(Quarried_Rock)   \
+  X(Lumber)          \
   X(Tree)
 
 #define X(name) Species__##name,

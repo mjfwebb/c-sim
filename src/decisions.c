@@ -13,14 +13,6 @@ void play_entity_sound(int entity_id, SoundEffect sound_effect) {
 
 void play_decision_sound(int entity_id, Decisions decision) {
   switch (decision) {
-    case Decisions__Chop_Tree:
-      play_entity_sound(entity_id, random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
-      break;
-
-    case Decisions__Mine_Rock:
-      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
-      break;
-
     case Decisions__Cultivate:
       play_entity_sound(entity_id, SOUND_CULTIVATE_1);
       break;
@@ -139,15 +131,90 @@ TargetEntity find_closest_entity_of_species(int current_entity_id, Species speci
   return (TargetEntity){closest_distance, closest_tree_id};
 }
 
-void handle_attack(int entity_id, int attacker_id) {
+void play_entity_death_sound(int entity_id) {
+  Species species = game_context.species[entity_id];
+
+  switch (species) {
+    case Species__Human:
+      play_entity_sound(entity_id, SOUND_KILL_ORGANIC_1);
+      break;
+
+    case Species__Tree:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
+      break;
+
+    case Species__Rock:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
+      break;
+
+    default:
+      break;
+  }
+}
+
+void play_entity_hit_sound(int entity_id) {
+  Species species = game_context.species[entity_id];
+
+  switch (species) {
+    case Species__Human:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ORGANIC_1, SOUND_HIT_ORGANIC_3));
+      break;
+
+    case Species__Tree:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_WOOD_1, SOUND_HIT_WOOD_3));
+      break;
+
+    case Species__Rock:
+      play_entity_sound(entity_id, random_int_between(SOUND_HIT_ROCK_1, SOUND_HIT_ROCK_3));
+      break;
+
+    default:
+      break;
+  }
+}
+
+void handle_death(int entity_id) {
+  play_entity_death_sound(entity_id);
+  Species species = game_context.species[entity_id];
+
+  switch (species) {
+    case Species__Human:
+      break;
+
+    case Species__Tree: {
+      Vec2 lumber_position = (Vec2){
+          .x = game_context.position[entity_id].target.x + (game_context.texture[entity_id].size.x / 2) - 50,
+          .y = game_context.position[entity_id].target.y + (game_context.texture[entity_id].size.y / 2) - 50,
+      };
+      create_lumber(lumber_position);
+      break;
+    }
+
+    case Species__Rock: {
+      Vec2 quarried_rock_position = (Vec2){
+          .x = game_context.position[entity_id].target.x + (game_context.texture[entity_id].size.x / 2) - 50,
+          .y = game_context.position[entity_id].target.y + (game_context.texture[entity_id].size.y / 2) - 50,
+      };
+      create_quarried_rock(quarried_rock_position);
+      break;
+    } break;
+
+    default:
+      break;
+  }
+}
+
+void handle_attack(int entity_id, int attacker_id, int damage) {
+  game_context.health_current[entity_id] = max(0, game_context.health_current[entity_id] - damage);
+
   if (game_context.health_current[entity_id] == 0) {
     game_context.speed[entity_id].velocity = 0.0f;
     game_context.decision[entity_id] = Decisions__Wait;
     game_context.killed_by[entity_id] = attacker_id;
-    play_entity_sound(entity_id, SOUND_KILL_ORGANIC_1);
+    handle_death(entity_id);
     return;
   } else {
-    play_entity_sound(entity_id, random_int_between(SOUND_HIT_ORGANIC_1, SOUND_HIT_ORGANIC_3));
+    play_entity_hit_sound(entity_id);
   }
 }
 
@@ -233,8 +300,8 @@ void make_action_human(int entity_id) {
       TargetEntity target;
       bool valid_target = get_current_target(entity_id, 100.0f, &target);
       if (valid_target) {
-        play_decision_sound(entity_id, game_context.decision[entity_id]);
-        game_context.health_current[target.id] = max(0, game_context.health_current[target.id] - 100);
+        int damage = random_int_between(50, 100);
+        handle_attack(target.id, entity_id, damage);
       } else {
         game_context.decision[entity_id] = Decisions__Wait;
       }
@@ -279,7 +346,6 @@ void make_action_human(int entity_id) {
         int heal = random_int_between(3, 7) * (game_context.realm[entity_id] + 1);
         game_context.health_current[target.id] = max(game_context.health_max[target.id], game_context.health_current[target.id] + heal);
         play_decision_sound(entity_id, Decisions__Heal_Human);
-        handle_attack(target.id, entity_id);
       } else {
         game_context.decision[entity_id] = Decisions__Wait;
       }
@@ -289,8 +355,7 @@ void make_action_human(int entity_id) {
       bool valid_target = get_current_target(entity_id, 100.0f, &target);
       if (valid_target) {
         int damage = random_int_between(5, 15) * (game_context.realm[entity_id] + 1);
-        game_context.health_current[target.id] = max(0, game_context.health_current[target.id] - damage);
-        handle_attack(target.id, entity_id);
+        handle_attack(target.id, entity_id, damage);
       } else {
         int should_continue_the_hunt = random_int_between(0, 1);
         if (should_continue_the_hunt) {

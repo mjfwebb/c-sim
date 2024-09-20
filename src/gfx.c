@@ -181,6 +181,8 @@ void gfx_load_textures(void) {
       "assets/tree/4-stump.png",
       "assets/tree/5-stump.png",
       "assets/tree/6-stump.png",
+      "assets/logs/logs.png",
+      "assets/quarried_rocks/quarried_rocks.png",
   };
 
   for (u32 i = 0; i < array_count(texture_paths); i++) {
