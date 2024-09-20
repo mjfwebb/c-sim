@@ -492,7 +492,7 @@ void deselect_all_entities(void) {
 
 // Camera movement and selection rect movement
 void keyboard_control_camera(void) {
-  float camera_keyboard_movement_speed = 15.0f;
+  float camera_keyboard_movement_speed = 8.0f;
   if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_w)]) {
     deselect_all_entities();
     render_context.camera.target.y -= camera_keyboard_movement_speed / render_context.camera.zoom;
