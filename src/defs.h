@@ -20,11 +20,6 @@
 #define loop(upper_bound, index_name) for (int index_name = 0; index_name < upper_bound; index_name++)
 #define reverse_loop(lower_bound, index_name) for (int index_name = lower_bound - 1; index_name >= 0; index_name--)
 
-typedef struct Vec2 {
-  float x;
-  float y;
-} Vec2;
-
 typedef struct {
   // Vec2 position;
   // Vec2 size;

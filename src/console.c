@@ -55,21 +55,6 @@ ConsoleCommandParts parse_command(char* source) {
   return console_command_parts;
 }
 
-// TODO: This should be in a geometry/math lib thing?
-float vector_length(Vec2 v) {
-  return sqrtf((v.x * v.x) + (v.y * v.y));
-}
-
-// TODO: This should be in a geometry/math lib thing?
-float distance(Vec2 a, Vec2 b) {
-  Vec2 difference = {
-      .x = b.x - a.x,
-      .y = b.y - a.y,
-  };
-
-  return vector_length(difference);
-}
-
 CommandArgsSuggestions get_entity_names(char* text) {
   CommandArgsSuggestions suggestions = {0};
 
@@ -198,7 +183,7 @@ static bool calculate_distance_between_entities(char* arguments_text) {
 
   sprintf(
       output_message, "The distance between %s and %s, is %.2f", console_command_parts.part[1].value, console_command_parts.part[2].value,
-      distance(entity_a_position, entity_b_position)
+      vec2_distance(entity_a_position, entity_b_position)
   );
   console_append_to_output(output_message);
   return true;

@@ -30,18 +30,6 @@ void play_decision_sound(int entity_id, Decisions decision) {
   }
 }
 
-float calculate_distance_squared(Vec2 a, Vec2 b) {
-  Vec2 distance = {.x = a.x - b.x, .y = a.y - b.y};
-
-  float distance_squared = distance.x * distance.x + distance.y * distance.y;
-
-  return distance_squared;
-}
-
-float calculate_distance(Vec2 a, Vec2 b) {
-  return sqrtf(calculate_distance_squared(a, b));
-}
-
 int aggressive_personality_score(int entity_id) {
   int aggressive_score = 0;
 
@@ -89,37 +77,13 @@ int aggressive_personality_score(int entity_id) {
   return aggressive_score;
 }
 
-Vec2 normalize_vec2(Vec2 vec) {
-  float length = sqrtf(vec.x * vec.x + vec.y * vec.y);
-
-  if (length == 0.0f) {
-    return vec;
-  }
-
-  Vec2 normalized_vec = {
-      .x = vec.x / length,
-      .y = vec.y / length,
-  };
-
-  return normalized_vec;
-}
-
-Vec2 get_direction_vec2(Vec2 a, Vec2 b) {
-  Vec2 direction_vector = {
-      .x = b.x - a.x,
-      .y = b.y - a.y,
-  };
-
-  return normalize_vec2(direction_vector);
-}
-
 TargetEntity find_closest_entity_of_species(int current_entity_id, Species species) {
   float closest_distance = FLT_MAX;  // Default to a big number. This is the search radius.
   int closest_tree_id = -1;
 
   loop(game_context.entity_count, entity_id) {
     if (current_entity_id != entity_id && game_context.species[entity_id] == species && game_context.health_current[entity_id] > 0) {
-      float distance_between_entities = calculate_distance(get_entity_origin_point(current_entity_id), get_entity_origin_point(entity_id));
+      float distance_between_entities = vec2_distance(get_entity_origin_point(current_entity_id), get_entity_origin_point(entity_id));
 
       if (distance_between_entities < closest_distance) {
         closest_distance = distance_between_entities;
@@ -244,7 +208,7 @@ TargetEntity find_entity_of_species(int entity_id, Species species) {
     if (game_context.health_current[target.id] <= 0 || game_context.species[target.id] != species) {
       target.id = INVALID_ENTITY;
     } else {
-      target.distance = calculate_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+      target.distance = vec2_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
     }
   }
 
@@ -259,7 +223,7 @@ bool get_current_target(int entity_id, float valid_distance, TargetEntity* targe
   }
 
   target->id = target_id;
-  target->distance = calculate_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target_id));
+  target->distance = vec2_distance(get_entity_origin_point(entity_id), get_entity_origin_point(target_id));
 
   if (game_context.health_current[target->id] <= 0 || target->distance > valid_distance) {
     game_context.target_entity_id[entity_id] = INVALID_ENTITY;
@@ -288,7 +252,7 @@ void make_action_human(int entity_id) {
       }
 
       game_context.speed[entity_id].velocity = BASE_VELOCITY;
-      game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+      game_context.speed[entity_id].current_direction = vec2_direction(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
 
       if (target.distance < 100.0f) {
         game_context.speed[entity_id].velocity = 0;
@@ -315,7 +279,7 @@ void make_action_human(int entity_id) {
       }
 
       game_context.speed[entity_id].velocity = BASE_VELOCITY;
-      game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+      game_context.speed[entity_id].current_direction = vec2_direction(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
 
       if (target.distance < 100.0f) {
         game_context.speed[entity_id].velocity = 0;
@@ -374,7 +338,7 @@ void make_action_human(int entity_id) {
       }
 
       game_context.speed[entity_id].velocity = BASE_VELOCITY;
-      game_context.speed[entity_id].current_direction = get_direction_vec2(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
+      game_context.speed[entity_id].current_direction = vec2_direction(get_entity_origin_point(entity_id), get_entity_origin_point(target.id));
 
       if (target.distance < 100.0f) {
         game_context.speed[entity_id].velocity = 0;

@@ -2,6 +2,7 @@
 
 #include "headers.h"
 
+#include "math.c"
 #include "defs.c"
 #include "gfx.c"
 #include "audio.c"
