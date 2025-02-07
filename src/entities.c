@@ -135,6 +135,7 @@ void create_entity(
 
   game_context.selected[game_context.entity_count] = false;
   game_context.hovered[game_context.entity_count] = false;
+  game_context.picked_up[game_context.entity_count] = false;
 
   game_context.realm[game_context.entity_count] = 0;
   game_context.experience[game_context.entity_count] = 0;

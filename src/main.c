@@ -309,6 +309,21 @@ void draw_border(FRect around, float gap_width, float border_width) {
 }
 
 void move_entity(int entity_id) {
+  if (game_context.picked_up[entity_id] == true) {
+    FRect mouse_world_position = frect_screen_to_world((FRect){
+        .left = mouse_state.position.x,
+        .right = mouse_state.position.x,
+        .top = mouse_state.position.y,
+        .bottom = mouse_state.position.y,
+    });
+
+    FRect entity_hit_box_rect = get_entity_hit_box_rect(entity_id);
+
+    game_context.position[entity_id].target.x = (mouse_world_position.left - ((entity_hit_box_rect.right - entity_hit_box_rect.left) / 2));
+    game_context.position[entity_id].target.y = (mouse_world_position.top - ((entity_hit_box_rect.bottom - entity_hit_box_rect.top) / 2));
+    return;
+  }
+
   if (game_context.speed[entity_id].velocity == 0.0f) {
     return;
   }
@@ -718,7 +733,12 @@ void handle_input(void) {
         }
       }
       if (entity_id_to_click > -1) {
-        game_context.selected[entity_id_to_click] = !game_context.selected[entity_id_to_click];
+        if (render_context.keyboard_state[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
+          game_context.picked_up[entity_id_to_click] = !game_context.picked_up[entity_id_to_click];
+        } else {
+          game_context.selected[entity_id_to_click] = !game_context.selected[entity_id_to_click];
+        }
+
         any_entity_selected = true;
         break;
       }
