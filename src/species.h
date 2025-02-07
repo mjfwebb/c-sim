@@ -2,6 +2,7 @@
 
 #include "headers.h"
 
+// These should be defined in order of click precedence
 #define SPECIES_LIST \
   X(Human)           \
   X(Rock)            \
