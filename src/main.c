@@ -860,7 +860,7 @@ void update_timer(Timer *timer, double frame_time) {
 }
 
 int main(int argc, char *args[]) {
-  srand(create_seed("I like calculating widths"));
+  srand(create_seed("It was time to get a new seed"));
 
   render_context.background_color = (SDL_Color){35, 127, 178, 255};
   render_context.camera = (Camera){
