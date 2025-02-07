@@ -73,8 +73,12 @@ void load_fonts(void) {
   render_context.fonts[0] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
   font_parameters.size = 32;
   render_context.fonts[1] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
-  font_parameters.size = 64;
+  font_parameters.size = 48;
+  font_parameters.outline_size = 2;
   render_context.fonts[2] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
+  font_parameters.size = 64;
+  font_parameters.outline_size = 3;
+  render_context.fonts[3] = load_font("assets/OpenSans-Regular.ttf", font_parameters);
 }
 
 FRect get_camera_world_rect(void) {
@@ -824,6 +828,19 @@ void render(void) {
   if (mouse_primary_pressed(mouse_state)) {
     // Draw the selection box
     draw_selection_box();
+  }
+
+  if (physics_context.simulation_speed == 0) {
+    char *game_paused_text = "Game Paused";
+    Font font = render_context.fonts[2];
+    Vec2 game_paused_text_size = get_text_size(game_paused_text, &font, true, false);
+    RGBA outline_color = {0, 0, 0, 1};
+    RGBA color = {1, 1, 1, 1};
+
+    draw_text_outlined_utf8(
+        game_paused_text, (Vec2){.y = SCREEN_HEIGHT - font.size - 50.0f, .x = SCREEN_WIDTH / 2 - (game_paused_text_size.x / 2)}, color, outline_color,
+        &font
+    );
   }
 
   render_debug_info();
