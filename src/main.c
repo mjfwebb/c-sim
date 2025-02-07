@@ -805,13 +805,6 @@ void render(void) {
     }
   }
 
-  int single_entity = get_singly_selected_entity();
-  if (single_entity != INVALID_ENTITY) {
-    draw_entity_info_batched(single_entity, &render_batcher);
-  }
-
-  flush_render_batcher(&render_batcher);
-
   if (render_context.camera.zoom > 0.5f) {
     loop(num_of_visible_entities, index) {
       int entity_id = visible_entities[index];
@@ -824,6 +817,13 @@ void render(void) {
       }
     }
   }
+
+  int single_entity = get_singly_selected_entity();
+  if (single_entity != INVALID_ENTITY) {
+    draw_entity_info_batched(single_entity, &render_batcher);
+  }
+
+  flush_render_batcher(&render_batcher);
 
   if (mouse_primary_pressed(mouse_state)) {
     // Draw the selection box
