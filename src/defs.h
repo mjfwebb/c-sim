@@ -21,8 +21,6 @@
 #define reverse_loop(lower_bound, index_name) for (int index_name = lower_bound - 1; index_name >= 0; index_name--)
 
 typedef struct {
-  // Vec2 position;
-  // Vec2 size;
   float top;
   float left;
   float right;
